@@ -5,6 +5,7 @@ import java.util.function.Supplier;
 
 import edu.wpi.first.wpilibj.PS4Controller;
 import edu.wpi.first.wpilibj.XboxController;
+import java.util.function.Consumer;
 
 public class Controller {
     PS4Controller ps4Controller;
@@ -34,32 +35,74 @@ public class Controller {
         Logo,
     }
 
-    Hashtable<ButtonName, Supplier<Boolean>> BinaryButtonFunctions = new Hashtable<Controller.ButtonName,Supplier<Boolean>>();
-    Hashtable<ButtonName, Supplier<Double>> ValueButtonFunctions = new Hashtable<Controller.ButtonName,Supplier<Double>>();
-    Hashtable<ButtonName, Supplier<Integer>> POVButtonFunctions = new Hashtable<Controller.ButtonName,Supplier<Integer>>();
+    Hashtable<ButtonName, Supplier<Boolean>> BinaryButtonSuppliers = new Hashtable<Controller.ButtonName,Supplier<Boolean>>();
+    Hashtable<ButtonName, Supplier<Double>> ValueButtonSuppliers = new Hashtable<Controller.ButtonName,Supplier<Double>>();
+    Hashtable<ButtonName, Supplier<Integer>> POVButtonSuppliers = new Hashtable<Controller.ButtonName,Supplier<Integer>>();
 
-    void RegisterBinaryButton(ButtonName button, Supplier<Boolean> func) {
-        BinaryButtonFunctions.put(button, func);
+    Hashtable<ButtonName, Consumer<Boolean>> BinaryButtonConsumers = new Hashtable<Controller.ButtonName,Consumer<Boolean>>();
+    Hashtable<ButtonName, Consumer<Double>> ValueButtonConsumers = new Hashtable<Controller.ButtonName,Consumer<Double>>();
+    Hashtable<ButtonName, Consumer<Integer>> POVButtonConsumers = new Hashtable<Controller.ButtonName,Consumer<Integer>>();
+
+    void RegisterBinaryButtonSupplier(ButtonName button, Supplier<Boolean> func) {
+        BinaryButtonSuppliers.put(button, func);
     }
 
-    void RegisterValueButton(ButtonName button, Supplier<Double> func) {
-        ValueButtonFunctions.put(button, func);
+    void RegisterValueButtonSupplier(ButtonName button, Supplier<Double> func) {
+        ValueButtonSuppliers.put(button, func);
     }
 
-    void RegisterPOVButton(ButtonName button, Supplier<Integer> func) {
-        POVButtonFunctions.put(button, func);
+    void RegisterPOVButtonSupplier(ButtonName button, Supplier<Integer> func) {
+        POVButtonSuppliers.put(button, func);
     }
 
-    public Boolean GetBinaryButtonState(ButtonName button) {
-        return BinaryButtonFunctions.get(button).get();
+    public void RegisterBinaryButtonConsumer(ButtonName button, Consumer<Boolean> func) {
+        BinaryButtonConsumers.put(button, func);
     }
 
-    public Double GetValueButtonValue(ButtonName button) {
-        return ValueButtonFunctions.get(button).get();
+    public void RegisterValueButton(ButtonName button, Consumer<Double> func) {
+        ValueButtonConsumers.put(button, func);
     }
 
-    public Integer GetPOVButtonValue(ButtonName button) {
-        return POVButtonFunctions.get(button).get();
+    public void RegisterPOVButton(ButtonName button, Consumer<Integer> func) {
+        POVButtonConsumers.put(button, func);
+    }
+
+    public void GetBinaryButtonState(ButtonName button) {
+        BinaryButtonConsumers.get(button).accept(GetBinaryButtonSupplier(button));
+    }
+
+    public void GetValueButtonValue(ButtonName button) {
+        ValueButtonConsumers.get(button).accept(GetValueButtonSupplier(button));
+    }
+
+    public void GetPOVButtonValue(ButtonName button) {
+        ValueButtonConsumers.get(button).accept(GetValueButtonSupplier(button));
+    }
+
+    public void ProcessButtons() {
+        for (ButtonName button : BinaryButtonConsumers.keySet()) {
+            GetBinaryButtonState(button);
+        }
+
+        for (ButtonName button : ValueButtonConsumers.keySet()) {
+            GetValueButtonValue(button);;
+        }
+
+        for (ButtonName button : POVButtonConsumers.keySet()) {
+            GetPOVButtonValue(button);
+        }
+    }
+
+    public Boolean GetBinaryButtonSupplier(ButtonName button) {
+        return BinaryButtonSuppliers.get(button).get();
+    }
+
+    public Double GetValueButtonSupplier(ButtonName button) {
+        return ValueButtonSuppliers.get(button).get();
+    }
+
+    public Integer GetPOVButtonSupplier(ButtonName button) {
+        return POVButtonSuppliers.get(button).get();
     }
 
     ControllerType Type;
@@ -76,24 +119,24 @@ public class Controller {
                 ps4Controller = new PS4Controller(index);
         }
 
-        RegisterBinaryButton(ButtonName.TopButton, this::getTopButton);
-        RegisterBinaryButton(ButtonName.BottomButton, this::getBottomButton);
-        RegisterBinaryButton(ButtonName.LeftButton, this::getLeftButton);
-        RegisterBinaryButton(ButtonName.RightButton, this::getRightButton);
-        RegisterBinaryButton(ButtonName.LeftShoulderButton, this::getLeftShoulderButton);
-        RegisterBinaryButton(ButtonName.RightShoulderButton, this::getRightShoulderButton);
-        RegisterBinaryButton(ButtonName.Start, this::getStartButton);
-        RegisterBinaryButton(ButtonName.Select, this::getSelectButton);
-        RegisterBinaryButton(ButtonName.Logo, this::getLogoButton);
+        RegisterBinaryButtonSupplier(ButtonName.TopButton, this::getTopButton);
+        RegisterBinaryButtonSupplier(ButtonName.BottomButton, this::getBottomButton);
+        RegisterBinaryButtonSupplier(ButtonName.LeftButton, this::getLeftButton);
+        RegisterBinaryButtonSupplier(ButtonName.RightButton, this::getRightButton);
+        RegisterBinaryButtonSupplier(ButtonName.LeftShoulderButton, this::getLeftShoulderButton);
+        RegisterBinaryButtonSupplier(ButtonName.RightShoulderButton, this::getRightShoulderButton);
+        RegisterBinaryButtonSupplier(ButtonName.Start, this::getStartButton);
+        RegisterBinaryButtonSupplier(ButtonName.Select, this::getSelectButton);
+        RegisterBinaryButtonSupplier(ButtonName.Logo, this::getLogoButton);
 
-        RegisterValueButton(ButtonName.LeftTrigger, this::getLeftTriggerValue);
-        RegisterValueButton(ButtonName.RightTrigger, this::getRightTriggerValue);
-        RegisterValueButton(ButtonName.LeftThumbstickX, this::getLeftX);
-        RegisterValueButton(ButtonName.LeftThumbstickY, this::getLeftY);
-        RegisterValueButton(ButtonName.RightThumbstickX, this::getRightX);
-        RegisterValueButton(ButtonName.RightThumbstickY, this::getRightY);
+        RegisterValueButtonSupplier(ButtonName.LeftTrigger, this::getLeftTriggerValue);
+        RegisterValueButtonSupplier(ButtonName.RightTrigger, this::getRightTriggerValue);
+        RegisterValueButtonSupplier(ButtonName.LeftThumbstickX, this::getLeftX);
+        RegisterValueButtonSupplier(ButtonName.LeftThumbstickY, this::getLeftY);
+        RegisterValueButtonSupplier(ButtonName.RightThumbstickX, this::getRightX);
+        RegisterValueButtonSupplier(ButtonName.RightThumbstickY, this::getRightY);
 
-        RegisterPOVButton(ButtonName.POV, this::getPOV);
+        RegisterPOVButtonSupplier(ButtonName.POV, this::getPOV);
     }
 
     boolean getLeftButton() {

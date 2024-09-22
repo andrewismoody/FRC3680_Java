@@ -92,8 +92,6 @@ public class Robot extends TimedRobot {
 
   private final SwerveDriveKinematics m_kin = new SwerveDriveKinematics(leftFrontMM.modulePosition, rightRearMM.modulePosition);
 
-  private ButtonMapper m_buttonMapper = new ButtonMapper(m_controller);
-
   public Robot() {
     SendableRegistry.addChild(m_robotDrive, m_leftDrive);
     SendableRegistry.addChild(m_robotDrive, m_rightDrive);
@@ -114,20 +112,20 @@ public class Robot extends TimedRobot {
     m_leftLift.setInverted(true);
     m_feed.setInverted(true);
 
-    m_buttonMapper.RegisterBinaryButton(ButtonName.LeftButton, this::processEjectAmp);
-    m_buttonMapper.RegisterBinaryButton(ButtonName.RightButton, this::processEjectSpeaker);
-    m_buttonMapper.RegisterBinaryButton(ButtonName.TopButton, this::processIntakeFeed);
-    m_buttonMapper.RegisterBinaryButton(ButtonName.BottomButton, this::processLift);
-    m_buttonMapper.RegisterBinaryButton(ButtonName.LeftShoulderButton, this::processIntakeUpper);
-    m_buttonMapper.RegisterBinaryButton(ButtonName.RightShoulderButton, this::processInverse);
+    m_controller.RegisterBinaryButtonConsumer(ButtonName.LeftButton, this::processEjectAmp);
+    m_controller.RegisterBinaryButtonConsumer(ButtonName.RightButton, this::processEjectSpeaker);
+    m_controller.RegisterBinaryButtonConsumer(ButtonName.TopButton, this::processIntakeFeed);
+    m_controller.RegisterBinaryButtonConsumer(ButtonName.BottomButton, this::processLift);
+    m_controller.RegisterBinaryButtonConsumer(ButtonName.LeftShoulderButton, this::processIntakeUpper);
+    m_controller.RegisterBinaryButtonConsumer(ButtonName.RightShoulderButton, this::processInverse);
 
-    m_buttonMapper.RegisterValueButton(ButtonName.LeftTrigger, this::processDivider1);
-    m_buttonMapper.RegisterValueButton(ButtonName.RightTrigger, this::processSpeedLock);
+    m_controller.RegisterValueButton(ButtonName.LeftTrigger, this::processDivider1);
+    m_controller.RegisterValueButton(ButtonName.RightTrigger, this::processSpeedLock);
 
-    m_buttonMapper.RegisterValueButton(ButtonName.RightThumbstickY, this::processForwardSpeed);
-    m_buttonMapper.RegisterValueButton(ButtonName.RightThumbstickX, this::processLateralSpeed);
-    m_buttonMapper.RegisterValueButton(ButtonName.LeftThumbstickX, this::processRotationAngle);
-    m_buttonMapper.RegisterValueButton(ButtonName.LeftThumbstickY, this::processSpeedDilation);
+    m_controller.RegisterValueButton(ButtonName.RightThumbstickY, this::processForwardSpeed);
+    m_controller.RegisterValueButton(ButtonName.RightThumbstickX, this::processLateralSpeed);
+    m_controller.RegisterValueButton(ButtonName.LeftThumbstickX, this::processRotationAngle);
+    m_controller.RegisterValueButton(ButtonName.LeftThumbstickY, this::processSpeedDilation);
   }
 
   /** This function is run once each time the robot enters autonomous mode. */
@@ -351,7 +349,7 @@ public class Robot extends TimedRobot {
   @Override
   public void teleopPeriodic() {
     
-    m_buttonMapper.ProcessButtons();
+    m_controller.ProcessButtons();
 
     // m_robotDrive.arcadeDrive(m_controller.getLeftX(), m_controller.getLeftY());
 
