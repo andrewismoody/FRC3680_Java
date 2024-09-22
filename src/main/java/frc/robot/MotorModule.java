@@ -1,4 +1,4 @@
-package frc;
+package frc.robot;
 
 import edu.wpi.first.wpilibj.Encoder;
 import edu.wpi.first.wpilibj.motorcontrol.MotorController;
@@ -39,8 +39,8 @@ public class MotorModule {
 
   PIDController pidController = new PIDController(0.2, 0, 0);
 
-  boolean debugAngle = true;
-  boolean debugSpeed = false;
+  boolean debugAngle = false;
+  boolean debugSpeed = true;
 
   public MotorModule(String id, Translation2d position, MotorController dMot, MotorController rMot, Encoder enc, double aTol, double drvSpeed, double rotSpeed) {
     moduleID = id;

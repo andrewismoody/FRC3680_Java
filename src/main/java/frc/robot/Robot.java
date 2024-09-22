@@ -19,7 +19,7 @@ import edu.wpi.first.wpilibj.motorcontrol.MotorController;
 import edu.wpi.first.wpilibj.motorcontrol.PWMSparkMax;
 import edu.wpi.first.wpilibj.motorcontrol.PWMVictorSPX;
 import edu.wpi.first.wpilibj.motorcontrol.Spark;
-import frc.MotorModule;
+import frc.robot.Controller.ButtonName;
 import frc.robot.Controller.ControllerType;
 
 /**
@@ -57,6 +57,7 @@ public class Robot extends TimedRobot {
   private final MotorController m_rightLift = m_pwm8;
 
   private final double m_floatTolerance = 0.2;
+  private final double m_thumbstickDeadZone = 0.2;
 
   private final boolean isFieldOriented = false;
   private final AnalogGyro m_gyro = new AnalogGyro(0);
@@ -81,10 +82,17 @@ public class Robot extends TimedRobot {
   private double m_driveSpeed = 10.0 * m_speedMod;
   private double m_rotationSpeed = 3.0 * m_speedMod;
 
+  private double m_forwardSpeed = 0.0;
+  private double m_lateralSpeed = 0.0;
+  private double m_rotationAngle = 0.0;
+  private double m_speedDilation = 0.0;
+
   private MotorModule leftFrontMM = new MotorModule("leftFront", new Translation2d(-1.0, 1.0), m_pwm1, m_pwm2, m_enc1, m_floatTolerance, m_driveSpeed, m_rotationSpeed);
   private MotorModule rightRearMM = new MotorModule("rightRear", new Translation2d(1.0, -1.0), m_pwm3, m_pwm4, m_enc2, m_floatTolerance, m_driveSpeed, m_rotationSpeed);
 
   private final SwerveDriveKinematics m_kin = new SwerveDriveKinematics(leftFrontMM.modulePosition, rightRearMM.modulePosition);
+
+  private ButtonMapper m_buttonMapper = new ButtonMapper(m_controller);
 
   public Robot() {
     SendableRegistry.addChild(m_robotDrive, m_leftDrive);
@@ -105,6 +113,21 @@ public class Robot extends TimedRobot {
     m_leftEject.setInverted(true);
     m_leftLift.setInverted(true);
     m_feed.setInverted(true);
+
+    m_buttonMapper.RegisterBinaryButton(ButtonName.LeftButton, this::processEjectAmp);
+    m_buttonMapper.RegisterBinaryButton(ButtonName.RightButton, this::processEjectSpeaker);
+    m_buttonMapper.RegisterBinaryButton(ButtonName.TopButton, this::processIntakeFeed);
+    m_buttonMapper.RegisterBinaryButton(ButtonName.BottomButton, this::processLift);
+    m_buttonMapper.RegisterBinaryButton(ButtonName.LeftShoulderButton, this::processIntakeUpper);
+    m_buttonMapper.RegisterBinaryButton(ButtonName.RightShoulderButton, this::processInverse);
+
+    m_buttonMapper.RegisterValueButton(ButtonName.LeftTrigger, this::processDivider1);
+    m_buttonMapper.RegisterValueButton(ButtonName.RightTrigger, this::processSpeedLock);
+
+    m_buttonMapper.RegisterValueButton(ButtonName.RightThumbstickY, this::processForwardSpeed);
+    m_buttonMapper.RegisterValueButton(ButtonName.RightThumbstickX, this::processLateralSpeed);
+    m_buttonMapper.RegisterValueButton(ButtonName.LeftThumbstickX, this::processRotationAngle);
+    m_buttonMapper.RegisterValueButton(ButtonName.LeftThumbstickY, this::processSpeedDilation);
   }
 
   /** This function is run once each time the robot enters autonomous mode. */
@@ -131,73 +154,98 @@ public class Robot extends TimedRobot {
     //empty
   }
 
-
-  public void squareEnable() {
-    ejectAmp();
+  void processEjectAmp(boolean pressed) {
+    if (pressed) {
+      ejectAmp();
+    } else {
+      stopEjectAmp();
+    }
   }
 
-  public void squareDisable() {
-    stopEjectAmp();
+  void processEjectSpeaker(boolean pressed) {
+    if (pressed) {
+      ejectSpeaker();
+    } else {
+      stopEjectSpeaker();
+    }
   }
 
-  public void circleEnable() {
-    ejectSpeaker();
+  void processIntakeFeed(boolean pressed) {
+    if (pressed) {
+      intake();
+      feed();
+    } else {
+      stopIntake();
+      stopFeed();
+    }
   }
 
-  public void circleDisable() {
-    stopEjectSpeaker();
+  void processLift(boolean pressed) {
+    if (pressed) {
+      lift();
+    } else {
+      stopLift();
+    }
   }
 
-  public void triangleEnable() {
-    intake();
-    feed();
+  void processIntakeUpper(boolean pressed) {
+    if (pressed) {
+      intakeUpper();
+    } else {
+      stopIntakeUpper();
+    }
   }
 
-  public void triangleDisable() {
-    stopIntake();
-    stopFeed();
+  void processDivider1(double value) {
+    if (value > 0) {
+      m_Divider1Value = m_Divider1;
+    } else {
+      m_Divider1Value = 1.0;
+    }
   }
 
-  public void crossEnable() {
-    lift();
+  void processInverse(boolean pressed) {
+    if (pressed) {
+      m_InverseValue = m_Inverse;
+    } else {
+      m_InverseValue = 1.0;
+    }
   }
 
-  public void crossDisable() {
-    stopLift();
+  public void processSpeedLock(double value) {
+    if (value > 0) {
+      m_speedLock = true;
+    } else {
+      m_speedLock = false;
+    }
   }
 
-  public void L1Enable() {
-    //feed();
-    intakeUpper();
+  public void processForwardSpeed(double value) {
+    if (Math.abs(value) > m_thumbstickDeadZone)
+      m_forwardSpeed = value;
+    else
+      m_forwardSpeed = 0.0;
   }
 
-  public void L1Disable() {
-    //stopFeed();
-    stopIntakeUpper();
+  public void processLateralSpeed(double value) {
+    if (Math.abs(value) > m_thumbstickDeadZone)
+      m_lateralSpeed = value;
+    else
+      m_lateralSpeed = 0.0;
   }
 
-  public void L2Enable() {
-    m_Divider1Value = m_Divider1;
+  public void processRotationAngle(double value) {
+    if (Math.abs(value) > m_thumbstickDeadZone)
+      m_rotationAngle = value;
+    else
+      m_rotationAngle = 0.0;
   }
 
-  public void L2Disable() {
-    m_Divider1Value = 1.0;
-  }
-
-  public void R1Enable() {
-    m_InverseValue = m_Inverse;
-  }
-
-  public void R1Disable() {
-    m_InverseValue = 1.0;
-  }
-
-  public void R2Enable() {
-    m_speedLock = true;
-  }
-
-  public void R2Disable() {
-    m_speedLock = false;
+  public void processSpeedDilation(double value) {
+    if (Math.abs(value) > m_thumbstickDeadZone)
+      m_speedDilation = value;
+    else
+      m_speedDilation = 0.0;
   }
 
   public void feed() {
@@ -287,10 +335,10 @@ public class Robot extends TimedRobot {
   public Double applyModifiers(double value, boolean affectSpeed) {
     value *= m_InverseValue;
 
-    if (!m_speedLock && m_controller.getRightY() < 0)
+    if (!m_speedLock && m_speedDilation < 0)
       // get the inverse of the Y value subtracted from 1 since the axis is reflected along the X axis
       // >= 0 is always full speed, anything less is a fraction of full speed starting at 1 down to 0
-      m_speedMod = 1 - -m_controller.getRightY();
+      m_speedMod = 1 - -m_speedDilation;
 
     if (affectSpeed)
       value *= m_Divider1Value * m_speedMod;
@@ -303,50 +351,8 @@ public class Robot extends TimedRobot {
   @Override
   public void teleopPeriodic() {
     
-    
-    if(m_controller.getSquareButton())
-      squareEnable();
-    else
-      squareDisable();
+    m_buttonMapper.ProcessButtons();
 
-    
-    if(m_controller.getTriangleButton())
-      triangleEnable();
-    else
-      triangleDisable();
-
-
-    if(m_controller.getCircleButton())
-      circleEnable();
-    else
-      circleDisable();
- 
-    if(m_controller.getCrossButton())
-      crossEnable();
-    else
-      crossDisable();
- 
-    if(m_controller.getL1Button())
-      L1Enable();
-    else
-      L1Disable();
- 
-    if(m_controller.getL2Button() > 0.0)
-      L2Enable();
-    else
-      L2Disable();
-  
-    if(m_controller.getR1Button())
-      R1Enable();
-    else
-      R1Disable();
- 
-    if(m_controller.getR2Button() > 0.0)
-      R2Enable();
-    else
-      R2Disable();
-  
-  
     // m_robotDrive.arcadeDrive(m_controller.getLeftX(), m_controller.getLeftY());
 
     updateDriveMotors();
@@ -359,9 +365,9 @@ public class Robot extends TimedRobot {
     // https://www.chiefdelphi.com/t/set-motor-position-with-encoder/152088/3
 
     // set the chassis speed object according to current controller values
-    double forwardSpeed = m_controller.getRightY() * m_driveSpeed;
-    double lateralSpeed = m_controller.getRightX() * m_driveSpeed;
-    double rotationSpeed = m_controller.getLeftX() * m_rotationSpeed;
+    double forwardSpeed = m_forwardSpeed * m_driveSpeed;
+    double lateralSpeed = m_lateralSpeed * m_driveSpeed;
+    double rotationSpeed = m_rotationAngle * m_rotationSpeed;
 
     ChassisSpeeds speeds = isFieldOriented ?
       new ChassisSpeeds(lateralSpeed, forwardSpeed, rotationSpeed)
