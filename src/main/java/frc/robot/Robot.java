@@ -22,56 +22,56 @@ import frc.robot.Controller.ControllerType;
  * directory.
  */
 public class Robot extends TimedRobot {
-  private final PWMSparkMax m_pwm1 = new PWMSparkMax(1);
-  private final PWMSparkMax m_pwm2 = new PWMSparkMax(2);
+  final PWMSparkMax m_pwm1 = new PWMSparkMax(1);
+  final PWMSparkMax m_pwm2 = new PWMSparkMax(2);
 
-  private final Spark m_pwm3 = new Spark(3);
-  private final Spark m_pwm4 = new Spark(4);
-  private final Spark m_pwm5 = new Spark(5);
-  private final Spark m_pwm6 = new Spark(6);
+  final Spark m_pwm3 = new Spark(3);
+  final Spark m_pwm4 = new Spark(4);
+  final Spark m_pwm5 = new Spark(5);
+  final Spark m_pwm6 = new Spark(6);
 
-  private final PWMVictorSPX m_pwm7 = new PWMVictorSPX(7);
-  private final PWMVictorSPX m_pwm8 = new PWMVictorSPX(8);
+  final PWMVictorSPX m_pwm7 = new PWMVictorSPX(7);
+  final PWMVictorSPX m_pwm8 = new PWMVictorSPX(8);
 
-  private final PWMVictorSPX m_pwm9 = new PWMVictorSPX(9);
-  private final PWMVictorSPX m_pwm10 = new PWMVictorSPX(10);
+  final PWMVictorSPX m_pwm9 = new PWMVictorSPX(9);
+  final PWMVictorSPX m_pwm10 = new PWMVictorSPX(10);
 
-  private final Encoder m_enc1 = new Encoder(0, 1);
-  private final Encoder m_enc2 = new Encoder(2, 3);
+  final Encoder m_enc1 = new Encoder(0, 1);
+  final Encoder m_enc2 = new Encoder(2, 3);
 
-  private final double m_floatTolerance = 0.2;
+  final double m_floatTolerance = 0.2;
 
-  private final boolean isFieldOriented = false;
-  private final AnalogGyro m_gyro = new AnalogGyro(0);
+  final boolean isFieldOriented = false;
+  final AnalogGyro m_gyro = new AnalogGyro(0);
 
-  private final Controller m_controller = new Controller(0, ControllerType.Xbox);
+  final Controller m_controller = new Controller(0, ControllerType.Xbox);
 
-  private final Timer m_timer = new Timer();
+  final Timer m_timer = new Timer();
 
-  private final double m_ejectSpeed = 1.0;
-  private final double m_intakeSpeed = 1.0;
-  private final double m_liftSpeed = 1.0;
-  private final double m_feedSpeed = 1.0;
+  final double m_ejectSpeed = 1.0;
+  final double m_intakeSpeed = 1.0;
+  final double m_liftSpeed = 1.0;
+  final double m_feedSpeed = 1.0;
 
-  private double m_divider = 0.5;
-  private double m_speedMod = 1.0;
-  private double m_driveSpeed = 10.0 * m_speedMod;
-  private double m_rotationSpeed = 3.0 * m_speedMod;
+  double m_divider = 0.5;
+  double m_speedMod = 1.0;
+  double m_driveSpeed = 10.0 * m_speedMod;
+  double m_rotationSpeed = 3.0 * m_speedMod;
   
-  private SingleMotorModule intake = new SingleMotorModule("intake", m_pwm5, m_intakeSpeed, false);
-  private DualMotorModule ejector = new DualMotorModule("ejector", m_pwm6, m_pwm7, m_ejectSpeed, true, false);
-  private DualMotorModule ejectorSlow = new DualMotorModule("ejectorSlow", m_pwm6, m_pwm7, m_ejectSpeed / 2, true, false);
-  private SingleMotorModule feeder = new SingleMotorModule("feeder", m_pwm8, m_feedSpeed, true);
-  private DualMotorModule lifter = new DualMotorModule("lifter", m_pwm9, m_pwm10, m_liftSpeed, true, false);
-  private SingleMotorModule intakeUpper = new SingleMotorModule("intakeUpper", m_pwm8, m_feedSpeed, false);
+  SingleMotorModule intake = new SingleMotorModule("intake", m_pwm5, m_intakeSpeed, false);
+  DualMotorModule ejector = new DualMotorModule("ejector", m_pwm6, m_pwm7, m_ejectSpeed, true, false);
+  DualMotorModule ejectorSlow = new DualMotorModule("ejectorSlow", m_pwm6, m_pwm7, m_ejectSpeed / 2, true, false);
+  SingleMotorModule feeder = new SingleMotorModule("feeder", m_pwm8, m_feedSpeed, true);
+  DualMotorModule lifter = new DualMotorModule("lifter", m_pwm9, m_pwm10, m_liftSpeed, true, false);
+  SingleMotorModule intakeUpper = new SingleMotorModule("intakeUpper", m_pwm8, m_feedSpeed, false);
 
-  private SwerveMotorModule leftFrontMM = new SwerveMotorModule("leftFront", 0, new Translation2d(-1.0, 1.0), m_pwm1, m_pwm2, m_enc1, m_floatTolerance);
-  private SwerveMotorModule rightRearMM = new SwerveMotorModule("rightRear", 1, new Translation2d(1.0, -1.0), m_pwm3, m_pwm4, m_enc2, m_floatTolerance);
+  SwerveMotorModule leftFrontMM = new SwerveMotorModule("leftFront", 0, new Translation2d(-1.0, 1.0), m_pwm1, m_pwm2, m_enc1, m_floatTolerance);
+  SwerveMotorModule rightRearMM = new SwerveMotorModule("rightRear", 1, new Translation2d(1.0, -1.0), m_pwm3, m_pwm4, m_enc2, m_floatTolerance);
   SwerveDriveModule swerveDriveModule = new SwerveDriveModule("swerveDrive", leftFrontMM, rightRearMM, m_gyro, m_driveSpeed, m_rotationSpeed, isFieldOriented);
 
   DifferentialDriveModule diffDriveModule = new DifferentialDriveModule("differentialDrive", m_pwm1, m_pwm2);
 
-  ModuleController modules = new ModuleController(diffDriveModule, m_divider);
+  ModuleController modules = new ModuleController(swerveDriveModule, m_divider);
 
   public Robot() {
     // SendableRegistry.addChild(m_robotDrive, m_leftDrive);

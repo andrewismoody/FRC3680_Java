@@ -11,7 +11,9 @@ public class DualMotorModule implements RobotModule {
     boolean invertRight;
     ModuleController controller;
 
-    boolean debug = true;
+    public boolean debug = false;
+    double previousDriveSpeed;
+    double currentDriveSpeed;
 
     public DualMotorModule(String ModuleID, MotorController LeftDriveMotor, MotorController RightDriveMotor, double DriveSpeed, boolean InvertLeft, boolean InvertRight) {
         moduleID = ModuleID;
@@ -27,17 +29,18 @@ public class DualMotorModule implements RobotModule {
     }
     
     public void ProcessState(boolean value) {
-        var mySpeed = 0.0;
+        var currentDriveSpeed = 0.0;
 
-        if (value) {
-            mySpeed = controller.ApplyModifiers(driveSpeed);
+        if (value)
+            currentDriveSpeed = controller.ApplyModifiers(driveSpeed);
 
-            if (debug)
-                System.out.printf("%s set speed %f\n", moduleID, mySpeed);
+        if (debug && previousDriveSpeed != currentDriveSpeed) {
+            System.out.printf("%s currentDriveSpeed %f\n", moduleID, currentDriveSpeed);
+            previousDriveSpeed = currentDriveSpeed;
         }
 
-        leftDriveMotor.set(invertLeft ? -mySpeed : mySpeed);
-        rightDriveMotor.set(invertRight ? -mySpeed : mySpeed);
+        leftDriveMotor.set(invertLeft ? -currentDriveSpeed : currentDriveSpeed);
+        rightDriveMotor.set(invertRight ? -currentDriveSpeed : currentDriveSpeed);
     }
 
     public void SetController(ModuleController Controller) {

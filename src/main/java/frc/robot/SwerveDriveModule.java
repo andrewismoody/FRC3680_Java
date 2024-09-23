@@ -56,9 +56,9 @@ public class SwerveDriveModule implements DriveModule {
         // https://www.chiefdelphi.com/t/set-motor-position-with-encoder/152088/3
 
         // set the chassis speed object according to current controller values
-        double forwardSpeed = m_forwardSpeed * driveSpeed;
-        double lateralSpeed = m_lateralSpeed * driveSpeed;
-        double rotationSpeed = m_rotationAngle * this.rotationSpeed;
+        double forwardSpeed = m_forwardSpeed * controller.ApplyModifiers(driveSpeed);
+        double lateralSpeed = m_lateralSpeed * controller.ApplyModifiers(driveSpeed);
+        double rotationSpeed = m_rotationAngle * controller.ApplyModifiers(this.rotationSpeed);
 
         ChassisSpeeds speeds = isFieldOriented ?
         new ChassisSpeeds(lateralSpeed, forwardSpeed, rotationSpeed)

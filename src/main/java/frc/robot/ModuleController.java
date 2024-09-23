@@ -15,6 +15,7 @@ public class ModuleController {
 
   public ModuleController(DriveModule DriveModule, double Divider) {
     driveModule = DriveModule;
+    driveModule.SetController(this);
     divider = Divider;
   }
 
