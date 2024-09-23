@@ -7,7 +7,7 @@ import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.kinematics.SwerveModuleState;
 
-public class MotorModule {
+public class SwerveMotorModule {
   public Translation2d modulePosition;
 
   double currentAngle;
@@ -18,13 +18,11 @@ public class MotorModule {
   double previousDeltaAngle;
   Translation2d previousCurrentPosition = new Translation2d();
 
-  double rotationSpeed;
-  double driveSpeed;
-
   double previousRotationSpeed;
   double previousDriveSpeed;
 
   String moduleID;
+  int moduleIndex;
 
   MotorController driveMotor;
   MotorController rotatorMotor;
@@ -42,20 +40,25 @@ public class MotorModule {
   boolean debugAngle = false;
   boolean debugSpeed = true;
 
-  public MotorModule(String id, Translation2d position, MotorController dMot, MotorController rMot, Encoder enc, double aTol, double drvSpeed, double rotSpeed) {
-    moduleID = id;
-    modulePosition = position;
-    driveMotor = dMot;
-    rotatorMotor = rMot;
-    angleEncoder = enc;
-    floatTolerance = aTol;
-    driveSpeed = drvSpeed;
-    rotationSpeed = rotSpeed;
+  SwerveDriveModule driveModule;
+
+  public SwerveMotorModule(String ID, int Index, Translation2d Position, MotorController DriveMotor, MotorController RotationMotor, Encoder AngleEncoder, double FloatTolerance) {
+    moduleID = ID;
+    moduleIndex = Index;
+    modulePosition = Position;
+    driveMotor = DriveMotor;
+    rotatorMotor = RotationMotor;
+    angleEncoder = AngleEncoder;
+    floatTolerance = FloatTolerance;
   }
 
-  public void updateModuleValues(SwerveModuleState state) {
-    setAngle(state);
-    setSpeed(state);
+  public void setDriveModule(SwerveDriveModule DriveModule) {
+    driveModule = DriveModule;
+  }
+
+  public void updateModuleValues(SwerveModuleState[] moduleStates) {
+    setAngle(moduleStates[moduleIndex]);
+    setSpeed(moduleStates[moduleIndex]);
   }
 
   void setAngle(SwerveModuleState state) {
@@ -100,7 +103,7 @@ public class MotorModule {
     }
 
     // start rotating wheel to the new optimized angle
-    motorSpeed = motorSpeed / rotationSpeed;
+    motorSpeed = motorSpeed / driveModule.rotationSpeed;
     rotatorMotor.set(motorSpeed);
 
     // fake adjust current angle to simulate encoder input
@@ -115,7 +118,7 @@ public class MotorModule {
     }
 
     // convert from 'meters per second' to motor speed (normalized to 1)
-    motorSpeed = motorSpeed / driveSpeed;
+    motorSpeed = motorSpeed / driveModule.driveSpeed;
     driveMotor.set(motorSpeed);
 
     // set fake position
