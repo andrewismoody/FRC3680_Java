@@ -3,10 +3,10 @@ package frc.robot;
 import java.util.Hashtable;
 import java.util.ArrayList;
 import java.util.function.Supplier;
+import java.util.function.Consumer;
 
 import edu.wpi.first.wpilibj.PS4Controller;
 import edu.wpi.first.wpilibj.XboxController;
-import java.util.function.Consumer;
 
 public class Controller {
     PS4Controller ps4Controller;
@@ -89,8 +89,8 @@ public class Controller {
     }
 
     public void GetPOVButtonValue(ButtonName button) {
-        for (Consumer<Double> consumer : ValueButtonConsumers.get(button))
-            consumer.accept(GetValueButtonSupplier(button));
+        for (Consumer<Integer> consumer : POVButtonConsumers.get(button))
+            consumer.accept(GetPOVButtonSupplier(button));
     }
 
     public void ProcessButtons() {
@@ -247,8 +247,10 @@ public class Controller {
         switch (Type) {
             case Xbox:
                 value = xboxController.getRightY();
+                break;
             case PS4:
                 value = ps4Controller.getRightY();
+                break;
         }
 
         return Math.abs(value) > thumbstickDeadZone ? value : 0.0;
@@ -260,8 +262,10 @@ public class Controller {
         switch (Type) {
             case Xbox:
                 value = xboxController.getRightX();
+                break;
             case PS4:
                 value = ps4Controller.getRightX();
+                break;
         }
 
         return Math.abs(value) > thumbstickDeadZone ? value : 0.0;
@@ -273,8 +277,10 @@ public class Controller {
         switch (Type) {
             case Xbox:
                 value = xboxController.getLeftY();
+                break;
             case PS4:
                 value = ps4Controller.getLeftY();
+                break;
         }
 
         return Math.abs(value) > thumbstickDeadZone ? value : 0.0;
@@ -286,8 +292,10 @@ public class Controller {
         switch (Type) {
             case Xbox:
                 value = xboxController.getLeftX();
-            case PS4:
+                 break;
+           case PS4:
                 value = ps4Controller.getLeftX();
+                break;
         }
 
         return Math.abs(value) > thumbstickDeadZone ? value : 0.0;

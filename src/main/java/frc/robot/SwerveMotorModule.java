@@ -2,6 +2,9 @@ package frc.robot;
 
 import edu.wpi.first.wpilibj.Encoder;
 import edu.wpi.first.wpilibj.motorcontrol.MotorController;
+
+import java.util.concurrent.TimeUnit;
+
 import edu.wpi.first.math.controller.PIDController;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Translation2d;
@@ -11,12 +14,15 @@ public class SwerveMotorModule {
   public Translation2d modulePosition;
 
   double currentAngle;
+
   Translation2d currentPosition = new Translation2d();
+  Translation2d previousPosition = new Translation2d();
+
+  Long previousUpdate = System.nanoTime();
 
   double previousCurrentAngle;
   double previousTargetAngle;
   double previousDeltaAngle;
-  Translation2d previousCurrentPosition = new Translation2d();
 
   double previousRotationSpeed;
   double previousDriveSpeed;
@@ -123,14 +129,19 @@ public class SwerveMotorModule {
     motorSpeed = motorSpeed / driveModule.driveSpeed;
     driveMotor.set(motorSpeed);
 
-    // set fake position
-    var delta = new Translation2d(Math.cos(state.angle.getRadians()) * state.speedMetersPerSecond * 0.2, Math.sin(state.angle.getRadians()) * state.speedMetersPerSecond * 0.2);
+    var currentUpdate = System.nanoTime();
+    var elapsedTime = (TimeUnit.NANOSECONDS.toMillis(currentUpdate - previousUpdate) / 1000.0);
+
+        // set fake position
+    var delta = new Translation2d(Math.cos(state.angle.getRadians()) * state.speedMetersPerSecond * elapsedTime, Math.sin(state.angle.getRadians()) * state.speedMetersPerSecond * elapsedTime);
     // System.out.printf("%s delta: %s\n", moduleID, delta);
     currentPosition = currentPosition.plus(delta);
-    if ((Math.abs(previousCurrentPosition.minus(currentPosition).getX()) > floatTolerance || Math.abs(previousCurrentPosition.minus(currentPosition).getY()) > floatTolerance) && debugSpeed) {
+    if ((Math.abs(previousPosition.minus(currentPosition).getX()) > floatTolerance || Math.abs(previousPosition.minus(currentPosition).getY()) > floatTolerance) && debugSpeed) {
       System.out.printf("%s setSpeed: currentPosition: %s\n", moduleID, currentPosition);
-      previousCurrentPosition = currentPosition;
+      previousPosition = currentPosition;
     }
+
+    previousUpdate = System.nanoTime();
   }
 
 }
