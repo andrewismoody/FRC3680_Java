@@ -14,7 +14,13 @@ public class DifferentialDriveModule implements DriveModule {
     double forwardSpeed = 0.0;
     double rotationAngle = 0.0;
 
-    boolean debug = true;
+    public boolean debugAngle = false;
+    public boolean debugSpeed = false;
+
+    double currentForwardSpeed = 0.0;
+    double currentRotationAngle = 0.0;
+    double previousForwardSpeed = 0.0;
+    double previousRotationAngle = 0.0;
 
     public DifferentialDriveModule(String ModuleID, MotorController LeftMotor, MotorController RightMotor) {
         moduleID = ModuleID;
@@ -27,16 +33,23 @@ public class DifferentialDriveModule implements DriveModule {
         rightMotor.setInverted(true);
 
         driveController = new DifferentialDrive(leftMotor::set, rightMotor::set);
+        driveController.setSafetyEnabled(false);
     }
 
     public void ProcessState() {
-        if (debug && forwardSpeed != 0.0)
+        currentForwardSpeed = controller.ApplyModifiers(forwardSpeed);
+        if (debugSpeed && forwardSpeed != previousForwardSpeed) {
             System.out.printf("%s forwardSpeed: %f\n", moduleID, forwardSpeed);
+            previousForwardSpeed = forwardSpeed;
+        }
 
-        if (debug && rotationAngle != 0.0)
+        currentRotationAngle = controller.ApplyModifiers(rotationAngle);
+        if (debugAngle && rotationAngle != previousRotationAngle) {
             System.out.printf("%s rotationAngle: %f\n", moduleID, rotationAngle);
+            previousRotationAngle = rotationAngle;
+        }
 
-            driveController.arcadeDrive(forwardSpeed, rotationAngle);
+        driveController.arcadeDrive(currentForwardSpeed, currentRotationAngle);
     }
 
     public void Initialize() {

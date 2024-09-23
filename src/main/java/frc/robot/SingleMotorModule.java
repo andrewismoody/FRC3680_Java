@@ -9,7 +9,9 @@ public class SingleMotorModule implements RobotModule {
     boolean invert;
     ModuleController controller;
 
-    boolean debug = true;
+    public boolean debug = false;
+    double previousDriveSpeed;
+    double currentDriveSpeed;
 
     public SingleMotorModule(String ModuleID, MotorController DriveMotor, double DriveSpeed, boolean Invert) {
         moduleID = ModuleID;
@@ -23,16 +25,17 @@ public class SingleMotorModule implements RobotModule {
     }
     
     public void ProcessState(boolean value) {
-        var mySpeed = 0.0;
+        currentDriveSpeed = 0.0;
 
-        if (value) {
-            mySpeed = controller.ApplyModifiers(driveSpeed);
+        if (value)
+            currentDriveSpeed = controller.ApplyModifiers(driveSpeed);
 
-            if (debug)
-                System.out.printf("%s set speed %f\n", moduleID, mySpeed);
+        if (debug && previousDriveSpeed != currentDriveSpeed) {
+            System.out.printf("%s currentDriveSpeed %f\n", moduleID, currentDriveSpeed);
+            previousDriveSpeed = currentDriveSpeed;
         }
             
-        driveMotor.set(invert ? -mySpeed : mySpeed);
+        driveMotor.set(invert ? -currentDriveSpeed : currentDriveSpeed);
     }
 
     public void SetController(ModuleController Controller) {

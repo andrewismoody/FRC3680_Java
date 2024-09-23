@@ -37,8 +37,8 @@ public class SwerveMotorModule {
 
   PIDController pidController = new PIDController(0.2, 0, 0);
 
-  boolean debugAngle = false;
-  boolean debugSpeed = true;
+  public boolean debugAngle = false;
+  public boolean debugSpeed = false;
 
   SwerveDriveModule driveModule;
 
