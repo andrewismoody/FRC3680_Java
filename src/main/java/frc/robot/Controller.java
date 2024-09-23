@@ -1,6 +1,7 @@
 package frc.robot;
 
 import java.util.Hashtable;
+import java.util.ArrayList;
 import java.util.function.Supplier;
 
 import edu.wpi.first.wpilibj.PS4Controller;
@@ -10,6 +11,7 @@ import java.util.function.Consumer;
 public class Controller {
     PS4Controller ps4Controller;
     XboxController xboxController;
+    double thumbstickDeadZone = 0.2;
 
     public enum ControllerType {
         Xbox,
@@ -39,9 +41,9 @@ public class Controller {
     Hashtable<ButtonName, Supplier<Double>> ValueButtonSuppliers = new Hashtable<Controller.ButtonName,Supplier<Double>>();
     Hashtable<ButtonName, Supplier<Integer>> POVButtonSuppliers = new Hashtable<Controller.ButtonName,Supplier<Integer>>();
 
-    Hashtable<ButtonName, Consumer<Boolean>> BinaryButtonConsumers = new Hashtable<Controller.ButtonName,Consumer<Boolean>>();
-    Hashtable<ButtonName, Consumer<Double>> ValueButtonConsumers = new Hashtable<Controller.ButtonName,Consumer<Double>>();
-    Hashtable<ButtonName, Consumer<Integer>> POVButtonConsumers = new Hashtable<Controller.ButtonName,Consumer<Integer>>();
+    Hashtable<ButtonName, ArrayList<Consumer<Boolean>>> BinaryButtonConsumers = new Hashtable<Controller.ButtonName,ArrayList<Consumer<Boolean>>>();
+    Hashtable<ButtonName, ArrayList<Consumer<Double>>> ValueButtonConsumers = new Hashtable<Controller.ButtonName,ArrayList<Consumer<Double>>>();
+    Hashtable<ButtonName, ArrayList<Consumer<Integer>>> POVButtonConsumers = new Hashtable<Controller.ButtonName,ArrayList<Consumer<Integer>>>();
 
     void RegisterBinaryButtonSupplier(ButtonName button, Supplier<Boolean> func) {
         BinaryButtonSuppliers.put(button, func);
@@ -56,27 +58,39 @@ public class Controller {
     }
 
     public void RegisterBinaryButtonConsumer(ButtonName button, Consumer<Boolean> func) {
-        BinaryButtonConsumers.put(button, func);
+        if (BinaryButtonConsumers.get(button) == null) {
+            BinaryButtonConsumers.put(button, new ArrayList<Consumer<Boolean>>());
+        }
+        BinaryButtonConsumers.get(button).add(func);
     }
 
-    public void RegisterValueButton(ButtonName button, Consumer<Double> func) {
-        ValueButtonConsumers.put(button, func);
+    public void RegisterValueButtonConsumer(ButtonName button, Consumer<Double> func) {
+        if (ValueButtonConsumers.get(button) == null) {
+            ValueButtonConsumers.put(button, new ArrayList<Consumer<Double>>());
+        }
+        ValueButtonConsumers.get(button).add(func);
     }
 
-    public void RegisterPOVButton(ButtonName button, Consumer<Integer> func) {
-        POVButtonConsumers.put(button, func);
+    public void RegisterPOVButtonConsumer(ButtonName button, Consumer<Integer> func) {
+        if (POVButtonConsumers.get(button) == null) {
+            POVButtonConsumers.put(button, new ArrayList<Consumer<Integer>>());
+        }
+        POVButtonConsumers.get(button).add(func);
     }
 
     public void GetBinaryButtonState(ButtonName button) {
-        BinaryButtonConsumers.get(button).accept(GetBinaryButtonSupplier(button));
+        for (Consumer<Boolean> consumer : BinaryButtonConsumers.get(button))
+            consumer.accept(GetBinaryButtonSupplier(button));
     }
 
     public void GetValueButtonValue(ButtonName button) {
-        ValueButtonConsumers.get(button).accept(GetValueButtonSupplier(button));
+        for (Consumer<Double> consumer : ValueButtonConsumers.get(button))
+            consumer.accept(GetValueButtonSupplier(button));
     }
 
     public void GetPOVButtonValue(ButtonName button) {
-        ValueButtonConsumers.get(button).accept(GetValueButtonSupplier(button));
+        for (Consumer<Double> consumer : ValueButtonConsumers.get(button))
+            consumer.accept(GetValueButtonSupplier(button));
     }
 
     public void ProcessButtons() {
@@ -228,47 +242,55 @@ public class Controller {
     }
 
     double getRightY() {
+        var value = 0.0;
+
         switch (Type) {
             case Xbox:
-                return xboxController.getRightY();
+                value = xboxController.getRightY();
             case PS4:
-                return ps4Controller.getRightY();
+                value = ps4Controller.getRightY();
         }
 
-        return 0.0;
+        return Math.abs(value) > thumbstickDeadZone ? value : 0.0;
     }
 
     double getRightX() {
+        var value = 0.0;
+
         switch (Type) {
             case Xbox:
-                return xboxController.getRightX();
+                value = xboxController.getRightX();
             case PS4:
-                return ps4Controller.getRightX();
+                value = ps4Controller.getRightX();
         }
 
-        return 0.0;
+        return Math.abs(value) > thumbstickDeadZone ? value : 0.0;
     }
 
     double getLeftY() {
+        var value = 0.0;
+
         switch (Type) {
             case Xbox:
-                return xboxController.getLeftY();
+                value = xboxController.getLeftY();
             case PS4:
-                return ps4Controller.getLeftY();
+                value = ps4Controller.getLeftY();
         }
 
-        return 0.0;
+        return Math.abs(value) > thumbstickDeadZone ? value : 0.0;
     }
 
     double getLeftX() {
+        var value = 0.0;
+
         switch (Type) {
             case Xbox:
-                return xboxController.getLeftX();
+                value = xboxController.getLeftX();
             case PS4:
-                return ps4Controller.getLeftX();
+                value = ps4Controller.getLeftX();
         }
 
-        return 0.0;
+        return Math.abs(value) > thumbstickDeadZone ? value : 0.0;
     }
 
     int getPOV() {
