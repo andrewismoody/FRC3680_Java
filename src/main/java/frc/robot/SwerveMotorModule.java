@@ -103,6 +103,7 @@ public class SwerveMotorModule {
     }
 
     // start rotating wheel to the new optimized angle
+    // divide to get volts conversion - need to do real-world measurements to understand/identify this conversion
     motorSpeed = motorSpeed / driveModule.rotationSpeed;
     rotatorMotor.set(motorSpeed);
 
@@ -118,6 +119,7 @@ public class SwerveMotorModule {
     }
 
     // convert from 'meters per second' to motor speed (normalized to 1)
+    // divide to get volts conversion - need to do real-world measurements to understand/identify this conversion
     motorSpeed = motorSpeed / driveModule.driveSpeed;
     driveMotor.set(motorSpeed);
 

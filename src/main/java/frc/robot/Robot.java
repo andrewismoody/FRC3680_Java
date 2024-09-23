@@ -39,15 +39,15 @@ public class Robot extends TimedRobot {
   final Encoder m_enc1 = new Encoder(0, 1);
   final Encoder m_enc2 = new Encoder(2, 3);
 
-  final double m_floatTolerance = 0.2;
-
-  final boolean isFieldOriented = false;
   final AnalogGyro m_gyro = new AnalogGyro(0);
 
   final Controller m_controller = new Controller(0, ControllerType.Xbox);
 
   final Timer m_timer = new Timer();
 
+  final boolean isFieldOriented = false;
+
+  final double m_floatTolerance = 0.2;
   final double m_ejectSpeed = 1.0;
   final double m_intakeSpeed = 1.0;
   final double m_liftSpeed = 1.0;
@@ -55,15 +55,15 @@ public class Robot extends TimedRobot {
 
   double m_divider = 0.5;
   double m_speedMod = 1.0;
-  double m_driveSpeed = 10.0 * m_speedMod;
-  double m_rotationSpeed = 3.0 * m_speedMod;
+  double m_driveSpeed = 10.0 * m_speedMod; // should be actual meters per second that is achievable by the drive motor
+  double m_rotationSpeed = 3.0 * m_speedMod; // should be actual radians per second that is achievable by the rotation motor
   
   SingleMotorModule intake = new SingleMotorModule("intake", m_pwm5, m_intakeSpeed, false);
   DualMotorModule ejector = new DualMotorModule("ejector", m_pwm6, m_pwm7, m_ejectSpeed, true, false);
   DualMotorModule ejectorSlow = new DualMotorModule("ejectorSlow", m_pwm6, m_pwm7, m_ejectSpeed / 2, true, false);
   SingleMotorModule feeder = new SingleMotorModule("feeder", m_pwm8, m_feedSpeed, true);
   DualMotorModule lifter = new DualMotorModule("lifter", m_pwm9, m_pwm10, m_liftSpeed, true, false);
-  SingleMotorModule intakeUpper = new SingleMotorModule("intakeUpper", m_pwm8, m_feedSpeed, false);
+  DualMotorModule intakeUpper = new DualMotorModule("intakeUpper", m_pwm6, m_pwm7, m_ejectSpeed / 2, false, true);
 
   SwerveMotorModule leftFrontMM = new SwerveMotorModule("leftFront", 0, new Translation2d(-1.0, 1.0), m_pwm1, m_pwm2, m_enc1, m_floatTolerance);
   SwerveMotorModule rightRearMM = new SwerveMotorModule("rightRear", 1, new Translation2d(1.0, -1.0), m_pwm3, m_pwm4, m_enc2, m_floatTolerance);
@@ -91,16 +91,16 @@ public class Robot extends TimedRobot {
     modules.AddModule(lifter);
     modules.AddModule(intakeUpper);
 
-    // two different modules operate the same component differently
+    // three different modules operate the same component differently
     m_controller.RegisterBinaryButtonConsumer(ButtonName.LeftButton, ejector::ProcessState);
     m_controller.RegisterBinaryButtonConsumer(ButtonName.RightButton, ejectorSlow::ProcessState);
+    m_controller.RegisterBinaryButtonConsumer(ButtonName.LeftShoulderButton, intakeUpper::ProcessState);
 
     // map both of these actions to the same button
     m_controller.RegisterBinaryButtonConsumer(ButtonName.TopButton, intake::ProcessState);
     m_controller.RegisterBinaryButtonConsumer(ButtonName.TopButton, feeder::ProcessState);
 
     m_controller.RegisterBinaryButtonConsumer(ButtonName.BottomButton, lifter::ProcessState);
-    m_controller.RegisterBinaryButtonConsumer(ButtonName.LeftShoulderButton, intakeUpper::ProcessState);
 
     m_controller.RegisterBinaryButtonConsumer(ButtonName.RightShoulderButton, modules::ProcessInverse);
 
