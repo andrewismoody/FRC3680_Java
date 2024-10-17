@@ -5,7 +5,7 @@ import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.math.kinematics.SwerveDriveKinematics;
 import edu.wpi.first.math.kinematics.SwerveModuleState;
-import edu.wpi.first.wpilibj.AnalogGyro;
+import frc.robot.gyro.Gyro;
 
 public class SwerveDriveModule implements DriveModule {
     String moduleID;
@@ -16,7 +16,7 @@ public class SwerveDriveModule implements DriveModule {
     ModuleController controller;
     SwerveDriveKinematics kinematics;
     boolean isFieldOriented;
-    AnalogGyro gyro;
+    Gyro gyro;
 
     Translation2d currentPosition = new Translation2d();
     Translation2d previousPosition = new Translation2d();
@@ -34,7 +34,7 @@ public class SwerveDriveModule implements DriveModule {
     double currentAngle = 0.0;
     double fakeGyroRate = 0.3;
   
-    public SwerveDriveModule(String ModuleID, SwerveMotorModule LeftFrontDriveModule, SwerveMotorModule RightRearDriveModule, AnalogGyro Gyro, double DriveSpeed, double RotationSpeed, boolean IsFieldOriented, double FloatTolerance) {
+    public SwerveDriveModule(String ModuleID, SwerveMotorModule LeftFrontDriveModule, SwerveMotorModule RightRearDriveModule, Gyro Gyro, double DriveSpeed, double RotationSpeed, boolean IsFieldOriented, double FloatTolerance) {
         moduleID = ModuleID;
         leftFrontDriveModule = LeftFrontDriveModule;
         leftFrontDriveModule.setDriveModule(this);

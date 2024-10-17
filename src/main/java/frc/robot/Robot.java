@@ -5,7 +5,6 @@
 package frc.robot;
 
 import edu.wpi.first.math.geometry.Translation2d;
-import edu.wpi.first.wpilibj.AnalogGyro;
 import edu.wpi.first.wpilibj.Encoder;
 import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj.Timer;
@@ -14,6 +13,7 @@ import edu.wpi.first.wpilibj.motorcontrol.PWMVictorSPX;
 import edu.wpi.first.wpilibj.motorcontrol.Spark;
 import frc.robot.Controller.ButtonName;
 import frc.robot.Controller.ControllerType;
+import frc.robot.gyro.GyroBase;
 
 /**
  * The VM is configured to automatically run this class, and to call the functions corresponding to
@@ -39,7 +39,7 @@ public class Robot extends TimedRobot {
   final Encoder m_enc1 = new Encoder(0, 1);
   final Encoder m_enc2 = new Encoder(2, 3);
 
-  final AnalogGyro m_gyro = new AnalogGyro(0);
+  final GyroBase m_gyro = new GyroBase();
 
   final Controller m_controller = new Controller(0, ControllerType.Xbox);
 
