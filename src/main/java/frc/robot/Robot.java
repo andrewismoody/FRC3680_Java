@@ -67,7 +67,10 @@ public class Robot extends TimedRobot {
 
   SwerveMotorModule leftFrontMM = new SwerveMotorModule("leftFront", 0, new Translation2d(-1.0, 1.0), m_pwm1, m_pwm2, m_enc1, m_floatTolerance);
   SwerveMotorModule rightRearMM = new SwerveMotorModule("rightRear", 1, new Translation2d(1.0, -1.0), m_pwm3, m_pwm4, m_enc2, m_floatTolerance);
-  SwerveDriveModule swerveDriveModule = new SwerveDriveModule("swerveDrive", leftFrontMM, rightRearMM, m_gyro, m_driveSpeed, m_rotationSpeed, isFieldOriented, m_floatTolerance);
+  SwerveDriveModule swerveDriveModule = new SwerveDriveModule("swerveDrive", m_gyro, m_driveSpeed, m_rotationSpeed, isFieldOriented, m_floatTolerance,
+    leftFrontMM,
+    rightRearMM
+  );
 
   DifferentialDriveModule diffDriveModule = new DifferentialDriveModule("differentialDrive", m_pwm1, m_pwm2);
 
