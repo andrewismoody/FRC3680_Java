@@ -47,16 +47,21 @@ public class Robot extends TimedRobot {
 
   final boolean isFieldOriented = false;
 
-  final double m_floatTolerance = 0.2;
+  final double m_floatTolerance = 0.0; // 0.2;
   final double m_ejectSpeed = 1.0;
   final double m_intakeSpeed = 1.0;
   final double m_liftSpeed = 1.0;
   final double m_feedSpeed = 1.0;
+  final double m_encoderMultiplier = 1.0;
 
   double m_divider = 0.5;
   double m_speedMod = 1.0;
-  double m_driveSpeed = 10.0 * m_speedMod; // should be actual meters per second that is achievable by the drive motor
-  double m_rotationSpeed = 3.0 * m_speedMod; // should be actual radians per second that is achievable by the rotation motor
+  // sport gear box with 4:1 ratio on a 4" wheel yields 91.7 ft/sec which is 27.95016 meters/sec
+  // https://www.andymark.com/products/sport-gearbox
+  double m_driveSpeed = 27.95 * m_speedMod; // should be actual meters per second that is achievable by the drive motor
+  // JE motor turns at 310 RPM (rotations per minute) which is 5.16 rotations per second, which is 16.20 radians per second
+  // https://cdn.andymark.com/media/W1siZiIsIjIwMjIvMDIvMDIvMDgvMzMvMTIvNzMzYmY3YmQtYTI0MC00ZDkyLWI5NGMtYjRlZWU1Zjc4NzY0L2FtLTQyMzNhIEpFLVBMRy00MTAgbW90b3IuUERGIl1d/am-4233a%20JE-PLG-410%20motor.PDF?sha=5387f684d4e2ce1f
+  double m_rotationSpeed = 16.2 * m_speedMod; // should be actual radians per second that is achievable by the rotation motor
   
   SingleMotorModule intake = new SingleMotorModule("intake", m_pwm5, m_intakeSpeed, false);
   DualMotorModule ejector = new DualMotorModule("ejector", m_pwm6, m_pwm7, m_ejectSpeed, true, false);
@@ -65,11 +70,11 @@ public class Robot extends TimedRobot {
   DualMotorModule lifter = new DualMotorModule("lifter", m_pwm9, m_pwm10, m_liftSpeed, true, false);
   DualMotorModule intakeUpper = new DualMotorModule("intakeUpper", m_pwm6, m_pwm7, m_ejectSpeed / 2, false, true);
 
-  SwerveMotorModule leftFrontMM = new SwerveMotorModule("leftFront", 0, new Translation2d(-1.0, 1.0), m_pwm1, m_pwm2, m_enc1, m_floatTolerance);
-  SwerveMotorModule rightRearMM = new SwerveMotorModule("rightRear", 1, new Translation2d(1.0, -1.0), m_pwm3, m_pwm4, m_enc2, m_floatTolerance);
-  SwerveDriveModule swerveDriveModule = new SwerveDriveModule("swerveDrive", m_gyro, m_driveSpeed, m_rotationSpeed, isFieldOriented, m_floatTolerance,
-    leftFrontMM,
-    rightRearMM
+  SwerveMotorModule leftFrontMM = new SwerveMotorModule("leftFront", new Translation2d(1.0, 1.0), m_pwm1, m_pwm2, m_enc1, m_encoderMultiplier, m_floatTolerance, false, false);
+  SwerveMotorModule rightRearMM = new SwerveMotorModule("rightRear", new Translation2d(-1.0, -1.0), m_pwm3, m_pwm4, m_enc2, m_encoderMultiplier, m_floatTolerance, false, false);
+  SwerveDriveModule swerveDriveModule = new SwerveDriveModule("swerveDrive", m_gyro, m_driveSpeed, m_rotationSpeed, isFieldOriented, m_floatTolerance
+    , leftFrontMM
+    , rightRearMM
   );
 
   DifferentialDriveModule diffDriveModule = new DifferentialDriveModule("differentialDrive", m_pwm1, m_pwm2);
@@ -95,6 +100,10 @@ public class Robot extends TimedRobot {
     modules.AddModule(intakeUpper);
 
     swerveDriveModule.debug = true;
+    leftFrontMM.debugAngle = true;
+    leftFrontMM.debugSpeed = true;
+    // JE motor is 44.4 pulses per rotation, and it reports in degrees, so there are 8.108 degress per pulse.
+    m_enc1.setDistancePerPulse(8.108);
 
     // three different modules operate the same component differently
     m_controller.RegisterBinaryButtonConsumer(ButtonName.LeftButton, ejector::ProcessState);

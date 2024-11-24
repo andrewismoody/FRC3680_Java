@@ -11,7 +11,7 @@ import frc.robot.gyro.Gyro;
 
 public class SwerveDriveModule implements DriveModule {
     String moduleID;
-    ArrayList<SwerveMotorModule> driveModules;
+    ArrayList<SwerveMotorModule> driveModules = new ArrayList<SwerveMotorModule>();
     double driveSpeed;
     double rotationSpeed;
     ModuleController controller;
@@ -101,14 +101,16 @@ public class SwerveDriveModule implements DriveModule {
         double lateralSpeed = this.lateralSpeed * controller.ApplyModifiers(driveSpeed);
         double rotationSpeed = rotationAngle * controller.ApplyModifiers(this.rotationSpeed);
 
-        ChassisSpeeds speeds = isFieldOriented ? new ChassisSpeeds(lateralSpeed, forwardSpeed, rotationSpeed)
-                : ChassisSpeeds.fromFieldRelativeSpeeds(lateralSpeed, forwardSpeed, rotationSpeed,
-                        Rotation2d.fromDegrees(newAngle));
+        ChassisSpeeds speeds = isFieldOriented ?
+            ChassisSpeeds.fromFieldRelativeSpeeds(lateralSpeed, forwardSpeed, rotationSpeed, Rotation2d.fromDegrees(newAngle))
+            : new ChassisSpeeds(lateralSpeed, forwardSpeed, rotationSpeed);
 
         SwerveModuleState[] moduleStates = kinematics.toSwerveModuleStates(speeds);
 
+        var i = 0;
         for (SwerveMotorModule module : driveModules) {
-            module.updateModuleValues(moduleStates);
+            module.updateModuleValues(moduleStates[i]);
+            i++;
         }
 
         var primaryModule = driveModules.get(0);

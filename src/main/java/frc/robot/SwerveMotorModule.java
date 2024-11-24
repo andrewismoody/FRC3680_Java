@@ -20,6 +20,7 @@ public class SwerveMotorModule {
 
   Long previousUpdate = System.nanoTime();
 
+  double previousDistance;
   double previousCurrentAngle;
   double previousTargetAngle;
   double previousDeltaAngle;
@@ -28,14 +29,14 @@ public class SwerveMotorModule {
   double previousDriveSpeed;
 
   String moduleID;
-  int moduleIndex;
 
   MotorController driveMotor;
   MotorController rotatorMotor;
 
   Encoder angleEncoder;
-  boolean useFakeEncoder = true;
+  boolean useFakeEncoder = false;
   double encoderSimRate = 3.0;
+  double encoderMultiplier = 1.0;
 
   double floatTolerance;
 
@@ -46,25 +47,31 @@ public class SwerveMotorModule {
   public boolean debugAngle = false;
   public boolean debugSpeed = false;
 
+  boolean invertDrive = false;
+  boolean invertRotation = false;
+
   SwerveDriveModule driveModule;
 
-  public SwerveMotorModule(String ID, int Index, Translation2d Position, MotorController DriveMotor, MotorController RotationMotor, Encoder AngleEncoder, double FloatTolerance) {
+  public SwerveMotorModule(String ID, Translation2d Position, MotorController DriveMotor, MotorController RotationMotor, Encoder AngleEncoder, double EncoderMultipier, double FloatTolerance, boolean InvertRotation, boolean InvertDrive) {
     moduleID = ID;
-    moduleIndex = Index;
     modulePosition = Position;
     driveMotor = DriveMotor;
     rotatorMotor = RotationMotor;
     angleEncoder = AngleEncoder;
     floatTolerance = FloatTolerance;
+    invertDrive = InvertDrive;
+    encoderMultiplier = EncoderMultipier;
+
+    AngleEncoder.setReverseDirection(InvertRotation);
   }
 
   public void setDriveModule(SwerveDriveModule DriveModule) {
     driveModule = DriveModule;
   }
 
-  public void updateModuleValues(SwerveModuleState[] moduleStates) {
-    setAngle(moduleStates[moduleIndex]);
-    setSpeed(moduleStates[moduleIndex]);
+  public void updateModuleValues(SwerveModuleState moduleState) {
+    setAngle(moduleState);
+    setSpeed(moduleState);
   }
 
   void setAngle(SwerveModuleState state) {
@@ -74,13 +81,20 @@ public class SwerveMotorModule {
     double distance = useFakeEncoder ?
       currentAngle
       :
-      angleEncoder.getDistance()
+      // encoderMultiplier adjusts the encoder value to account for gearing ratios between driver and driven axles
+      angleEncoder.getDistance() * encoderMultiplier
     ;
 
-    var newAngle = Rotation2d.fromRadians(distance);
+    var newAngle = Rotation2d.fromDegrees(distance);
+    currentAngle = newAngle.getRadians();
     var stateOpt = SwerveModuleState.optimize(state, newAngle);
     // slow down if we aren't aiming the right direction yet
     stateOpt.speedMetersPerSecond *= stateOpt.angle.minus(newAngle).getCos();
+
+    if (Math.abs(previousDistance - distance) > floatTolerance && debugAngle) {
+      System.out.printf("%s distance: %f; previous distance: %f\n", moduleID, distance, previousDistance);
+      previousDistance = distance;
+    }
 
     if (Math.abs(previousCurrentAngle - currentAngle) > floatTolerance && debugAngle) {
       System.out.printf("%s current angle: %f; previous current angle: %f\n", moduleID, currentAngle, previousCurrentAngle);
@@ -109,12 +123,16 @@ public class SwerveMotorModule {
     }
 
     // start rotating wheel to the new optimized angle
-    // divide to get volts conversion - need to do real-world measurements to understand/identify this conversion
+    // get volts conversion - need to do real-world measurements to understand/identify this conversion
     motorSpeed = motorSpeed / driveModule.rotationSpeed;
+    if (invertRotation)
+      motorSpeed *= -1;
     rotatorMotor.set(motorSpeed);
 
-    // fake adjust current angle to simulate encoder input
-    currentAngle = currentAngle + motorSpeed * encoderSimRate;
+    if (useFakeEncoder) {
+      // fake adjust current angle to simulate encoder input
+      currentAngle = currentAngle + motorSpeed * encoderSimRate;
+    }
   }
 
   void setSpeed(SwerveModuleState state) {
@@ -125,14 +143,16 @@ public class SwerveMotorModule {
     }
 
     // convert from 'meters per second' to motor speed (normalized to 1)
-    // divide to get volts conversion - need to do real-world measurements to understand/identify this conversion
+    // get volts conversion - need to do real-world measurements to understand/identify this conversion
     motorSpeed = motorSpeed / driveModule.driveSpeed;
+    if (invertDrive)
+      motorSpeed *= -1;
     driveMotor.set(motorSpeed);
 
     var currentUpdate = System.nanoTime();
     var elapsedTime = (TimeUnit.NANOSECONDS.toMillis(currentUpdate - previousUpdate) / 1000.0);
 
-        // set fake position
+    // set fake position
     var delta = new Translation2d(Math.cos(state.angle.getRadians()) * state.speedMetersPerSecond * elapsedTime, Math.sin(state.angle.getRadians()) * state.speedMetersPerSecond * elapsedTime);
     // System.out.printf("%s delta: %s\n", moduleID, delta);
     currentPosition = currentPosition.plus(delta);

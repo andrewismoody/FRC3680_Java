@@ -34,7 +34,7 @@ public class GyroBase implements Gyro, Sendable, AutoCloseable {
     private static final double grav = 9.81;
 
     /* User-specified yaw axis */
-    private GyroAxis m_yaw_axis;
+    private GyroAxis m_yaw_axis = GyroAxis.kZ;
 
     /* Offset data storage */
     private double[] m_offset_data_gyro_rate_x;
