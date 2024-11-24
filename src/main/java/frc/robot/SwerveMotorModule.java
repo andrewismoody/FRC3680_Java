@@ -70,11 +70,6 @@ public class SwerveMotorModule {
   }
 
   public void updateModuleValues(SwerveModuleState moduleState) {
-    setAngle(moduleState);
-    setSpeed(moduleState);
-  }
-
-  SwerveModuleState getOptimizedState(SwerveModuleState state) {
     double distance = useFakeEncoder ?
       currentAngle.getDegrees()
       :
@@ -84,14 +79,16 @@ public class SwerveMotorModule {
 
     currentAngle = Rotation2d.fromDegrees(distance);
 
-    return state; // SwerveModuleState.optimize(state, currentAngle);    
+    var optState = SwerveModuleState.optimize(moduleState, currentAngle);  
+
+    setAngle(optState);
+    setSpeed(optState);
   }
 
   void setAngle(SwerveModuleState state) {
     // https://docs.wpilib.org/en/stable/docs/software/advanced-controls/introduction/introduction-to-pid.html#introduction-to-pid
     // https://docs.wpilib.org/en/stable/docs/software/advanced-controls/controllers/pidcontroller.html
     // https://www.chiefdelphi.com/t/normal-spark-pid-p-i-and-d-values/427683/4
-    var stateOpt = getOptimizedState(state);
     var distance = currentAngle.getDegrees();
     var currentRad = currentAngle.getRadians();
 
@@ -105,7 +102,7 @@ public class SwerveMotorModule {
       previousCurrentAngle = currentRad;
     }
 
-    var tarAngle = stateOpt.angle;
+    var tarAngle = state.angle;
     var tarRad = tarAngle.getRadians();
     if (Math.abs(previousTargetAngle - tarRad) > floatTolerance && debugAngle) {
       System.out.printf("%s target angle radians: %f\n", moduleID, tarRad);
@@ -147,11 +144,11 @@ public class SwerveMotorModule {
 
   void setSpeed(SwerveModuleState state) {
     var rawMotorSpeed = state.speedMetersPerSecond;
-    var stateOpt = getOptimizedState(state);
+
     // slow down if we aren't aiming the right direction yet
-    rawMotorSpeed *= stateOpt.angle.minus(currentAngle).getCos();
+    rawMotorSpeed *= state.angle.minus(currentAngle).getCos();
     var motorSpeed = rawMotorSpeed;
-    var optAngle = stateOpt.angle.getRadians();
+    var optAngle = state.angle.getRadians();
 
     // convert from 'meters per second' to motor speed (normalized to 1)
     // get volts conversion - need to do real-world measurements to understand/identify this conversion
