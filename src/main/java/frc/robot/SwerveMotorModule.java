@@ -1,6 +1,7 @@
 package frc.robot;
 
 import edu.wpi.first.wpilibj.Encoder;
+import edu.wpi.first.wpilibj.RobotBase;
 import edu.wpi.first.wpilibj.motorcontrol.MotorController;
 
 import java.util.concurrent.TimeUnit;
@@ -34,7 +35,7 @@ public class SwerveMotorModule {
   MotorController rotatorMotor;
 
   Encoder angleEncoder;
-  boolean useFakeEncoder = true;
+  public boolean useFakeEncoder = !RobotBase.isReal();
   double encoderSimRate = 3.0;
   double encoderMultiplier = 1.0;
 
@@ -42,7 +43,7 @@ public class SwerveMotorModule {
 
   double previousEncoderAngle;
 
-  PIDController pidController = new PIDController(0.2, 0, 0); // p=0.2
+  PIDController pidController = new PIDController(0.02, 0, 0); // p=0.2
 
   public boolean debugAngle = false;
   public boolean debugSpeed = false;
@@ -67,6 +68,7 @@ public class SwerveMotorModule {
 
   public void setDriveModule(SwerveDriveModule DriveModule) {
     driveModule = DriveModule;
+    encoderSimRate = driveModule.rotationSpeed;
   }
 
   public void updateModuleValues(SwerveModuleState moduleState) {
@@ -80,6 +82,9 @@ public class SwerveMotorModule {
     currentAngle = Rotation2d.fromDegrees(distance);
 
     var optState = SwerveModuleState.optimize(moduleState, currentAngle);  
+
+    // slow down if we aren't aiming the right direction yet
+    optState.speedMetersPerSecond *= optState.angle.minus(currentAngle).getCos();
 
     setAngle(optState);
     setSpeed(optState);
@@ -117,8 +122,8 @@ public class SwerveMotorModule {
 
     var motorSpeed = 
       delAngle > floatTolerance ?
-        delAngle
-        //pidController.calculate(delAngle, tarRad)
+        //delAngle
+        pidController.calculate(delAngle, tarRad)
       :
         0.0
     ;
@@ -144,11 +149,8 @@ public class SwerveMotorModule {
 
   void setSpeed(SwerveModuleState state) {
     var rawMotorSpeed = state.speedMetersPerSecond;
-
-    // slow down if we aren't aiming the right direction yet
-    rawMotorSpeed *= state.angle.minus(currentAngle).getCos();
     var motorSpeed = rawMotorSpeed;
-    var optAngle = state.angle.getRadians();
+    var optAngle = state.angle;
 
     // convert from 'meters per second' to motor speed (normalized to 1)
     // get volts conversion - need to do real-world measurements to understand/identify this conversion
@@ -157,8 +159,8 @@ public class SwerveMotorModule {
       motorSpeed *= -1;
 
     if (Math.abs(previousDriveSpeed - motorSpeed) > floatTolerance && debugSpeed) {
-      System.out.printf("%s desired angle: %f; degrees %f\n", moduleID, optAngle, optAngle * 57.2958);
-      //System.out.printf("%s current angle: %f; degrees %f\n", moduleID, currentAngle.getRadians(), currentAngle.getDegrees());
+      System.out.printf("%s desired angle: %f; degrees %f\n", moduleID, optAngle.getRadians(), optAngle.getDegrees());
+      System.out.printf("%s current angle: %f; degrees %f\n", moduleID, currentAngle.getRadians() % 6.28, currentAngle.getDegrees() % 360);
       System.out.printf("%s setSpeed: motor speed: %f\n", moduleID, motorSpeed);
       previousDriveSpeed = motorSpeed;
     }
@@ -169,7 +171,7 @@ public class SwerveMotorModule {
     var elapsedTime = (TimeUnit.NANOSECONDS.toMillis(currentUpdate - previousUpdate) / 1000.0);
 
     // set fake position
-    var delta = new Translation2d(Math.cos(optAngle) * rawMotorSpeed * elapsedTime, Math.sin(optAngle) * rawMotorSpeed * elapsedTime);
+    var delta = new Translation2d(Math.cos(optAngle.getRadians()) * rawMotorSpeed * elapsedTime, Math.sin(optAngle.getRadians()) * rawMotorSpeed * elapsedTime);
     // System.out.printf("%s delta: %s\n", moduleID, delta);
     currentPosition = currentPosition.plus(delta);
     if ((Math.abs(previousPosition.minus(currentPosition).getX()) > floatTolerance || Math.abs(previousPosition.minus(currentPosition).getY()) > floatTolerance) && debugSpeed) {

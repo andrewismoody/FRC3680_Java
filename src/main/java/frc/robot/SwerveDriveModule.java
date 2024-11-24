@@ -7,6 +7,7 @@ import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.math.kinematics.SwerveDriveKinematics;
 import edu.wpi.first.math.kinematics.SwerveModuleState;
+import edu.wpi.first.wpilibj.RobotBase;
 import frc.robot.gyro.Gyro;
 
 public class SwerveDriveModule implements DriveModule {
@@ -31,7 +32,7 @@ public class SwerveDriveModule implements DriveModule {
     double floatTolerance;
 
     boolean debug;
-    boolean useFakeGyro = true;
+    public boolean useFakeGyro = !RobotBase.isReal();
     double currentAngle = 0.0;
     double previousAngle = 0.0;
     double fakeGyroRate = 0.3;

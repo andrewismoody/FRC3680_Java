@@ -100,8 +100,9 @@ public class Robot extends TimedRobot {
     modules.AddModule(intakeUpper);
 
     swerveDriveModule.debug = false;
-    // leftFrontMM.debugAngle = true;
-    leftFrontMM.debugSpeed = true;
+    leftFrontMM.debugAngle = true;
+    leftFrontMM.debugSpeed = false;
+    
     // JE motor is 44.4 pulses per rotation, and it reports in degrees, so there are 8.108 degress per pulse.
     m_enc1.setDistancePerPulse(8.108);
 
