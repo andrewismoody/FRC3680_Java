@@ -13,7 +13,7 @@ import edu.wpi.first.math.kinematics.SwerveModuleState;
 public class SwerveMotorModule {
   public Translation2d modulePosition;
 
-  double currentAngle;
+  Rotation2d currentAngle = new Rotation2d();
 
   Translation2d currentPosition = new Translation2d();
   Translation2d previousPosition = new Translation2d();
@@ -34,7 +34,7 @@ public class SwerveMotorModule {
   MotorController rotatorMotor;
 
   Encoder angleEncoder;
-  boolean useFakeEncoder = false;
+  boolean useFakeEncoder = true;
   double encoderSimRate = 3.0;
   double encoderMultiplier = 1.0;
 
@@ -42,7 +42,7 @@ public class SwerveMotorModule {
 
   double previousEncoderAngle;
 
-  PIDController pidController = new PIDController(0.2, 0, 0);
+  PIDController pidController = new PIDController(0.2, 0, 0); // p=0.2
 
   public boolean debugAngle = false;
   public boolean debugSpeed = false;
@@ -74,86 +74,105 @@ public class SwerveMotorModule {
     setSpeed(moduleState);
   }
 
-  void setAngle(SwerveModuleState state) {
-    // https://docs.wpilib.org/en/stable/docs/software/advanced-controls/introduction/introduction-to-pid.html#introduction-to-pid
-    // https://docs.wpilib.org/en/stable/docs/software/advanced-controls/controllers/pidcontroller.html
-    // https://www.chiefdelphi.com/t/normal-spark-pid-p-i-and-d-values/427683/4
+  SwerveModuleState getOptimizedState(SwerveModuleState state) {
     double distance = useFakeEncoder ?
-      currentAngle
+      currentAngle.getDegrees()
       :
       // encoderMultiplier adjusts the encoder value to account for gearing ratios between driver and driven axles
       angleEncoder.getDistance() * encoderMultiplier
     ;
 
-    var newAngle = Rotation2d.fromDegrees(distance);
-    currentAngle = newAngle.getRadians();
-    var stateOpt = SwerveModuleState.optimize(state, newAngle);
-    // slow down if we aren't aiming the right direction yet
-    stateOpt.speedMetersPerSecond *= stateOpt.angle.minus(newAngle).getCos();
+    currentAngle = Rotation2d.fromDegrees(distance);
+
+    return state; // SwerveModuleState.optimize(state, currentAngle);    
+  }
+
+  void setAngle(SwerveModuleState state) {
+    // https://docs.wpilib.org/en/stable/docs/software/advanced-controls/introduction/introduction-to-pid.html#introduction-to-pid
+    // https://docs.wpilib.org/en/stable/docs/software/advanced-controls/controllers/pidcontroller.html
+    // https://www.chiefdelphi.com/t/normal-spark-pid-p-i-and-d-values/427683/4
+    var stateOpt = getOptimizedState(state);
+    var distance = currentAngle.getDegrees();
+    var currentRad = currentAngle.getRadians();
 
     if (Math.abs(previousDistance - distance) > floatTolerance && debugAngle) {
       System.out.printf("%s distance: %f; previous distance: %f\n", moduleID, distance, previousDistance);
       previousDistance = distance;
     }
 
-    if (Math.abs(previousCurrentAngle - currentAngle) > floatTolerance && debugAngle) {
-      System.out.printf("%s current angle: %f; previous current angle: %f\n", moduleID, currentAngle, previousCurrentAngle);
-      previousCurrentAngle = currentAngle;
+    if (Math.abs(previousCurrentAngle - currentRad) > floatTolerance && debugAngle) {
+      System.out.printf("%s current angle: %f; previous current angle: %f\n", moduleID, currentRad, previousCurrentAngle);
+      previousCurrentAngle = currentRad;
     }
-    var tarAngle = stateOpt.angle.getRadians();
-    if (Math.abs(previousTargetAngle - tarAngle) > floatTolerance && debugAngle) {
-      System.out.printf("%s target angle radians: %f\n", moduleID, tarAngle);
-      previousTargetAngle = tarAngle;
+
+    var tarAngle = stateOpt.angle;
+    var tarRad = tarAngle.getRadians();
+    if (Math.abs(previousTargetAngle - tarRad) > floatTolerance && debugAngle) {
+      System.out.printf("%s target angle radians: %f\n", moduleID, tarRad);
+      previousTargetAngle = tarRad;
     }
-    var delAngle = Math.abs(stateOpt.angle.minus(newAngle).getRadians());
+
+    var delAngle = Math.abs(tarAngle.minus(currentAngle).getRadians());
     if (Math.abs(previousDeltaAngle - delAngle) > floatTolerance && debugAngle) {
       System.out.printf("%s delta angle radians: %f\n", moduleID, delAngle);
       previousDeltaAngle = delAngle;
     }
 
     var motorSpeed = 
-      Math.abs(stateOpt.angle.minus(newAngle).getRadians()) > floatTolerance ?
-      (stateOpt.angle.getRadians() > 0 ? 1.0 : -1.0) * pidController.calculate(stateOpt.angle.minus(newAngle).getRadians())
+      delAngle > floatTolerance ?
+        delAngle
+        //pidController.calculate(delAngle, tarRad)
       :
-      0.0
+        0.0
     ;
-    if (Math.abs(previousRotationSpeed - motorSpeed) > floatTolerance && debugAngle) {
-      System.out.printf("%s setAngle: motor speed: %f\n", moduleID, motorSpeed);
-      previousRotationSpeed = motorSpeed;
-    }
 
     // start rotating wheel to the new optimized angle
     // get volts conversion - need to do real-world measurements to understand/identify this conversion
     motorSpeed = motorSpeed / driveModule.rotationSpeed;
     if (invertRotation)
       motorSpeed *= -1;
+
+    if (Math.abs(previousRotationSpeed - motorSpeed) > floatTolerance && debugAngle) {
+      System.out.printf("%s setAngle: motor speed: %f\n", moduleID, motorSpeed);
+      previousRotationSpeed = motorSpeed;
+    }
+    
     rotatorMotor.set(motorSpeed);
 
     if (useFakeEncoder) {
       // fake adjust current angle to simulate encoder input
-      currentAngle = currentAngle + motorSpeed * encoderSimRate;
+      currentAngle = Rotation2d.fromRadians((currentAngle.getRadians() + motorSpeed * encoderSimRate));
     }
   }
 
   void setSpeed(SwerveModuleState state) {
-    var motorSpeed = state.speedMetersPerSecond;
-    if (Math.abs(previousDriveSpeed - motorSpeed) > floatTolerance && debugSpeed) {
-      System.out.printf("%s setSpeed: motor speed: %f\n", moduleID, motorSpeed);
-      previousDriveSpeed = motorSpeed;
-    }
+    var rawMotorSpeed = state.speedMetersPerSecond;
+    var stateOpt = getOptimizedState(state);
+    // slow down if we aren't aiming the right direction yet
+    rawMotorSpeed *= stateOpt.angle.minus(currentAngle).getCos();
+    var motorSpeed = rawMotorSpeed;
+    var optAngle = stateOpt.angle.getRadians();
 
     // convert from 'meters per second' to motor speed (normalized to 1)
     // get volts conversion - need to do real-world measurements to understand/identify this conversion
     motorSpeed = motorSpeed / driveModule.driveSpeed;
     if (invertDrive)
       motorSpeed *= -1;
+
+    if (Math.abs(previousDriveSpeed - motorSpeed) > floatTolerance && debugSpeed) {
+      System.out.printf("%s desired angle: %f; degrees %f\n", moduleID, optAngle, optAngle * 57.2958);
+      //System.out.printf("%s current angle: %f; degrees %f\n", moduleID, currentAngle.getRadians(), currentAngle.getDegrees());
+      System.out.printf("%s setSpeed: motor speed: %f\n", moduleID, motorSpeed);
+      previousDriveSpeed = motorSpeed;
+    }
+
     driveMotor.set(motorSpeed);
 
     var currentUpdate = System.nanoTime();
     var elapsedTime = (TimeUnit.NANOSECONDS.toMillis(currentUpdate - previousUpdate) / 1000.0);
 
     // set fake position
-    var delta = new Translation2d(Math.cos(state.angle.getRadians()) * state.speedMetersPerSecond * elapsedTime, Math.sin(state.angle.getRadians()) * state.speedMetersPerSecond * elapsedTime);
+    var delta = new Translation2d(Math.cos(optAngle) * rawMotorSpeed * elapsedTime, Math.sin(optAngle) * rawMotorSpeed * elapsedTime);
     // System.out.printf("%s delta: %s\n", moduleID, delta);
     currentPosition = currentPosition.plus(delta);
     if ((Math.abs(previousPosition.minus(currentPosition).getX()) > floatTolerance || Math.abs(previousPosition.minus(currentPosition).getY()) > floatTolerance) && debugSpeed) {

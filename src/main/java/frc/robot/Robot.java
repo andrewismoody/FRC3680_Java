@@ -47,7 +47,7 @@ public class Robot extends TimedRobot {
 
   final boolean isFieldOriented = false;
 
-  final double m_floatTolerance = 0.0; // 0.2;
+  final double m_floatTolerance = 0.001; // 0.2;
   final double m_ejectSpeed = 1.0;
   final double m_intakeSpeed = 1.0;
   final double m_liftSpeed = 1.0;
@@ -59,9 +59,9 @@ public class Robot extends TimedRobot {
   // sport gear box with 4:1 ratio on a 4" wheel yields 91.7 ft/sec which is 27.95016 meters/sec
   // https://www.andymark.com/products/sport-gearbox
   double m_driveSpeed = 27.95 * m_speedMod; // should be actual meters per second that is achievable by the drive motor
-  // JE motor turns at 310 RPM (rotations per minute) which is 5.16 rotations per second, which is 16.20 radians per second
+  // JE motor turns at 310 RPM (rotations per minute) which is 5.16 rotations per second, which is 32.40 radians per second
   // https://cdn.andymark.com/media/W1siZiIsIjIwMjIvMDIvMDIvMDgvMzMvMTIvNzMzYmY3YmQtYTI0MC00ZDkyLWI5NGMtYjRlZWU1Zjc4NzY0L2FtLTQyMzNhIEpFLVBMRy00MTAgbW90b3IuUERGIl1d/am-4233a%20JE-PLG-410%20motor.PDF?sha=5387f684d4e2ce1f
-  double m_rotationSpeed = 16.2 * m_speedMod; // should be actual radians per second that is achievable by the rotation motor
+  double m_rotationSpeed = 3.14 * m_speedMod; // should be actual radians per second that is achievable by the rotation motor
   
   SingleMotorModule intake = new SingleMotorModule("intake", m_pwm5, m_intakeSpeed, false);
   DualMotorModule ejector = new DualMotorModule("ejector", m_pwm6, m_pwm7, m_ejectSpeed, true, false);
@@ -100,8 +100,8 @@ public class Robot extends TimedRobot {
     modules.AddModule(intakeUpper);
 
     swerveDriveModule.debug = true;
-    leftFrontMM.debugAngle = true;
-    leftFrontMM.debugSpeed = true;
+    // leftFrontMM.debugAngle = true;
+    leftFrontMM.debugSpeed = false;
     // JE motor is 44.4 pulses per rotation, and it reports in degrees, so there are 8.108 degress per pulse.
     m_enc1.setDistancePerPulse(8.108);
 
