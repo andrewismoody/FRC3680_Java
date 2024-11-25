@@ -43,10 +43,11 @@ public class SwerveMotorModule {
 
   double previousEncoderAngle;
 
-  PIDController pidController = new PIDController(0.02, 0, 0); // p=0.2
+  PIDController pidController = new PIDController(0.15, 0, 0); // p=0.2
 
   public boolean debugAngle = false;
   public boolean debugSpeed = false;
+  public boolean usePID = false;
 
   boolean invertDrive = false;
   boolean invertRotation = false;
@@ -122,15 +123,15 @@ public class SwerveMotorModule {
 
     var motorSpeed = 
       delAngle > floatTolerance ?
-        //delAngle
-        pidController.calculate(delAngle, tarRad)
+        usePID ? pidController.calculate(delAngle, tarRad) : delAngle
       :
         0.0
     ;
 
     // start rotating wheel to the new optimized angle
     // get volts conversion - need to do real-world measurements to understand/identify this conversion
-    motorSpeed = motorSpeed / driveModule.rotationSpeed;
+    // can't use this in conjunction with PID controller
+    motorSpeed = motorSpeed / (usePID ? 1.0 : driveModule.rotationSpeed);
     if (invertRotation)
       motorSpeed *= -1;
 

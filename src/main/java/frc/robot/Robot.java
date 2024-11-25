@@ -52,7 +52,8 @@ public class Robot extends TimedRobot {
   final double m_intakeSpeed = 1.0;
   final double m_liftSpeed = 1.0;
   final double m_feedSpeed = 1.0;
-  final double m_encoderMultiplier = 1.0;
+  // 24 teeth on driver, 42 teeth on driven = 24/42 = 0.5714
+  final double m_encoderMultiplier = 0.5714;
 
   double m_divider = 0.5;
   double m_speedMod = 1.0;
