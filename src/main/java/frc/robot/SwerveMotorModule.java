@@ -1,6 +1,5 @@
 package frc.robot;
 
-import edu.wpi.first.wpilibj.Encoder;
 import edu.wpi.first.wpilibj.RobotBase;
 import edu.wpi.first.wpilibj.motorcontrol.MotorController;
 
@@ -10,6 +9,8 @@ import edu.wpi.first.math.controller.PIDController;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.kinematics.SwerveModuleState;
+
+import frc.robot.encoder.Encoder;
 
 public class SwerveMotorModule {
   public Translation2d modulePosition;
@@ -64,6 +65,7 @@ public class SwerveMotorModule {
     invertDrive = InvertDrive;
     encoderMultiplier = EncoderMultipier;
 
+    // not used for absolute encoders
     AngleEncoder.setReverseDirection(InvertRotation);
   }
 

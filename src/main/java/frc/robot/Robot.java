@@ -5,7 +5,6 @@
 package frc.robot;
 
 import edu.wpi.first.math.geometry.Translation2d;
-import edu.wpi.first.wpilibj.Encoder;
 import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj.motorcontrol.PWMSparkMax;
@@ -14,6 +13,10 @@ import edu.wpi.first.wpilibj.motorcontrol.Spark;
 import frc.robot.Controller.ButtonName;
 import frc.robot.Controller.ControllerType;
 import frc.robot.gyro.GyroBase;
+import frc.robot.encoder.AnalogAbsoluteEncoder;
+import frc.robot.encoder.Encoder;
+import frc.robot.encoder.I2CAbsoluteEncoder;
+import frc.robot.encoder.QuadEncoder;
 
 /**
  * The VM is configured to automatically run this class, and to call the functions corresponding to
@@ -36,8 +39,8 @@ public class Robot extends TimedRobot {
   final PWMVictorSPX m_pwm9 = new PWMVictorSPX(9);
   final PWMVictorSPX m_pwm10 = new PWMVictorSPX(10);
 
-  final Encoder m_enc1 = new Encoder(0, 1);
-  final Encoder m_enc2 = new Encoder(2, 3);
+  final Encoder m_enc1 = new AnalogAbsoluteEncoder(1);
+  final Encoder m_enc2 = new AnalogAbsoluteEncoder(2);
 
   final GyroBase m_gyro = new GyroBase();
 
@@ -53,16 +56,19 @@ public class Robot extends TimedRobot {
   final double m_liftSpeed = 1.0;
   final double m_feedSpeed = 1.0;
   // 24 teeth on driver, 42 teeth on driven = 24/42 = 0.5714
-  final double m_encoderMultiplier = 0.5714;
+  final double m_encoderMultiplier = 1.0; //0.5714;
 
   double m_divider = 0.5;
   double m_speedMod = 1.0;
+
   // sport gear box with 4:1 ratio on a 4" wheel yields 91.7 ft/sec which is 27.95016 meters/sec
   // https://www.andymark.com/products/sport-gearbox
-  double m_driveSpeed = 27.95 * m_speedMod; // should be actual meters per second that is achievable by the drive motor
+  // higher numbers result in faster drive speeds.  To slow it down, send a higher number, which will result in a lower voltage being sent to the motor for any given speed.
+  double m_driveSpeed = 27.95 / m_speedMod; // should be actual meters per second that is achievable by the drive motor
   // JE motor turns at 310 RPM (rotations per minute) which is 5.16 rotations per second, which is 32.40 radians per second
   // https://cdn.andymark.com/media/W1siZiIsIjIwMjIvMDIvMDIvMDgvMzMvMTIvNzMzYmY3YmQtYTI0MC00ZDkyLWI5NGMtYjRlZWU1Zjc4NzY0L2FtLTQyMzNhIEpFLVBMRy00MTAgbW90b3IuUERGIl1d/am-4233a%20JE-PLG-410%20motor.PDF?sha=5387f684d4e2ce1f
-  double m_rotationSpeed = 3.14 * m_speedMod; // should be actual radians per second that is achievable by the rotation motor
+  // higher numbers result in faster drive speeds.  To slow it down, send a higher number, which will result in a lower voltage being sent to the motor for any given speed.
+  double m_rotationSpeed = 75 / m_speedMod; // 3.14 / m_speedMod; // should be actual radians per second that is achievable by the rotation motor
   
   SingleMotorModule intake = new SingleMotorModule("intake", m_pwm5, m_intakeSpeed, false);
   DualMotorModule ejector = new DualMotorModule("ejector", m_pwm6, m_pwm7, m_ejectSpeed, true, false);
@@ -105,7 +111,8 @@ public class Robot extends TimedRobot {
     leftFrontMM.debugSpeed = false;
     
     // JE motor is 44.4 pulses per rotation, and it reports in degrees, so there are 8.108 degress per pulse.
-    m_enc1.setDistancePerPulse(8.108);
+    // not used for absolute encoders
+    // m_enc1.setDistancePerPulse(8.108);
 
     // three different modules operate the same component differently
     m_controller.RegisterBinaryButtonConsumer(ButtonName.LeftButton, ejector::ProcessState);
