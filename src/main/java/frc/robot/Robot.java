@@ -39,10 +39,10 @@ public class Robot extends TimedRobot {
   final PWMVictorSPX m_pwm9 = new PWMVictorSPX(9);
   final PWMVictorSPX m_pwm10 = new PWMVictorSPX(10);
 
-  final Encoder m_enc1 = new AnalogAbsoluteEncoder(1);
-  final Encoder m_enc2 = new AnalogAbsoluteEncoder(2);
+  final Encoder m_enc1 = new QuadEncoder(0, 1);
+  final Encoder m_enc2 = new AnalogAbsoluteEncoder(1);
 
-  final GyroBase m_gyro = new GyroBase();
+  final GyroBase m_gyro = new GyroBase(9, true);
 
   final Controller m_controller = new Controller(0, ControllerType.Xbox);
 
@@ -50,7 +50,7 @@ public class Robot extends TimedRobot {
 
   final boolean isFieldOriented = false;
 
-  final double m_floatTolerance = 0.001; // 0.2;
+  final double m_floatTolerance = 0.08; // 0.2;
   final double m_ejectSpeed = 1.0;
   final double m_intakeSpeed = 1.0;
   final double m_liftSpeed = 1.0;
@@ -68,7 +68,8 @@ public class Robot extends TimedRobot {
   // JE motor turns at 310 RPM (rotations per minute) which is 5.16 rotations per second, which is 32.40 radians per second
   // https://cdn.andymark.com/media/W1siZiIsIjIwMjIvMDIvMDIvMDgvMzMvMTIvNzMzYmY3YmQtYTI0MC00ZDkyLWI5NGMtYjRlZWU1Zjc4NzY0L2FtLTQyMzNhIEpFLVBMRy00MTAgbW90b3IuUERGIl1d/am-4233a%20JE-PLG-410%20motor.PDF?sha=5387f684d4e2ce1f
   // higher numbers result in faster drive speeds.  To slow it down, send a higher number, which will result in a lower voltage being sent to the motor for any given speed.
-  double m_rotationSpeed = 75 / m_speedMod; // 3.14 / m_speedMod; // should be actual radians per second that is achievable by the rotation motor
+  // 775/redline motors run at 21,000 rpms, with a 20:1 gearbox, 1,050 rpm, divided by 60 is 17.5 rotations per second, divided by 6.28 radians is 2.787 radians per second
+  double m_rotationSpeed = 32.40 / m_speedMod; // should be actual radians per second that is achievable by the rotation motor
   
   SingleMotorModule intake = new SingleMotorModule("intake", m_pwm5, m_intakeSpeed, false);
   DualMotorModule ejector = new DualMotorModule("ejector", m_pwm6, m_pwm7, m_ejectSpeed, true, false);
@@ -77,8 +78,9 @@ public class Robot extends TimedRobot {
   DualMotorModule lifter = new DualMotorModule("lifter", m_pwm9, m_pwm10, m_liftSpeed, true, false);
   DualMotorModule intakeUpper = new DualMotorModule("intakeUpper", m_pwm6, m_pwm7, m_ejectSpeed / 2, false, true);
 
-  SwerveMotorModule leftFrontMM = new SwerveMotorModule("leftFront", new Translation2d(1.0, 1.0), m_pwm1, m_pwm2, m_enc1, m_encoderMultiplier, m_floatTolerance, false, false);
-  SwerveMotorModule rightRearMM = new SwerveMotorModule("rightRear", new Translation2d(-1.0, -1.0), m_pwm3, m_pwm4, m_enc2, m_encoderMultiplier, m_floatTolerance, false, false);
+  // total length of robot is 32.375", centerline is 16.1875" from edge.  Drive axle center is 4" from edge - 12.1875" from center which is 309.56mm or 0.30956 meters
+  SwerveMotorModule leftFrontMM = new SwerveMotorModule("leftFront", new Translation2d(0.30956, 0.30956), m_pwm1, m_pwm2, m_enc1, m_encoderMultiplier, m_floatTolerance, false, false);
+  SwerveMotorModule rightRearMM = new SwerveMotorModule("rightRear", new Translation2d(-0.30956, -0.30956), m_pwm3, m_pwm4, m_enc2, m_encoderMultiplier, m_floatTolerance, false, false);
   SwerveDriveModule swerveDriveModule = new SwerveDriveModule("swerveDrive", m_gyro, m_driveSpeed, m_rotationSpeed, isFieldOriented, m_floatTolerance
     , leftFrontMM
     , rightRearMM
@@ -112,7 +114,7 @@ public class Robot extends TimedRobot {
     
     // JE motor is 44.4 pulses per rotation, and it reports in degrees, so there are 8.108 degress per pulse.
     // not used for absolute encoders
-    // m_enc1.setDistancePerPulse(8.108);
+    m_enc1.setDistancePerPulse(8.108);
 
     // three different modules operate the same component differently
     m_controller.RegisterBinaryButtonConsumer(ButtonName.LeftButton, ejector::ProcessState);

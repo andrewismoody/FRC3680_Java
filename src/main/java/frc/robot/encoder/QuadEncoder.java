@@ -6,6 +6,8 @@ public class QuadEncoder implements Encoder {
 
     public QuadEncoder(int pinA, int pinB) {
         internalEncoder = new edu.wpi.first.wpilibj.Encoder(pinA, pinB);
+
+        internalEncoder.reset();
     }
 
     @Override

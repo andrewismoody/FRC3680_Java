@@ -25,12 +25,16 @@ public class I2CAbsoluteEncoder implements Encoder {
 
     public double getDistance() {
         double rawAngle;
-        double degAngle;
 
         rawAngle = readRegister(0x0C);                        // combine bytes to get 12-bit value 11:0
-        degAngle = rawAngle * 0.087890625;                    // 360/4096 = 0.087890625
 
-        return degAngle;
+        boolean reportRadians = false;
+
+        if (reportRadians)
+            return rawAngle * 0.001533203125; // 6.28 / 4096 = 0.001533203125 (radians)
+        else
+            return rawAngle * 0.087890625; // or 360/4096 = 0.087890625 (degrees)
+
     }
 
     public void setDistancePerPulse(double dpp) {

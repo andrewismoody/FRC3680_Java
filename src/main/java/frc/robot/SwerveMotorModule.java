@@ -9,7 +9,7 @@ import edu.wpi.first.math.controller.PIDController;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.kinematics.SwerveModuleState;
-
+import edu.wpi.first.units.Time;
 import frc.robot.encoder.Encoder;
 
 public class SwerveMotorModule {
@@ -27,6 +27,9 @@ public class SwerveMotorModule {
   double previousTargetAngle;
   double previousDeltaAngle;
 
+  double previousTime;
+  double elapsedTime;
+
   double previousRotationSpeed;
   double previousDriveSpeed;
 
@@ -43,8 +46,11 @@ public class SwerveMotorModule {
   double floatTolerance;
 
   double previousEncoderAngle;
+  double accumulatedMotorSpeed = 0.0;
+  long rotationStartTime = 0;
+  long rotationLimitTime = 1000; // one second
 
-  PIDController pidController = new PIDController(0.15, 0, 0); // p=0.2
+  PIDController pidController = new PIDController(0.15, 0.0005, 0); // p=0.2
 
   public boolean debugAngle = false;
   public boolean debugSpeed = false;
@@ -97,11 +103,18 @@ public class SwerveMotorModule {
     // https://docs.wpilib.org/en/stable/docs/software/advanced-controls/introduction/introduction-to-pid.html#introduction-to-pid
     // https://docs.wpilib.org/en/stable/docs/software/advanced-controls/controllers/pidcontroller.html
     // https://www.chiefdelphi.com/t/normal-spark-pid-p-i-and-d-values/427683/4
-    var distance = currentAngle.getDegrees();
-    var currentRad = currentAngle.getRadians();
+    var distance = currentAngle.getDegrees() + 0.0; // add zero to prevent negative zero
+    var currentRad = currentAngle.getRadians() + 0.0; // add zero to prevent negative zero
+
+    if (previousTime == 0) {
+      elapsedTime = 0;
+    } else {
+      elapsedTime = System.currentTimeMillis() - previousTime;
+    }
+    previousTime = System.currentTimeMillis();
 
     if (Math.abs(previousDistance - distance) > floatTolerance && debugAngle) {
-      System.out.printf("%s distance: %f; previous distance: %f\n", moduleID, distance, previousDistance);
+      //System.out.printf("%s distance: %f; previous distance: %f\n", moduleID, distance, previousDistance);
       previousDistance = distance;
     }
 
@@ -111,20 +124,24 @@ public class SwerveMotorModule {
     }
 
     var tarAngle = state.angle;
-    var tarRad = tarAngle.getRadians();
+    var tarRad = tarAngle.getRadians() + 0.0; // add 0 to prevent negative zero
     if (Math.abs(previousTargetAngle - tarRad) > floatTolerance && debugAngle) {
       System.out.printf("%s target angle radians: %f\n", moduleID, tarRad);
       previousTargetAngle = tarRad;
     }
 
-    var delAngle = Math.abs(tarAngle.minus(currentAngle).getRadians());
+    var delAngle = tarAngle.minus(currentAngle).getRadians() + 0.0; // add 0 to prevent negative zero
     if (Math.abs(previousDeltaAngle - delAngle) > floatTolerance && debugAngle) {
       System.out.printf("%s delta angle radians: %f\n", moduleID, delAngle);
       previousDeltaAngle = delAngle;
+
+      // reset give up parameters
+      rotationStartTime = 0;
+      accumulatedMotorSpeed = 0.0;
     }
 
     var motorSpeed = 
-      delAngle > floatTolerance ?
+      Math.abs(delAngle) > floatTolerance ?
         usePID ? pidController.calculate(delAngle, tarRad) : delAngle
       :
         0.0
@@ -132,12 +149,35 @@ public class SwerveMotorModule {
 
     // start rotating wheel to the new optimized angle
     // get volts conversion - need to do real-world measurements to understand/identify this conversion
-    // can't use this in conjunction with PID controller
-    motorSpeed = motorSpeed / (usePID ? 1.0 : driveModule.rotationSpeed);
+    // can't use this in conjunction with PID controller - not sure this is true?
+    motorSpeed = motorSpeed / (usePID ? 1.0 : (driveModule.rotationSpeed * (elapsedTime / 1000)));
+
+    if (Math.abs(previousCurrentAngle - currentRad) <= floatTolerance && Math.abs(delAngle) > floatTolerance) {
+      System.out.printf("%s increasing speedincrement: %f\n", moduleID, accumulatedMotorSpeed);
+      double speedIncrement = 0.1;
+
+      accumulatedMotorSpeed = accumulatedMotorSpeed + speedIncrement;
+
+      if (rotationStartTime == 0)
+        rotationStartTime = System.currentTimeMillis();
+      else if (System.currentTimeMillis() - rotationStartTime > rotationLimitTime) {
+        System.out.printf("%s giving up\n", moduleID);
+        motorSpeed = 0.0;
+        accumulatedMotorSpeed = 0.0;
+      }
+    } else {
+      accumulatedMotorSpeed = 0.0;
+      rotationStartTime = 0;
+    }
+
+    double sign = motorSpeed > 0 ? 1 : -1;
+
+    motorSpeed = motorSpeed + (accumulatedMotorSpeed * sign);
+
     if (invertRotation)
       motorSpeed *= -1;
 
-    if (Math.abs(previousRotationSpeed - motorSpeed) > floatTolerance && debugAngle) {
+    if (Math.abs(previousRotationSpeed - motorSpeed) > 0.001 && debugAngle) {
       System.out.printf("%s setAngle: motor speed: %f\n", moduleID, motorSpeed);
       previousRotationSpeed = motorSpeed;
     }
@@ -151,7 +191,7 @@ public class SwerveMotorModule {
   }
 
   void setSpeed(SwerveModuleState state) {
-    var rawMotorSpeed = state.speedMetersPerSecond;
+    var rawMotorSpeed = state.speedMetersPerSecond + 0.0; // add zero to avoid negative zero
     var motorSpeed = rawMotorSpeed;
     var optAngle = state.angle;
 
@@ -162,8 +202,9 @@ public class SwerveMotorModule {
       motorSpeed *= -1;
 
     if (Math.abs(previousDriveSpeed - motorSpeed) > floatTolerance && debugSpeed) {
-      System.out.printf("%s desired angle: %f; degrees %f\n", moduleID, optAngle.getRadians(), optAngle.getDegrees());
-      System.out.printf("%s current angle: %f; degrees %f\n", moduleID, currentAngle.getRadians() % 6.28, currentAngle.getDegrees() % 360);
+      // System.out.printf("%s desired angle: %f; degrees %f\n", moduleID, optAngle.getRadians(), optAngle.getDegrees());
+      // System.out.printf("%s current angle: %f; degrees %f\n", moduleID, currentAngle.getRadians() % 6.28, currentAngle.getDegrees() % 360);
+      System.out.printf("%s rawMotorSpeed: %f\n", moduleID, rawMotorSpeed);
       System.out.printf("%s setSpeed: motor speed: %f\n", moduleID, motorSpeed);
       previousDriveSpeed = motorSpeed;
     }

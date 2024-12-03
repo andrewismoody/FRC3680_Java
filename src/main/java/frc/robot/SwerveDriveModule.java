@@ -83,7 +83,7 @@ public class SwerveDriveModule implements DriveModule {
     }
 
     public void ProcessRotationAngle(double value) {
-        rotationAngle = value;
+        rotationAngle = -value;
 
         if (debug && rotationAngle != previousRotationAngle)
             System.out.printf("%s rotationAngle: %f\n", moduleID, rotationAngle);

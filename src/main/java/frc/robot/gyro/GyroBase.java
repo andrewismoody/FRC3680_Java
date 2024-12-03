@@ -74,6 +74,7 @@ public class GyroBase implements Gyro, Sendable, AutoCloseable {
     private volatile boolean m_thread_active = false;
     private volatile boolean m_first_run = true;
     private boolean m_start_up_mode = true;
+    private boolean useFakeGyro = false;
 
     private SimDevice m_simDevice;
     private SimDouble m_simGyroAngleX;
@@ -89,11 +90,12 @@ public class GyroBase implements Gyro, Sendable, AutoCloseable {
     private DigitalOutput m_status_led;
 
     public GyroBase() {
-        this(9);
+        this(9, false);
     }
 
-    public GyroBase(int readyPin) {
+    public GyroBase(int readyPin, boolean UseFakeGyro) {
         m_acquire_task = new Thread(new AcquireTask(this));
+        useFakeGyro = UseFakeGyro;
         
         m_simDevice = SimDevice.create("Gyro", readyPin);
         if (m_simDevice != null) {
@@ -109,26 +111,31 @@ public class GyroBase implements Gyro, Sendable, AutoCloseable {
         }
 
         if (m_simDevice == null) {
-            // Notify DS that IMU calibration delay is active
-            DriverStation.reportWarning(
-                "IMU Detected. Starting initial calibration delay.", false);
-            // Wait for whatever time the user set as the start-up delay
-            try {
-                Thread.sleep((long) (10 * 1000));
-            } catch (InterruptedException e) {
-            }
-            // Execute calibration routine
-            calibrate();
-            // Reset accumulated offsets
-            reset();
-            // Indicate to the acquire loop that we're done starting up
-            m_start_up_mode = false;
-            // Let the user know the IMU was initiallized successfully
-            DriverStation.reportWarning("IMU Successfully Initialized!", false);
+            if (useFakeGyro) {
+                DriverStation.reportWarning(
+                    "useFakeGyro: Skipping initial calibration delay.", false);
+            } else {
+                // Notify DS that IMU calibration delay is active
+                DriverStation.reportWarning(
+                    "IMU Detected. Starting initial calibration delay.", false);
+                // Wait for whatever time the user set as the start-up delay
+                try {
+                    Thread.sleep((long) (10 * 1000));
+                } catch (InterruptedException e) {
+                }
+                // Execute calibration routine
+                calibrate();
+                // Reset accumulated offsets
+                reset();
+                // Indicate to the acquire loop that we're done starting up
+                m_start_up_mode = false;
+                // Let the user know the IMU was initiallized successfully
+                DriverStation.reportWarning("IMU Successfully Initialized!", false);
 
-            // Drive MXP PWM5 (IMU ready LED) low (active low)
-            m_status_led = new DigitalOutput(readyPin);
-            m_status_led.set(true);
+                // Drive MXP PWM5 (IMU ready LED) low (active low)
+                m_status_led = new DigitalOutput(readyPin);
+                m_status_led.set(true);
+            }
         }
 
         // Report usage and post data to DS

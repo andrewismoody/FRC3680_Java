@@ -11,7 +11,12 @@ public class AnalogAbsoluteEncoder implements Encoder {
     }
 
     public double getDistance() {
-        return input.getValue() * 0.087890625; // 360/4096 = 0.087890625
+        boolean reportRadians = false;
+
+        if (reportRadians)
+            return input.getValue() * 0.001533203125; // 6.28 / 4096 = 0.001533203125 (radians)
+        else
+            return input.getValue() * 0.087890625; // or 360/4096 = 0.087890625 (degrees)
     }
 
     public void setDistancePerPulse(double dpp) {
@@ -21,5 +26,5 @@ public class AnalogAbsoluteEncoder implements Encoder {
     public void setReverseDirection(boolean reverse) {
         // not implememented for absolute position
     }
-    
+
 }
