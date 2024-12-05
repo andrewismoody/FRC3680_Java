@@ -5,15 +5,21 @@
 package frc.robot;
 
 import edu.wpi.first.math.geometry.Translation2d;
-import edu.wpi.first.wpilibj.Encoder;
+import edu.wpi.first.wpilibj.DriverStation;
+import edu.wpi.first.wpilibj.GenericHID;
+import edu.wpi.first.wpilibj.Preferences;
 import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj.motorcontrol.PWMSparkMax;
 import edu.wpi.first.wpilibj.motorcontrol.PWMVictorSPX;
 import edu.wpi.first.wpilibj.motorcontrol.Spark;
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import frc.robot.Controller.ButtonName;
 import frc.robot.Controller.ControllerType;
 import frc.robot.gyro.GyroBase;
+import frc.robot.encoder.AnalogAbsoluteEncoder;
+import frc.robot.encoder.Encoder;
+import frc.robot.encoder.QuadEncoder;
 
 /**
  * The VM is configured to automatically run this class, and to call the functions corresponding to
@@ -36,27 +42,39 @@ public class Robot extends TimedRobot {
   final PWMVictorSPX m_pwm9 = new PWMVictorSPX(9);
   final PWMVictorSPX m_pwm10 = new PWMVictorSPX(10);
 
-  final Encoder m_enc1 = new Encoder(0, 1);
-  final Encoder m_enc2 = new Encoder(2, 3);
+  // JE motor is 44.4 pulses per rotation, and it reports in degrees, so there are 8.108 degress per pulse.
+  // not used for absolute encoders
+  final Encoder m_enc1 = new QuadEncoder(0, 1, 8.108);
+  final Encoder m_enc2 = new AnalogAbsoluteEncoder(1);
 
-  final GyroBase m_gyro = new GyroBase();
+  final GyroBase m_gyro = new GyroBase(9);
 
-  final Controller m_controller = new Controller(0, ControllerType.Xbox);
+  Controller m_controller; // = new Controller(0, ControllerType.Xbox);
 
   final Timer m_timer = new Timer();
 
   final boolean isFieldOriented = false;
 
-  final double m_floatTolerance = 0.2;
+  final double m_floatTolerance = 0.08; // 0.2;
   final double m_ejectSpeed = 1.0;
   final double m_intakeSpeed = 1.0;
   final double m_liftSpeed = 1.0;
   final double m_feedSpeed = 1.0;
+  // 24 teeth on driver, 42 teeth on driven = 24/42 = 0.5714
+  final double m_encoderMultiplier = 1.0; //0.5714;
 
   double m_divider = 0.5;
   double m_speedMod = 1.0;
-  double m_driveSpeed = 10.0 * m_speedMod; // should be actual meters per second that is achievable by the drive motor
-  double m_rotationSpeed = 3.0 * m_speedMod; // should be actual radians per second that is achievable by the rotation motor
+
+  // sport gear box with 4:1 ratio on a 4" wheel yields 91.7 ft/sec which is 27.95016 meters/sec
+  // https://www.andymark.com/products/sport-gearbox
+  // higher numbers result in faster drive speeds.  To slow it down, send a higher number, which will result in a lower voltage being sent to the motor for any given speed.
+  double m_driveSpeed = 27.95 / m_speedMod; // should be actual meters per second that is achievable by the drive motor
+  // JE motor turns at 310 RPM (rotations per minute) which is 5.16 rotations per second, which is 32.40 radians per second
+  // https://cdn.andymark.com/media/W1siZiIsIjIwMjIvMDIvMDIvMDgvMzMvMTIvNzMzYmY3YmQtYTI0MC00ZDkyLWI5NGMtYjRlZWU1Zjc4NzY0L2FtLTQyMzNhIEpFLVBMRy00MTAgbW90b3IuUERGIl1d/am-4233a%20JE-PLG-410%20motor.PDF?sha=5387f684d4e2ce1f
+  // higher numbers result in faster drive speeds.  To slow it down, send a higher number, which will result in a lower voltage being sent to the motor for any given speed.
+  // 775/redline motors run at 21,000 rpms, with a 20:1 gearbox, 1,050 rpm, divided by 60 is 17.5 rotations per second, divided by 6.28 radians is 2.787 radians per second
+  double m_rotationSpeed = 32.40 / m_speedMod; // should be actual radians per second that is achievable by the rotation motor
   
   SingleMotorModule intake = new SingleMotorModule("intake", m_pwm5, m_intakeSpeed, false);
   DualMotorModule ejector = new DualMotorModule("ejector", m_pwm6, m_pwm7, m_ejectSpeed, true, false);
@@ -65,16 +83,21 @@ public class Robot extends TimedRobot {
   DualMotorModule lifter = new DualMotorModule("lifter", m_pwm9, m_pwm10, m_liftSpeed, true, false);
   DualMotorModule intakeUpper = new DualMotorModule("intakeUpper", m_pwm6, m_pwm7, m_ejectSpeed / 2, false, true);
 
-  SwerveMotorModule leftFrontMM = new SwerveMotorModule("leftFront", 0, new Translation2d(-1.0, 1.0), m_pwm1, m_pwm2, m_enc1, m_floatTolerance);
-  SwerveMotorModule rightRearMM = new SwerveMotorModule("rightRear", 1, new Translation2d(1.0, -1.0), m_pwm3, m_pwm4, m_enc2, m_floatTolerance);
-  SwerveDriveModule swerveDriveModule = new SwerveDriveModule("swerveDrive", m_gyro, m_driveSpeed, m_rotationSpeed, isFieldOriented, m_floatTolerance,
-    leftFrontMM,
-    rightRearMM
+  // total length of robot is 32.375", centerline is 16.1875" from edge.  Drive axle center is 4" from edge - 12.1875" from center which is 309.56mm or 0.30956 meters
+  SwerveMotorModule leftFrontMM = new SwerveMotorModule("leftFront", new Translation2d(0.30956, 0.30956), m_pwm1, m_pwm2, m_enc1, m_encoderMultiplier, m_floatTolerance, false, false);
+  SwerveMotorModule rightRearMM = new SwerveMotorModule("rightRear", new Translation2d(-0.30956, -0.30956), m_pwm3, m_pwm4, m_enc2, m_encoderMultiplier, m_floatTolerance, false, false);
+  SwerveDriveModule swerveDriveModule = new SwerveDriveModule("swerveDrive", m_gyro, m_driveSpeed, m_rotationSpeed, isFieldOriented, m_floatTolerance
+    , leftFrontMM
+    , rightRearMM
   );
 
   DifferentialDriveModule diffDriveModule = new DifferentialDriveModule("differentialDrive", m_pwm1, m_pwm2);
 
-  ModuleController modules = new ModuleController(swerveDriveModule, m_divider);
+  ModuleController modules;
+
+  public static final String DriveSelectionKey = "DriveSelection";
+  public static final String DriveSelectionSwerve = "Swerve";
+  public static final String DriveSelectionDifferential = "Differential";
 
   public Robot() {
     // SendableRegistry.addChild(m_robotDrive, m_leftDrive);
@@ -87,6 +110,18 @@ public class Robot extends TimedRobot {
    */
   @Override
   public void robotInit() {
+    Preferences.initString(DriveSelectionKey, DriveSelectionSwerve);
+    String DriveSelection = Preferences.getString(DriveSelectionKey, DriveSelectionSwerve);
+
+    switch(DriveSelection) {
+      case DriveSelectionDifferential:
+        modules = new ModuleController(diffDriveModule, m_divider);
+      case DriveSelectionSwerve:
+      default:
+        modules = new ModuleController(swerveDriveModule, m_divider);
+        break;
+    }
+
     modules.AddModule(intake);
     modules.AddModule(ejector);
     modules.AddModule(ejectorSlow);
@@ -94,7 +129,43 @@ public class Robot extends TimedRobot {
     modules.AddModule(lifter);
     modules.AddModule(intakeUpper);
 
-    swerveDriveModule.debug = true;
+    swerveDriveModule.debug = false;
+    leftFrontMM.debugAngle = true;
+    leftFrontMM.debugSpeed = false;
+
+    JoystickIndexLoop:
+    for (int j = 0; j < 6; j++) {
+      System.out.printf("Checking for joystick on port %d\n", j);
+
+      if (DriverStation.isJoystickConnected(j)) {
+        var jtype = DriverStation.getJoystickType(j);
+        System.out.printf("Joystick is connected on port %d; found type %d\n", j, jtype);
+        switch (GenericHID.HIDType.of(jtype)) {
+          case kXInputFlightStick, kHIDFlight:
+            System.out.printf("Joystick is on port %d is a FlightStick\n", j);
+            m_controller = new Controller(j, ControllerType.FlightStick);
+            break JoystickIndexLoop;
+          default:
+          case kXInputGamepad, kHIDGamepad:
+            if (DriverStation.getJoystickIsXbox(j)) {
+              System.out.printf("Joystick is on port %d is an Xbox controller\n", j);
+              m_controller = new Controller(j, ControllerType.Xbox);
+              break JoystickIndexLoop;
+            } else {
+              System.out.printf("Joystick is on port %d is not an Xbox controller, assuming PS4\n", j);
+              m_controller = new Controller(j, ControllerType.PS4);
+              break JoystickIndexLoop;
+            }
+        }
+      } else {
+        System.out.printf("Joystick is not connected on port %d\n", j);
+      }
+    }
+
+    if (m_controller == null) {
+      System.out.println("no joysticks detected!  Assuming XBox Controller on port 0");
+      // m_controller = new Controller(0, ControllerType.Xbox);
+    }
 
     // three different modules operate the same component differently
     m_controller.RegisterBinaryButtonConsumer(ButtonName.LeftButton, ejector::ProcessState);
@@ -148,7 +219,13 @@ public class Robot extends TimedRobot {
 
   /** This function is called periodically during teleoperated mode. */
   @Override
-  public void teleopPeriodic() {    
+  public void teleopPeriodic() { 
+    SmartDashboard.putNumber("Gyro", m_gyro.getAngle());
+
+    // get settings from dashboard
+    // slider 0 is motor speed
+    modules.setSpeedMod(SmartDashboard.getNumber("DB/Slider 0", 1.0));
+
     m_controller.ProcessButtons();
     modules.ProcessDrive();
   }

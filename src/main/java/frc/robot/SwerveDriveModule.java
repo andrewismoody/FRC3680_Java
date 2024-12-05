@@ -6,18 +6,23 @@ import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.math.kinematics.SwerveDriveKinematics;
+import edu.wpi.first.math.kinematics.SwerveDriveOdometry;
+import edu.wpi.first.math.kinematics.SwerveModulePosition;
 import edu.wpi.first.math.kinematics.SwerveModuleState;
+import edu.wpi.first.wpilibj.RobotBase;
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import frc.robot.gyro.Gyro;
 
 public class SwerveDriveModule implements DriveModule {
     String moduleID;
-    ArrayList<SwerveMotorModule> driveModules;
+    ArrayList<SwerveMotorModule> driveModules = new ArrayList<SwerveMotorModule>();
     double driveSpeed;
     double rotationSpeed;
     ModuleController controller;
     SwerveDriveKinematics kinematics;
     boolean isFieldOriented;
     Gyro gyro;
+    SwerveDriveOdometry odometry;
 
     Translation2d currentPosition = new Translation2d();
     Translation2d previousPosition = new Translation2d();
@@ -31,8 +36,9 @@ public class SwerveDriveModule implements DriveModule {
     double floatTolerance;
 
     boolean debug;
-    boolean useFakeGyro = true;
+    public boolean useFakeGyro = !RobotBase.isReal();
     double currentAngle = 0.0;
+    double previousAngle = 0.0;
     double fakeGyroRate = 0.3;
 
     public SwerveDriveModule(String ModuleID, Gyro Gyro, double DriveSpeed, double RotationSpeed,
@@ -40,12 +46,14 @@ public class SwerveDriveModule implements DriveModule {
         moduleID = ModuleID;
 
         var translations = new Translation2d[modules.length];
+        var positions = new SwerveModulePosition[modules.length];
         var i = 0;
 
         for (SwerveMotorModule module : modules) {
             module.setDriveModule(this);
             driveModules.add(module);
             translations[i] = module.modulePosition;
+            positions[i] = new SwerveModulePosition(0, new Rotation2d());
             i++;
         }
 
@@ -56,6 +64,7 @@ public class SwerveDriveModule implements DriveModule {
         floatTolerance = FloatTolerance;
 
         kinematics = new SwerveDriveKinematics(translations);
+        odometry = new SwerveDriveOdometry(kinematics, new Rotation2d(gyro.getGyroAngleZ()), positions);
     }
 
     public void Initialize() {
@@ -81,7 +90,7 @@ public class SwerveDriveModule implements DriveModule {
     }
 
     public void ProcessRotationAngle(double value) {
-        rotationAngle = value;
+        rotationAngle = -value;
 
         if (debug && rotationAngle != previousRotationAngle)
             System.out.printf("%s rotationAngle: %f\n", moduleID, rotationAngle);
@@ -99,17 +108,27 @@ public class SwerveDriveModule implements DriveModule {
         // set the chassis speed object according to current controller values
         double forwardSpeed = this.forwardSpeed * controller.ApplyModifiers(driveSpeed);
         double lateralSpeed = this.lateralSpeed * controller.ApplyModifiers(driveSpeed);
-        double rotationSpeed = rotationAngle * controller.ApplyModifiers(this.rotationSpeed);
+        double rotationSpeed = rotationAngle; // * controller.ApplyModifiers(this.rotationSpeed);
 
-        ChassisSpeeds speeds = isFieldOriented ? new ChassisSpeeds(lateralSpeed, forwardSpeed, rotationSpeed)
-                : ChassisSpeeds.fromFieldRelativeSpeeds(lateralSpeed, forwardSpeed, rotationSpeed,
-                        Rotation2d.fromDegrees(newAngle));
+        ChassisSpeeds speeds = isFieldOriented ?
+            ChassisSpeeds.fromFieldRelativeSpeeds(lateralSpeed, forwardSpeed, rotationSpeed, Rotation2d.fromDegrees(newAngle))
+            : new ChassisSpeeds(lateralSpeed, forwardSpeed, rotationSpeed);
 
         SwerveModuleState[] moduleStates = kinematics.toSwerveModuleStates(speeds);
 
+        var i = 0;
+        SwerveModulePosition[] positions = new SwerveModulePosition[driveModules.size()];
+        double[] driveSpeeds = new double[4]; //always 4 because of dashboard setup
+
         for (SwerveMotorModule module : driveModules) {
-            module.updateModuleValues(moduleStates);
+            module.updateModuleValues(moduleStates[i]);
+            positions[i] = module.getPosition();
+            if (i < driveSpeeds.length)
+                driveSpeeds[i] = module.getSpeed();
+            i++;
         }
+
+        odometry.update(Rotation2d.fromDegrees(newAngle), positions);
 
         var primaryModule = driveModules.get(0);
         if (primaryModule != null) {
@@ -126,6 +145,13 @@ public class SwerveDriveModule implements DriveModule {
 
         // update fake gyro angle
         currentAngle += rotationSpeed * fakeGyroRate;
+        if (Math.abs(previousAngle - currentAngle) > floatTolerance) {
+            System.out.printf("currentAngle: %f; previousAngle: %f\n", currentAngle, previousAngle);
+            previousAngle = currentAngle;
+        }
+
+        // update dashboard
+        SmartDashboard.putNumberArray("RobotDrive Motors", driveSpeeds);
     }
 
     public void SetController(ModuleController Controller) {

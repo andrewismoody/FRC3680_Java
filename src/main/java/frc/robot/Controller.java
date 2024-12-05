@@ -7,15 +7,18 @@ import java.util.function.Consumer;
 
 import edu.wpi.first.wpilibj.PS4Controller;
 import edu.wpi.first.wpilibj.XboxController;
+import edu.wpi.first.wpilibj.Joystick;
 
 public class Controller {
     PS4Controller ps4Controller;
     XboxController xboxController;
+    Joystick fsController;
     double thumbstickDeadZone = 0.2;
 
     public enum ControllerType {
         Xbox,
-        PS4
+        PS4,
+        FlightStick,
     }
 
     public enum ButtonName {
@@ -131,6 +134,8 @@ public class Controller {
                 xboxController = new XboxController(index);
             case PS4:
                 ps4Controller = new PS4Controller(index);
+            case FlightStick:
+                fsController = new Joystick(index);
         }
 
         RegisterBinaryButtonSupplier(ButtonName.TopButton, this::getTopButton);
@@ -159,6 +164,8 @@ public class Controller {
                 return xboxController.getXButton();
             case PS4:
                 return ps4Controller.getSquareButton();
+            case FlightStick:
+                return fsController.getRawButton(0);
         }
 
         return false;
@@ -170,6 +177,8 @@ public class Controller {
                 return xboxController.getYButton();
             case PS4:
                 return ps4Controller.getTriangleButton();
+            case FlightStick:
+                return fsController.getRawButton(1);
         }
 
         return false;
@@ -181,6 +190,8 @@ public class Controller {
                 return xboxController.getBButton();
             case PS4:
                 return ps4Controller.getCircleButton();
+            case FlightStick:
+                return fsController.getRawButton(2);
         }
 
         return false;
@@ -192,6 +203,8 @@ public class Controller {
                 return xboxController.getAButton();
             case PS4:
                 return ps4Controller.getCrossButton();
+            case FlightStick:
+                return fsController.getRawButton(3);
         }
 
         return false;
@@ -203,6 +216,8 @@ public class Controller {
                 return xboxController.getLeftBumper();
             case PS4:
                 return ps4Controller.getL1Button();
+            case FlightStick:
+                return fsController.getRawButton(4);
         }
 
         return false;
@@ -214,6 +229,8 @@ public class Controller {
                 return xboxController.getLeftTriggerAxis();
             case PS4:
                 return ps4Controller.getL2Button() ? 1.0 : 0.0;
+            case FlightStick:
+                return fsController.getRawAxis(2);
         }
 
         return 0.0;
@@ -225,6 +242,8 @@ public class Controller {
                 return xboxController.getRightBumper();
             case PS4:
                 return ps4Controller.getR1Button();
+            case FlightStick:
+                return fsController.getRawButton(5);
         }
 
         return false;
@@ -236,6 +255,8 @@ public class Controller {
                 return xboxController.getRightTriggerAxis();
             case PS4:
                 return ps4Controller.getR2Button() ? 1.0 : 0.0;
+            case FlightStick:
+                return fsController.getRawAxis(3);
         }
 
         return 0.0;
@@ -251,6 +272,8 @@ public class Controller {
             case PS4:
                 value = ps4Controller.getRightY();
                 break;
+            case FlightStick:
+                return fsController.getRawAxis(0);
         }
 
         return Math.abs(value) > thumbstickDeadZone ? value : 0.0;
@@ -266,6 +289,8 @@ public class Controller {
             case PS4:
                 value = ps4Controller.getRightX();
                 break;
+            case FlightStick:
+                return fsController.getRawAxis(1);
         }
 
         return Math.abs(value) > thumbstickDeadZone ? value : 0.0;
@@ -281,6 +306,8 @@ public class Controller {
             case PS4:
                 value = ps4Controller.getLeftY();
                 break;
+            case FlightStick:
+                return fsController.getRawAxis(0);
         }
 
         return Math.abs(value) > thumbstickDeadZone ? value : 0.0;
@@ -296,6 +323,8 @@ public class Controller {
            case PS4:
                 value = ps4Controller.getLeftX();
                 break;
+            case FlightStick:
+                return fsController.getRawAxis(1);
         }
 
         return Math.abs(value) > thumbstickDeadZone ? value : 0.0;
@@ -307,6 +336,8 @@ public class Controller {
                 return xboxController.getPOV();
             case PS4:
                 return ps4Controller.getPOV();
+            case FlightStick:
+                return fsController.getPOV();
         }
 
         return 0;
@@ -318,7 +349,9 @@ public class Controller {
                 return xboxController.getStartButton();
             case PS4:
                 return ps4Controller.getShareButton();
-        }
+             case FlightStick:
+                return fsController.getTop();
+       }
 
         return false;
     }
@@ -329,6 +362,8 @@ public class Controller {
                 return xboxController.getBackButton();
             case PS4:
                 return ps4Controller.getOptionsButton();
+             case FlightStick:
+                return fsController.getTrigger();
         }
 
         return false;
@@ -340,6 +375,8 @@ public class Controller {
                 return false;
             case PS4:
                 return ps4Controller.getPSButton();
+             case FlightStick:
+                return false;
         }
 
         return false;
