@@ -9,6 +9,7 @@ import edu.wpi.first.util.sendable.Sendable;
 import edu.wpi.first.util.sendable.SendableBuilder;
 import edu.wpi.first.wpilibj.DigitalOutput;
 import edu.wpi.first.wpilibj.DriverStation;
+import edu.wpi.first.wpilibj.RobotBase;
 import edu.wpi.first.hal.FRCNetComm.tResourceType;
 
 public class GyroBase implements Gyro, Sendable, AutoCloseable {
@@ -74,7 +75,7 @@ public class GyroBase implements Gyro, Sendable, AutoCloseable {
     private volatile boolean m_thread_active = false;
     private volatile boolean m_first_run = true;
     private boolean m_start_up_mode = true;
-    private boolean useFakeGyro = false;
+    private boolean useFakeGyro = !RobotBase.isReal();
 
     private SimDevice m_simDevice;
     private SimDouble m_simGyroAngleX;
@@ -90,12 +91,11 @@ public class GyroBase implements Gyro, Sendable, AutoCloseable {
     private DigitalOutput m_status_led;
 
     public GyroBase() {
-        this(9, false);
+        this(9);
     }
 
-    public GyroBase(int readyPin, boolean UseFakeGyro) {
+    public GyroBase(int readyPin) {
         m_acquire_task = new Thread(new AcquireTask(this));
-        useFakeGyro = UseFakeGyro;
         
         m_simDevice = SimDevice.create("Gyro", readyPin);
         if (m_simDevice != null) {

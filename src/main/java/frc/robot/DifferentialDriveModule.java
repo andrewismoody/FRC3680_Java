@@ -2,6 +2,7 @@ package frc.robot;
 
 import edu.wpi.first.wpilibj.drive.DifferentialDrive;
 import edu.wpi.first.wpilibj.motorcontrol.MotorController;
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 
 public class DifferentialDriveModule implements DriveModule {
     String moduleID;
@@ -50,6 +51,9 @@ public class DifferentialDriveModule implements DriveModule {
         }
 
         driveController.arcadeDrive(currentForwardSpeed, currentRotationAngle);
+
+        // update dashboard
+        SmartDashboard.putNumberArray("RobotDrive Motors", new double[]{leftMotor.get(), rightMotor.get()});
     }
 
     public void Initialize() {

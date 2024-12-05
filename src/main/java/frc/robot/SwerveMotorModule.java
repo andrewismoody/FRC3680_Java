@@ -8,8 +8,8 @@ import java.util.concurrent.TimeUnit;
 import edu.wpi.first.math.controller.PIDController;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Translation2d;
+import edu.wpi.first.math.kinematics.SwerveModulePosition;
 import edu.wpi.first.math.kinematics.SwerveModuleState;
-import edu.wpi.first.units.Time;
 import frc.robot.encoder.Encoder;
 
 public class SwerveMotorModule {
@@ -19,6 +19,7 @@ public class SwerveMotorModule {
 
   Translation2d currentPosition = new Translation2d();
   Translation2d previousPosition = new Translation2d();
+  double currentDistance;
 
   Long previousUpdate = System.nanoTime();
 
@@ -73,6 +74,10 @@ public class SwerveMotorModule {
 
     // not used for absolute encoders
     AngleEncoder.setReverseDirection(InvertRotation);
+  }
+
+  public SwerveModulePosition getPosition() {
+    return new SwerveModulePosition(currentDistance, currentAngle);
   }
 
   public void setDriveModule(SwerveDriveModule DriveModule) {
@@ -214,6 +219,8 @@ public class SwerveMotorModule {
     var currentUpdate = System.nanoTime();
     var elapsedTime = (TimeUnit.NANOSECONDS.toMillis(currentUpdate - previousUpdate) / 1000.0);
 
+    currentDistance = rawMotorSpeed * elapsedTime;
+
     // set fake position
     var delta = new Translation2d(Math.cos(optAngle.getRadians()) * rawMotorSpeed * elapsedTime, Math.sin(optAngle.getRadians()) * rawMotorSpeed * elapsedTime);
     // System.out.printf("%s delta: %s\n", moduleID, delta);
@@ -224,6 +231,10 @@ public class SwerveMotorModule {
     }
 
     previousUpdate = System.nanoTime();
+  }
+
+  public double getSpeed() {
+    return previousDriveSpeed;
   }
 
 }

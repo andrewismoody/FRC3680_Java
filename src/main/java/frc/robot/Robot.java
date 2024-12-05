@@ -5,17 +5,18 @@
 package frc.robot;
 
 import edu.wpi.first.math.geometry.Translation2d;
+import edu.wpi.first.wpilibj.Preferences;
 import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj.motorcontrol.PWMSparkMax;
 import edu.wpi.first.wpilibj.motorcontrol.PWMVictorSPX;
 import edu.wpi.first.wpilibj.motorcontrol.Spark;
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import frc.robot.Controller.ButtonName;
 import frc.robot.Controller.ControllerType;
 import frc.robot.gyro.GyroBase;
 import frc.robot.encoder.AnalogAbsoluteEncoder;
 import frc.robot.encoder.Encoder;
-import frc.robot.encoder.I2CAbsoluteEncoder;
 import frc.robot.encoder.QuadEncoder;
 
 /**
@@ -39,10 +40,12 @@ public class Robot extends TimedRobot {
   final PWMVictorSPX m_pwm9 = new PWMVictorSPX(9);
   final PWMVictorSPX m_pwm10 = new PWMVictorSPX(10);
 
-  final Encoder m_enc1 = new QuadEncoder(0, 1);
+  // JE motor is 44.4 pulses per rotation, and it reports in degrees, so there are 8.108 degress per pulse.
+  // not used for absolute encoders
+  final Encoder m_enc1 = new QuadEncoder(0, 1, 8.108);
   final Encoder m_enc2 = new AnalogAbsoluteEncoder(1);
 
-  final GyroBase m_gyro = new GyroBase(9, true);
+  final GyroBase m_gyro = new GyroBase(9);
 
   final Controller m_controller = new Controller(0, ControllerType.Xbox);
 
@@ -88,7 +91,11 @@ public class Robot extends TimedRobot {
 
   DifferentialDriveModule diffDriveModule = new DifferentialDriveModule("differentialDrive", m_pwm1, m_pwm2);
 
-  ModuleController modules = new ModuleController(swerveDriveModule, m_divider);
+  ModuleController modules;
+
+  public static final String DriveSelectionKey = "DriveSelection";
+  public static final String DriveSelectionSwerve = "Swerve";
+  public static final String DriveSelectionDifferential = "Differential";
 
   public Robot() {
     // SendableRegistry.addChild(m_robotDrive, m_leftDrive);
@@ -101,6 +108,18 @@ public class Robot extends TimedRobot {
    */
   @Override
   public void robotInit() {
+    Preferences.initString(DriveSelectionKey, DriveSelectionSwerve);
+    String DriveSelection = Preferences.getString(DriveSelectionKey, DriveSelectionSwerve);
+
+    switch(DriveSelection) {
+      case DriveSelectionDifferential:
+        modules = new ModuleController(diffDriveModule, m_divider);
+      case DriveSelectionSwerve:
+      default:
+        modules = new ModuleController(swerveDriveModule, m_divider);
+        break;
+    }
+
     modules.AddModule(intake);
     modules.AddModule(ejector);
     modules.AddModule(ejectorSlow);
@@ -111,10 +130,6 @@ public class Robot extends TimedRobot {
     swerveDriveModule.debug = false;
     leftFrontMM.debugAngle = true;
     leftFrontMM.debugSpeed = false;
-    
-    // JE motor is 44.4 pulses per rotation, and it reports in degrees, so there are 8.108 degress per pulse.
-    // not used for absolute encoders
-    m_enc1.setDistancePerPulse(8.108);
 
     // three different modules operate the same component differently
     m_controller.RegisterBinaryButtonConsumer(ButtonName.LeftButton, ejector::ProcessState);
@@ -168,7 +183,13 @@ public class Robot extends TimedRobot {
 
   /** This function is called periodically during teleoperated mode. */
   @Override
-  public void teleopPeriodic() {    
+  public void teleopPeriodic() { 
+    SmartDashboard.putNumber("Gyro", m_gyro.getAngle());
+
+    // get settings from dashboard
+    // slider 0 is motor speed
+    modules.setSpeedMod(SmartDashboard.getNumber("DB/Slider 0", 1.0));
+
     m_controller.ProcessButtons();
     modules.ProcessDrive();
   }

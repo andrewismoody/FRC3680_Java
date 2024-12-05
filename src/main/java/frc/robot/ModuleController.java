@@ -7,6 +7,7 @@ public class ModuleController {
   DriveModule driveModule;
 
   double divider = 0.5;
+  double speedMod = 1.0;
 
   private double inverseValue = 1.0;
   private double dividerValue = 1.0;
@@ -58,20 +59,25 @@ public class ModuleController {
 
   public double ApplyModifiers(double value, boolean affectSpeed) {
     value *= inverseValue;
-    var speedMod = 1.0;
+    var thisSpeedMod = speedMod;
 
     if (!speedLock && speedDilation < 0)
       // get the inverse of the Y value subtracted from 1 since the axis is reflected along the X axis
       // >= 0 is always full speed, anything less is a fraction of full speed starting at 1 down to 0
-      speedMod = 1 - -speedDilation;
+      thisSpeedMod = 1 - -speedDilation;
 
     if (affectSpeed)
-      value *= dividerValue * speedMod;
+      value *= dividerValue * thisSpeedMod;
     
     return value;
   }
 
   public void ProcessDrive() {
     driveModule.ProcessState();
+  }
+
+  public void setSpeedMod(double newSpeed) {
+    if (newSpeed > 0.0)
+      speedMod = newSpeed;
   }
 }

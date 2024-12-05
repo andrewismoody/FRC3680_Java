@@ -6,20 +6,20 @@ import edu.wpi.first.wpilibj.I2C.Port;
 public class I2CGyro extends GyroBase {
     private I2C myI2c;
 
-    public I2CGyro(boolean UseFakeGyro) {
-        this(Port.kOnboard, 0x68, 9, UseFakeGyro);
+    public I2CGyro() {
+        this(Port.kOnboard, 0x68, 9);
     }
 
-    public I2CGyro(int readyPin, boolean UseFakeGyro) {
-        this(Port.kOnboard, 0x68, readyPin, UseFakeGyro);
+    public I2CGyro(int readyPin) {
+        this(Port.kOnboard, 0x68, readyPin);
     }
 
-    public I2CGyro(Port myPort, int readyPin, boolean UseFakeGyro) {
-        this(myPort, 0x68, readyPin, UseFakeGyro);
+    public I2CGyro(Port myPort, int readyPin) {
+        this(myPort, 0x68, readyPin);
     }
 
-    public I2CGyro(Port myPort, int myAddr, int readyPin, boolean UseFakeGyro) {
-        super(readyPin, UseFakeGyro);
+    public I2CGyro(Port myPort, int myAddr, int readyPin) {
+        super(readyPin);
 
         myI2c = new I2C(myPort, myAddr);
     }
