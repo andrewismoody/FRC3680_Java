@@ -5,6 +5,8 @@
 package frc.robot;
 
 import edu.wpi.first.math.geometry.Translation2d;
+import edu.wpi.first.wpilibj.DriverStation;
+import edu.wpi.first.wpilibj.GenericHID;
 import edu.wpi.first.wpilibj.Preferences;
 import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj.Timer;
@@ -47,7 +49,7 @@ public class Robot extends TimedRobot {
 
   final GyroBase m_gyro = new GyroBase(9);
 
-  final Controller m_controller = new Controller(0, ControllerType.Xbox);
+  Controller m_controller; // = new Controller(0, ControllerType.Xbox);
 
   final Timer m_timer = new Timer();
 
@@ -130,6 +132,40 @@ public class Robot extends TimedRobot {
     swerveDriveModule.debug = false;
     leftFrontMM.debugAngle = true;
     leftFrontMM.debugSpeed = false;
+
+    JoystickIndexLoop:
+    for (int j = 0; j < 6; j++) {
+      System.out.printf("Checking for joystick on port %d\n", j);
+
+      if (DriverStation.isJoystickConnected(j)) {
+        var jtype = DriverStation.getJoystickType(j);
+        System.out.printf("Joystick is connected on port %d; found type %d\n", j, jtype);
+        switch (GenericHID.HIDType.of(jtype)) {
+          case kXInputFlightStick, kHIDFlight:
+            System.out.printf("Joystick is on port %d is a FlightStick\n", j);
+            m_controller = new Controller(j, ControllerType.FlightStick);
+            break JoystickIndexLoop;
+          default:
+          case kXInputGamepad, kHIDGamepad:
+            if (DriverStation.getJoystickIsXbox(j)) {
+              System.out.printf("Joystick is on port %d is an Xbox controller\n", j);
+              m_controller = new Controller(j, ControllerType.Xbox);
+              break JoystickIndexLoop;
+            } else {
+              System.out.printf("Joystick is on port %d is not an Xbox controller, assuming PS4\n", j);
+              m_controller = new Controller(j, ControllerType.PS4);
+              break JoystickIndexLoop;
+            }
+        }
+      } else {
+        System.out.printf("Joystick is not connected on port %d\n", j);
+      }
+    }
+
+    if (m_controller == null) {
+      System.out.println("no joysticks detected!  Assuming XBox Controller on port 0");
+      // m_controller = new Controller(0, ControllerType.Xbox);
+    }
 
     // three different modules operate the same component differently
     m_controller.RegisterBinaryButtonConsumer(ButtonName.LeftButton, ejector::ProcessState);
