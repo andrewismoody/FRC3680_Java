@@ -49,7 +49,7 @@ public class SwerveMotorModule {
   double previousEncoderAngle;
   double accumulatedMotorSpeed = 0.0;
   long rotationStartTime = 0;
-  long rotationLimitTime = 1000; // one second
+  long rotationLimitTime = 2 * 1000;
 
   PIDController pidController = new PIDController(0.15, 0.0005, 0); // p=0.2
 
@@ -132,9 +132,14 @@ public class SwerveMotorModule {
     }
 
     var delAngle = tarAngle.minus(currentAngle).getRadians() + 0.0; // add 0 to prevent negative zero
+    // attempted to adjust for deceleration
+    var rate = (previousCurrentAngle - currentRad) / (elapsedTime / 1000);
+    var decelDistance = rate / (driveModule.rotationSpeed / 1.5);
+    if (Math.abs(delAngle) < Math.abs(decelDistance))
+      delAngle = 0.0;
     if (Math.abs(previousDeltaAngle - delAngle) > floatTolerance) {
       if (debugAngle) {
-        System.out.printf("%s delta angle: %f; target angle: %f; current angle: %f; elapsed time: %f\n", moduleID, delAngle, tarRad, currentRad, elapsedTime / 1000);
+        System.out.printf("%s delta angle: %f; target angle: %f; current angle: %f; elapsed time: %f; rate: %f\n", moduleID, delAngle, tarRad, currentRad, elapsedTime / 1000, rate);
       }
       previousDeltaAngle = delAngle;
 
@@ -158,16 +163,18 @@ public class SwerveMotorModule {
     motorSpeed = // usePID ? motorSpeed :
       motorSpeed * (driveModule.rotationSpeed * (elapsedTime / 1000));
 
+    // if we haven't moved, and our delta angle is larger than float tolerance, boost the motor voltage
     if (Math.abs(previousCurrentAngle - currentRad) <= floatTolerance && Math.abs(delAngle) > floatTolerance) {
-      double speedIncrement = 0.1;
+      double speedIncrement = 0.01;
 
-      // accumulatedMotorSpeed = accumulatedMotorSpeed + speedIncrement;
+      accumulatedMotorSpeed = accumulatedMotorSpeed + speedIncrement;
       // if (debugAngle)
       //   System.out.printf("%s increasing speedincrement: %f\n", moduleID, accumulatedMotorSpeed);
 
       if (rotationStartTime == 0)
         rotationStartTime = System.currentTimeMillis();
       else if (System.currentTimeMillis() - rotationStartTime > rotationLimitTime) {
+        // don't keep trying if it doesn't move - don't want to burn up the motor
         if (!gaveUp && debugAngle)
           System.out.printf("%s giving up\n", moduleID);
         gaveUp = true;
@@ -175,6 +182,7 @@ public class SwerveMotorModule {
         accumulatedMotorSpeed = 0.0;
       }
     } else {
+      // we moved again, or the delta angle is smaller than our tolerance, reset everything
       accumulatedMotorSpeed = 0.0;
       rotationStartTime = 0;
       gaveUp = false;
@@ -184,11 +192,14 @@ public class SwerveMotorModule {
 
     motorSpeed = motorSpeed + (accumulatedMotorSpeed * sign);
 
+    // need to apply the inversion before this point - if we're not turning the right way, our calculations up to this point will be wrong
+    // should consider inverting the target angle?
     if (invertRotation)
       motorSpeed *= -1;
 
-    if (Math.abs(previousRotationSpeed - motorSpeed) > 0.001 && debugAngle) {
-      System.out.printf("%s setAngle: motor speed: %f\n", moduleID, motorSpeed);
+    if (Math.abs(previousRotationSpeed - motorSpeed) > floatTolerance) {
+      if (debugAngle)
+        System.out.printf("%s setAngle: motor speed: %f\n", moduleID, motorSpeed);
       previousRotationSpeed = motorSpeed;
     }
     

@@ -78,7 +78,8 @@ public class Robot extends TimedRobot {
   // higher numbers result in faster drive speeds.  To slow it down, send a higher number, which will result in a lower voltage being sent to the motor for any given speed.
   // 775/redline motors run at 21,000 rpms, with a 20:1 gearbox, 1,050 rpm, divided by 60 is 17.5 rotations per second, multiplied by 6.28 radians is 109.9 radians per second
   // 775/redline motors run at 21,000 rpms, with a 100:1 gearbox, 210 rpm, divided by 60 is 3.5 rotations per second, multiplied by 6.28 radians is 21.98 radians per second
-  double m_rotationSpeed = 21.98; //32.40 / m_speedMod; // should be actual radians per second that is achievable by the rotation motor
+  // 775/redline motors run at 21,000 rpms, with a 125:1 gearbox, 168 rpm, divided by 60 is 2.8 rotations per second, multiplied by 6.28 radians is 17.584 radians per second
+  double m_rotationSpeed = 35.168; // 17.584; // 21.98; //32.40 / m_speedMod; // should be actual radians per second that is achievable by the rotation motor
   
   SingleMotorModule intake = new SingleMotorModule("intake", m_pwm5, m_intakeSpeed, false);
   DualMotorModule ejector = new DualMotorModule("ejector", m_pwm6, m_pwm7, m_ejectSpeed, true, false);
