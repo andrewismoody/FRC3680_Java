@@ -13,13 +13,13 @@ import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj.motorcontrol.PWMSparkMax;
 import edu.wpi.first.wpilibj.motorcontrol.PWMVictorSPX;
 import edu.wpi.first.wpilibj.motorcontrol.Spark;
+import edu.wpi.first.wpilibj.motorcontrol.Talon;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import frc.robot.Controller.ButtonName;
 import frc.robot.Controller.ControllerType;
 import frc.robot.gyro.GyroBase;
 import frc.robot.encoder.AnalogAbsoluteEncoder;
 import frc.robot.encoder.Encoder;
-import frc.robot.encoder.QuadEncoder;
 
 /**
  * The VM is configured to automatically run this class, and to call the functions corresponding to
@@ -28,8 +28,10 @@ import frc.robot.encoder.QuadEncoder;
  * directory.
  */
 public class Robot extends TimedRobot {
+  final String codeBuildVersion = "2024.12.05-PreSeason";
+
   final PWMSparkMax m_pwm1 = new PWMSparkMax(1);
-  final PWMSparkMax m_pwm2 = new PWMSparkMax(2);
+  final Talon m_pwm2 = new Talon(2);
 
   final Spark m_pwm3 = new Spark(3);
   final Spark m_pwm4 = new Spark(4);
@@ -44,7 +46,8 @@ public class Robot extends TimedRobot {
 
   // JE motor is 44.4 pulses per rotation, and it reports in degrees, so there are 8.108 degress per pulse.
   // not used for absolute encoders
-  final Encoder m_enc1 = new QuadEncoder(0, 1, 8.108);
+  //final Encoder m_enc1 = new QuadEncoder(0, 1, 8.108);
+  final Encoder m_enc1 = new AnalogAbsoluteEncoder(0);
   final Encoder m_enc2 = new AnalogAbsoluteEncoder(1);
 
   final GyroBase m_gyro = new GyroBase(9);
@@ -69,12 +72,13 @@ public class Robot extends TimedRobot {
   // sport gear box with 4:1 ratio on a 4" wheel yields 91.7 ft/sec which is 27.95016 meters/sec
   // https://www.andymark.com/products/sport-gearbox
   // higher numbers result in faster drive speeds.  To slow it down, send a higher number, which will result in a lower voltage being sent to the motor for any given speed.
-  double m_driveSpeed = 27.95 / m_speedMod; // should be actual meters per second that is achievable by the drive motor
+  double m_driveSpeed = 3.721; //5.486 / m_speedMod; // 27.95 / m_speedMod; // should be actual meters per second that is achievable by the drive motor
   // JE motor turns at 310 RPM (rotations per minute) which is 5.16 rotations per second, which is 32.40 radians per second
   // https://cdn.andymark.com/media/W1siZiIsIjIwMjIvMDIvMDIvMDgvMzMvMTIvNzMzYmY3YmQtYTI0MC00ZDkyLWI5NGMtYjRlZWU1Zjc4NzY0L2FtLTQyMzNhIEpFLVBMRy00MTAgbW90b3IuUERGIl1d/am-4233a%20JE-PLG-410%20motor.PDF?sha=5387f684d4e2ce1f
   // higher numbers result in faster drive speeds.  To slow it down, send a higher number, which will result in a lower voltage being sent to the motor for any given speed.
-  // 775/redline motors run at 21,000 rpms, with a 20:1 gearbox, 1,050 rpm, divided by 60 is 17.5 rotations per second, divided by 6.28 radians is 2.787 radians per second
-  double m_rotationSpeed = 32.40 / m_speedMod; // should be actual radians per second that is achievable by the rotation motor
+  // 775/redline motors run at 21,000 rpms, with a 20:1 gearbox, 1,050 rpm, divided by 60 is 17.5 rotations per second, multiplied by 6.28 radians is 109.9 radians per second
+  // 775/redline motors run at 21,000 rpms, with a 100:1 gearbox, 210 rpm, divided by 60 is 3.5 rotations per second, multiplied by 6.28 radians is 21.98 radians per second
+  double m_rotationSpeed = 21.98; //32.40 / m_speedMod; // should be actual radians per second that is achievable by the rotation motor
   
   SingleMotorModule intake = new SingleMotorModule("intake", m_pwm5, m_intakeSpeed, false);
   DualMotorModule ejector = new DualMotorModule("ejector", m_pwm6, m_pwm7, m_ejectSpeed, true, false);
@@ -110,6 +114,9 @@ public class Robot extends TimedRobot {
    */
   @Override
   public void robotInit() {
+    SmartDashboard.putString("DB/String 0", codeBuildVersion);
+    SmartDashboard.putNumber("DB/Slider 0", m_speedMod);
+
     Preferences.initString(DriveSelectionKey, DriveSelectionSwerve);
     String DriveSelection = Preferences.getString(DriveSelectionKey, DriveSelectionSwerve);
 
@@ -164,7 +171,7 @@ public class Robot extends TimedRobot {
 
     if (m_controller == null) {
       System.out.println("no joysticks detected!  Assuming XBox Controller on port 0");
-      // m_controller = new Controller(0, ControllerType.Xbox);
+      m_controller = new Controller(0, ControllerType.Xbox);
     }
 
     // three different modules operate the same component differently
@@ -226,6 +233,10 @@ public class Robot extends TimedRobot {
     // slider 0 is motor speed
     modules.setSpeedMod(SmartDashboard.getNumber("DB/Slider 0", 1.0));
 
+    if (SmartDashboard.getBoolean("DB/Button 0", false))
+      modules.setInverseValue(1.0);
+    else
+      modules.setInverseValue(-1.0);
     m_controller.ProcessButtons();
     modules.ProcessDrive();
   }

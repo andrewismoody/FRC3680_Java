@@ -80,4 +80,8 @@ public class ModuleController {
     if (newSpeed > 0.0)
       speedMod = newSpeed;
   }
+
+  public void setInverseValue(double newInverse) {
+    inverseValue = newInverse;
+  }
 }

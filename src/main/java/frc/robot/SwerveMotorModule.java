@@ -56,6 +56,7 @@ public class SwerveMotorModule {
   public boolean debugAngle = false;
   public boolean debugSpeed = false;
   public boolean usePID = false;
+  boolean gaveUp = false;
 
   boolean invertDrive = false;
   boolean invertRotation = false;
@@ -123,31 +124,30 @@ public class SwerveMotorModule {
       previousDistance = distance;
     }
 
-    if (Math.abs(previousCurrentAngle - currentRad) > floatTolerance && debugAngle) {
-      System.out.printf("%s current angle: %f; previous current angle: %f\n", moduleID, currentRad, previousCurrentAngle);
-      previousCurrentAngle = currentRad;
-    }
-
     var tarAngle = state.angle;
     var tarRad = tarAngle.getRadians() + 0.0; // add 0 to prevent negative zero
     if (Math.abs(previousTargetAngle - tarRad) > floatTolerance && debugAngle) {
-      System.out.printf("%s target angle radians: %f\n", moduleID, tarRad);
+      //System.out.printf("%s target angle radians: %f\n", moduleID, tarRad);
       previousTargetAngle = tarRad;
     }
 
     var delAngle = tarAngle.minus(currentAngle).getRadians() + 0.0; // add 0 to prevent negative zero
-    if (Math.abs(previousDeltaAngle - delAngle) > floatTolerance && debugAngle) {
-      System.out.printf("%s delta angle radians: %f\n", moduleID, delAngle);
+    if (Math.abs(previousDeltaAngle - delAngle) > floatTolerance) {
+      if (debugAngle) {
+        System.out.printf("%s delta angle: %f; target angle: %f; current angle: %f; elapsed time: %f\n", moduleID, delAngle, tarRad, currentRad, elapsedTime / 1000);
+      }
       previousDeltaAngle = delAngle;
 
       // reset give up parameters
       rotationStartTime = 0;
       accumulatedMotorSpeed = 0.0;
+      gaveUp = false;
     }
 
-    var motorSpeed = 
+    var motorSpeed =
       Math.abs(delAngle) > floatTolerance ?
-        usePID ? pidController.calculate(delAngle, tarRad) : delAngle
+        // usePID ? pidController.calculate(delAngle, tarRad) :
+        delAngle
       :
         0.0
     ;
@@ -155,24 +155,29 @@ public class SwerveMotorModule {
     // start rotating wheel to the new optimized angle
     // get volts conversion - need to do real-world measurements to understand/identify this conversion
     // can't use this in conjunction with PID controller - not sure this is true?
-    motorSpeed = motorSpeed / (usePID ? 1.0 : (driveModule.rotationSpeed * (elapsedTime / 1000)));
+    motorSpeed = // usePID ? motorSpeed :
+      motorSpeed * (driveModule.rotationSpeed * (elapsedTime / 1000));
 
     if (Math.abs(previousCurrentAngle - currentRad) <= floatTolerance && Math.abs(delAngle) > floatTolerance) {
-      System.out.printf("%s increasing speedincrement: %f\n", moduleID, accumulatedMotorSpeed);
       double speedIncrement = 0.1;
 
-      accumulatedMotorSpeed = accumulatedMotorSpeed + speedIncrement;
+      // accumulatedMotorSpeed = accumulatedMotorSpeed + speedIncrement;
+      // if (debugAngle)
+      //   System.out.printf("%s increasing speedincrement: %f\n", moduleID, accumulatedMotorSpeed);
 
       if (rotationStartTime == 0)
         rotationStartTime = System.currentTimeMillis();
       else if (System.currentTimeMillis() - rotationStartTime > rotationLimitTime) {
-        System.out.printf("%s giving up\n", moduleID);
+        if (!gaveUp && debugAngle)
+          System.out.printf("%s giving up\n", moduleID);
+        gaveUp = true;
         motorSpeed = 0.0;
         accumulatedMotorSpeed = 0.0;
       }
     } else {
       accumulatedMotorSpeed = 0.0;
       rotationStartTime = 0;
+      gaveUp = false;
     }
 
     double sign = motorSpeed > 0 ? 1 : -1;
@@ -188,6 +193,11 @@ public class SwerveMotorModule {
     }
     
     rotatorMotor.set(motorSpeed);
+
+    if (Math.abs(previousCurrentAngle - currentRad) > floatTolerance && debugAngle) {
+      //  System.out.printf("%s current angle: %f; previous current angle: %f\n", moduleID, currentRad, previousCurrentAngle);
+    }
+    previousCurrentAngle = currentRad;
 
     if (useFakeEncoder) {
       // fake adjust current angle to simulate encoder input

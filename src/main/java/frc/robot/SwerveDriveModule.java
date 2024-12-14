@@ -151,7 +151,9 @@ public class SwerveDriveModule implements DriveModule {
         }
 
         // update dashboard
-        SmartDashboard.putNumberArray("RobotDrive Motors", driveSpeeds);
+        SmartDashboard.putNumberArray("RobotDrive Motors", new double[] {driveModules.get(0).getSpeed(), driveModules.get(1).getSpeed(), 0.0, 0.0});
+        //SmartDashboard.putNumberArray("My Motors", new double[] {driveModules.get(0).getSpeed(), driveModules.get(1).getSpeed(), 0.0, 0.0});
+        //System.out.printf("leftFront speed: %f\n", driveModules.get(0).getSpeed()); // , driveModules.get(1).getSpeed(), 0.0, 0.0});
     }
 
     public void SetController(ModuleController Controller) {
