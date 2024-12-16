@@ -18,6 +18,7 @@ public class SwerveDriveModule implements DriveModule {
     ArrayList<SwerveMotorModule> driveModules = new ArrayList<SwerveMotorModule>();
     double driveSpeed;
     double rotationSpeed;
+    double rotationMultiplier = 10.0;
     ModuleController controller;
     SwerveDriveKinematics kinematics;
     boolean isFieldOriented;
@@ -90,7 +91,7 @@ public class SwerveDriveModule implements DriveModule {
     }
 
     public void ProcessRotationAngle(double value) {
-        rotationAngle = -value;
+        rotationAngle = value * rotationMultiplier;
 
         if (debug && rotationAngle != previousRotationAngle)
             System.out.printf("%s rotationAngle: %f\n", moduleID, rotationAngle);
@@ -108,11 +109,11 @@ public class SwerveDriveModule implements DriveModule {
         // set the chassis speed object according to current controller values
         double forwardSpeed = this.forwardSpeed * controller.ApplyModifiers(driveSpeed);
         double lateralSpeed = this.lateralSpeed * controller.ApplyModifiers(driveSpeed);
-        double rotationSpeed = rotationAngle; // * controller.ApplyModifiers(this.rotationSpeed);
+        double thisRotationSpeed = rotationAngle; // * controller.ApplyModifiers(this.rotationSpeed);
 
         ChassisSpeeds speeds = isFieldOriented ?
-            ChassisSpeeds.fromFieldRelativeSpeeds(lateralSpeed, forwardSpeed, rotationSpeed, Rotation2d.fromDegrees(newAngle))
-            : new ChassisSpeeds(lateralSpeed, forwardSpeed, rotationSpeed);
+            ChassisSpeeds.fromFieldRelativeSpeeds(lateralSpeed, forwardSpeed, thisRotationSpeed, Rotation2d.fromDegrees(newAngle))
+            : new ChassisSpeeds(lateralSpeed, forwardSpeed, thisRotationSpeed);
 
         SwerveModuleState[] moduleStates = kinematics.toSwerveModuleStates(speeds);
 
@@ -144,7 +145,7 @@ public class SwerveDriveModule implements DriveModule {
         }
 
         // update fake gyro angle
-        currentAngle += rotationSpeed * fakeGyroRate;
+        currentAngle += thisRotationSpeed * fakeGyroRate;
         if (Math.abs(previousAngle - currentAngle) > floatTolerance) {
             System.out.printf("currentAngle: %f; previousAngle: %f\n", currentAngle, previousAngle);
             previousAngle = currentAngle;

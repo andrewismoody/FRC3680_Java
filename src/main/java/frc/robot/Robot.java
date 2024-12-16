@@ -194,7 +194,6 @@ public class Robot extends TimedRobot {
     m_controller.RegisterValueButtonConsumer(ButtonName.RightThumbstickY, swerveDriveModule::ProcessForwardSpeed);
     m_controller.RegisterValueButtonConsumer(ButtonName.RightThumbstickX, swerveDriveModule::ProcessLateralSpeed);
 
-    m_controller.SetValueButtonInversion(ButtonName.LeftThumbstickX, true);
     m_controller.RegisterValueButtonConsumer(ButtonName.LeftThumbstickX, swerveDriveModule::ProcessRotationAngle);
 
     m_controller.RegisterValueButtonConsumer(ButtonName.RightThumbstickY, diffDriveModule::ProcessForwardSpeed);
