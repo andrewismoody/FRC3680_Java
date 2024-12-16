@@ -111,23 +111,24 @@ public class SwerveMotorModule {
     // https://www.chiefdelphi.com/t/normal-spark-pid-p-i-and-d-values/427683/4
     var distance = currentAngle.getDegrees() + 0.0; // add zero to prevent negative zero
     var currentRad = currentAngle.getRadians() + 0.0; // add zero to prevent negative zero
+    var now = System.currentTimeMillis();
 
     if (previousTime == 0) {
       elapsedTime = 0;
     } else {
-      elapsedTime = System.currentTimeMillis() - previousTime;
+      elapsedTime = now - previousTime;
     }
-    previousTime = System.currentTimeMillis();
+    previousTime = now;
 
     if (Math.abs(previousDistance - distance) > floatTolerance && debugAngle) {
-      //System.out.printf("%s distance: %f; previous distance: %f\n", moduleID, distance, previousDistance);
+      //System.out.printf("%d | %s distance: %f; previous distance: %f\n", now, moduleID, distance, previousDistance);
       previousDistance = distance;
     }
 
     var tarAngle = state.angle;
     var tarRad = tarAngle.getRadians() + 0.0; // add 0 to prevent negative zero
     if (Math.abs(previousTargetAngle - tarRad) > floatTolerance && debugAngle) {
-      //System.out.printf("%s target angle radians: %f\n", moduleID, tarRad);
+      //System.out.printf("%d | %s target angle radians: %f\n", now, moduleID, tarRad);
       previousTargetAngle = tarRad;
     }
 
@@ -135,11 +136,9 @@ public class SwerveMotorModule {
     // attempted to adjust for deceleration
     var rate = (previousCurrentAngle - currentRad) / (elapsedTime / 1000);
     var decelDistance = rate / (driveModule.rotationSpeed / 1.5);
-    if (Math.abs(delAngle) < Math.abs(decelDistance))
-      delAngle = 0.0;
     if (Math.abs(previousDeltaAngle - delAngle) > floatTolerance) {
       if (debugAngle) {
-        System.out.printf("%s delta angle: %f; target angle: %f; current angle: %f; elapsed time: %f; rate: %f\n", moduleID, delAngle, tarRad, currentRad, elapsedTime / 1000, rate);
+        System.out.printf("%d | %s delta angle: %f; target angle: %f; current angle: %f; elapsed time: %f; rate: %f\n", now, moduleID, delAngle, tarRad, currentRad, elapsedTime / 1000, rate);
       }
       previousDeltaAngle = delAngle;
 
@@ -169,14 +168,14 @@ public class SwerveMotorModule {
 
       accumulatedMotorSpeed = accumulatedMotorSpeed + speedIncrement;
       // if (debugAngle)
-      //   System.out.printf("%s increasing speedincrement: %f\n", moduleID, accumulatedMotorSpeed);
+      //   System.out.printf("%d | %s increasing speedincrement: %f\n", now, moduleID, accumulatedMotorSpeed);
 
       if (rotationStartTime == 0)
         rotationStartTime = System.currentTimeMillis();
       else if (System.currentTimeMillis() - rotationStartTime > rotationLimitTime) {
         // don't keep trying if it doesn't move - don't want to burn up the motor
         if (!gaveUp && debugAngle)
-          System.out.printf("%s giving up\n", moduleID);
+          System.out.printf("%d | %s giving up\n", now, moduleID);
         gaveUp = true;
         motorSpeed = 0.0;
         accumulatedMotorSpeed = 0.0;
@@ -196,17 +195,20 @@ public class SwerveMotorModule {
     // should consider inverting the target angle?
     if (invertRotation)
       motorSpeed *= -1;
+    
+    if (Math.abs(delAngle) < Math.abs(decelDistance))
+      motorSpeed = 0.0;
 
     if (Math.abs(previousRotationSpeed - motorSpeed) > floatTolerance) {
       if (debugAngle)
-        System.out.printf("%s setAngle: motor speed: %f\n", moduleID, motorSpeed);
+        System.out.printf("%d | %s setAngle: motor speed: %f\n", now, moduleID, motorSpeed);
       previousRotationSpeed = motorSpeed;
     }
-    
+
     rotatorMotor.set(motorSpeed);
 
     if (Math.abs(previousCurrentAngle - currentRad) > floatTolerance && debugAngle) {
-      //  System.out.printf("%s current angle: %f; previous current angle: %f\n", moduleID, currentRad, previousCurrentAngle);
+      //  System.out.printf("%d | %s current angle: %f; previous current angle: %f\n", now, moduleID, currentRad, previousCurrentAngle);
     }
     previousCurrentAngle = currentRad;
 

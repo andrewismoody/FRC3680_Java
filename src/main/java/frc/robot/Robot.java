@@ -89,7 +89,7 @@ public class Robot extends TimedRobot {
   DualMotorModule intakeUpper = new DualMotorModule("intakeUpper", m_pwm6, m_pwm7, m_ejectSpeed / 2, false, true);
 
   // total length of robot is 32.375", centerline is 16.1875" from edge.  Drive axle center is 4" from edge - 12.1875" from center which is 309.56mm or 0.30956 meters
-  SwerveMotorModule leftFrontMM = new SwerveMotorModule("leftFront", new Translation2d(0.30956, 0.30956), m_pwm1, m_pwm2, m_enc1, m_encoderMultiplier, m_floatTolerance, false, false);
+  SwerveMotorModule leftFrontMM = new SwerveMotorModule("leftFront", new Translation2d(0.30956, 0.30956), m_pwm1, m_pwm2, m_enc1, m_encoderMultiplier, m_floatTolerance, true, false);
   SwerveMotorModule rightRearMM = new SwerveMotorModule("rightRear", new Translation2d(-0.30956, -0.30956), m_pwm3, m_pwm4, m_enc2, m_encoderMultiplier, m_floatTolerance, false, false);
   SwerveDriveModule swerveDriveModule = new SwerveDriveModule("swerveDrive", m_gyro, m_driveSpeed, m_rotationSpeed, isFieldOriented, m_floatTolerance
     , leftFrontMM
@@ -193,6 +193,8 @@ public class Robot extends TimedRobot {
 
     m_controller.RegisterValueButtonConsumer(ButtonName.RightThumbstickY, swerveDriveModule::ProcessForwardSpeed);
     m_controller.RegisterValueButtonConsumer(ButtonName.RightThumbstickX, swerveDriveModule::ProcessLateralSpeed);
+
+    m_controller.SetValueButtonInversion(ButtonName.LeftThumbstickX, true);
     m_controller.RegisterValueButtonConsumer(ButtonName.LeftThumbstickX, swerveDriveModule::ProcessRotationAngle);
 
     m_controller.RegisterValueButtonConsumer(ButtonName.RightThumbstickY, diffDriveModule::ProcessForwardSpeed);

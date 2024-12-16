@@ -48,6 +48,8 @@ public class Controller {
     Hashtable<ButtonName, ArrayList<Consumer<Double>>> ValueButtonConsumers = new Hashtable<Controller.ButtonName,ArrayList<Consumer<Double>>>();
     Hashtable<ButtonName, ArrayList<Consumer<Integer>>> POVButtonConsumers = new Hashtable<Controller.ButtonName,ArrayList<Consumer<Integer>>>();
 
+    Hashtable<ButtonName, Boolean> ValueButtonInversion = new Hashtable<>();
+
     void RegisterBinaryButtonSupplier(ButtonName button, Supplier<Boolean> func) {
         BinaryButtonSuppliers.put(button, func);
     }
@@ -58,6 +60,10 @@ public class Controller {
 
     void RegisterPOVButtonSupplier(ButtonName button, Supplier<Integer> func) {
         POVButtonSuppliers.put(button, func);
+    }
+
+    public void SetValueButtonInversion(ButtonName button, Boolean invert) {
+        ValueButtonInversion.put(button, invert);
     }
 
     public void RegisterBinaryButtonConsumer(ButtonName button, Consumer<Boolean> func) {
@@ -87,8 +93,12 @@ public class Controller {
     }
 
     public void GetValueButtonValue(ButtonName button) {
+        var value = GetValueButtonSupplier(button);
+        if (ValueButtonInversion.get(button) != null && ValueButtonInversion.get(button))
+            value *= -1;
+
         for (Consumer<Double> consumer : ValueButtonConsumers.get(button))
-            consumer.accept(GetValueButtonSupplier(button));
+            consumer.accept(value);
     }
 
     public void GetPOVButtonValue(ButtonName button) {
@@ -102,7 +112,7 @@ public class Controller {
         }
 
         for (ButtonName button : ValueButtonConsumers.keySet()) {
-            GetValueButtonValue(button);;
+            GetValueButtonValue(button);
         }
 
         for (ButtonName button : POVButtonConsumers.keySet()) {
