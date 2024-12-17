@@ -137,9 +137,11 @@ public class Robot extends TimedRobot {
     modules.AddModule(lifter);
     modules.AddModule(intakeUpper);
 
-    swerveDriveModule.debug = false;
-    leftFrontMM.debugAngle = true;
+    swerveDriveModule.debug = true;
+    leftFrontMM.debugAngle = false;
     leftFrontMM.debugSpeed = false;
+
+    m_enc1.setAngleOffsetDeg(25);
 
     JoystickIndexLoop:
     for (int j = 0; j < 6; j++) {
@@ -189,17 +191,23 @@ public class Robot extends TimedRobot {
     m_controller.RegisterBinaryButtonConsumer(ButtonName.RightShoulderButton, modules::ProcessInverse);
 
     m_controller.RegisterValueButtonConsumer(ButtonName.LeftTrigger, modules::ProcessDivider1);
-    m_controller.RegisterValueButtonConsumer(ButtonName.RightTrigger, modules::ProcessSpeedLock);
 
-    m_controller.RegisterValueButtonConsumer(ButtonName.RightThumbstickY, swerveDriveModule::ProcessForwardSpeed);
-    m_controller.RegisterValueButtonConsumer(ButtonName.RightThumbstickX, swerveDriveModule::ProcessLateralSpeed);
+    m_controller.SetValueButtonInversion(ButtonName.RightTrigger, true);
+    m_controller.RegisterValueButtonConsumer(ButtonName.RightTrigger, modules::ProcessSpeedDilation); // ProcessSpeedLock);
 
-    m_controller.RegisterValueButtonConsumer(ButtonName.LeftThumbstickX, swerveDriveModule::ProcessRotationAngle);
+    m_controller.SetValueButtonInversion(ButtonName.LeftThumbstickY, false);
+    m_controller.RegisterValueButtonConsumer(ButtonName.LeftThumbstickY, swerveDriveModule::ProcessForwardSpeed);
+
+    m_controller.SetValueButtonInversion(ButtonName.LeftThumbstickX, false);
+    m_controller.RegisterValueButtonConsumer(ButtonName.LeftThumbstickX, swerveDriveModule::ProcessLateralSpeed);
+
+    m_controller.SetValueButtonInversion(ButtonName.RightThumbstickX, false);
+    m_controller.RegisterValueButtonConsumer(ButtonName.RightThumbstickX, swerveDriveModule::ProcessRotationAngle);
 
     m_controller.RegisterValueButtonConsumer(ButtonName.RightThumbstickY, diffDriveModule::ProcessForwardSpeed);
     m_controller.RegisterValueButtonConsumer(ButtonName.LeftThumbstickX, diffDriveModule::ProcessRotationAngle);
 
-    m_controller.RegisterValueButtonConsumer(ButtonName.LeftThumbstickY, modules::ProcessSpeedDilation);
+    // m_controller.RegisterValueButtonConsumer(ButtonName.RightThumbstickY, modules::ProcessSpeedDilation);
   }
 
   /** This function is run once each time the robot enters autonomous mode. */

@@ -50,7 +50,8 @@ public class ModuleController {
   }
 
   public void ProcessSpeedDilation(double value) {
-      speedDilation = value;
+    var sign = value > 0 ? 1.0 : -1.0;
+    speedDilation = Math.abs(value) < 0.75 ? value : 0.75 * sign;
   }
 
   public double ApplyModifiers(double value) {
