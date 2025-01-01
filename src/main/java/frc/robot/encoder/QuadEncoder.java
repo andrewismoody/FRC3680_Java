@@ -3,6 +3,7 @@ package frc.robot.encoder;
 public class QuadEncoder implements Encoder {
     
     edu.wpi.first.wpilibj.Encoder internalEncoder;
+    double angleOffsetRad = 0.0; // angle to subtract from actual angle to zero the encoder
 
     public QuadEncoder(int pinA, int pinB) {
         internalEncoder = new edu.wpi.first.wpilibj.Encoder(pinA, pinB);
@@ -22,18 +23,25 @@ public class QuadEncoder implements Encoder {
         setReverseDirection(reverse);
     }
 
-    @Override
+    public void setAngleOffsetDeg(double value) {
+        setAngleOffsetRad(value * 0.0174532);
+    }
+
+    public void setAngleOffsetRad(double value) {
+        angleOffsetRad = value;
+    }
+
     public void setDistancePerPulse(double dpp) {
         internalEncoder.setDistancePerPulse(dpp);
     }
 
-    @Override
     public void setReverseDirection(boolean reverse) {
         internalEncoder.setReverseDirection(reverse);
     }
 
-    @Override
     public double getDistance() {
+        // TODO: implement angle offset
+        
         return internalEncoder.getDistance();
     }
 }

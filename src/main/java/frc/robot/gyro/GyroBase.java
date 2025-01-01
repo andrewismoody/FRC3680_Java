@@ -120,7 +120,7 @@ public class GyroBase implements Gyro, Sendable, AutoCloseable {
                     "IMU Detected. Starting initial calibration delay.", false);
                 // Wait for whatever time the user set as the start-up delay
                 try {
-                    Thread.sleep((long) (10 * 1000));
+                    Thread.sleep((long) 10); // (10 * 1000));
                 } catch (InterruptedException e) {
                 }
                 // Execute calibration routine
