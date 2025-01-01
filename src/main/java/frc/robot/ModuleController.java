@@ -1,9 +1,11 @@
 package frc.robot;
 
-import java.util.ArrayList;
+import java.util.Hashtable;
+
+import edu.wpi.first.math.geometry.Translation3d;
 
 public class ModuleController {
-  ArrayList<RobotModule> modules = new ArrayList<RobotModule>();
+  Hashtable<String, RobotModule> modules = new Hashtable<String, RobotModule>();
   DriveModule driveModule;
 
   double divider = 0.5;
@@ -20,9 +22,17 @@ public class ModuleController {
     divider = Divider;
   }
 
+  public DriveModule GetDriveModule() {
+    return driveModule;
+  }
+
   public void AddModule(RobotModule module) {
     module.SetController(this);
-    modules.add(module);
+    modules.put(module.GetModuleID(), module);
+  }
+
+  public RobotModule GetModule(String label) {
+    return modules.get(label);
   }
 
   public void ProcessDivider1(double value) {
@@ -84,5 +94,9 @@ public class ModuleController {
 
   public void setInverseValue(double newInverse) {
     inverseValue = newInverse;
+  }
+
+  public Translation3d GetPosition() {
+    return driveModule.GetPosition();
   }
 }

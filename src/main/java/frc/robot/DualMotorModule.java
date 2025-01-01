@@ -46,4 +46,8 @@ public class DualMotorModule implements RobotModule {
     public void SetController(ModuleController Controller) {
         controller = Controller;
     }   
+
+    public String GetModuleID() {
+        return moduleID;
+    }
 }
