@@ -1,5 +1,6 @@
 package frc.robot;
 
+import edu.wpi.first.math.geometry.Translation3d;
 import edu.wpi.first.wpilibj.drive.DifferentialDrive;
 import edu.wpi.first.wpilibj.motorcontrol.MotorController;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
@@ -22,6 +23,8 @@ public class DifferentialDriveModule implements DriveModule {
     double currentRotationAngle = 0.0;
     double previousForwardSpeed = 0.0;
     double previousRotationAngle = 0.0;
+
+    Translation3d currentPosition = new Translation3d();
 
     public DifferentialDriveModule(String ModuleID, MotorController LeftMotor, MotorController RightMotor) {
         moduleID = ModuleID;
@@ -73,6 +76,10 @@ public class DifferentialDriveModule implements DriveModule {
 
     public void SetController(ModuleController Controller) {
         controller = Controller;
+    }
+
+    public Translation3d GetPosition() {
+        return currentPosition;
     }
     
 }

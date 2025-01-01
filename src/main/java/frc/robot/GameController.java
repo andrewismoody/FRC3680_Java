@@ -9,7 +9,7 @@ import edu.wpi.first.wpilibj.PS4Controller;
 import edu.wpi.first.wpilibj.XboxController;
 import edu.wpi.first.wpilibj.Joystick;
 
-public class Controller {
+public class GameController {
     PS4Controller ps4Controller;
     XboxController xboxController;
     Joystick fsController;
@@ -40,13 +40,13 @@ public class Controller {
         Logo,
     }
 
-    Hashtable<ButtonName, Supplier<Boolean>> BinaryButtonSuppliers = new Hashtable<Controller.ButtonName,Supplier<Boolean>>();
-    Hashtable<ButtonName, Supplier<Double>> ValueButtonSuppliers = new Hashtable<Controller.ButtonName,Supplier<Double>>();
-    Hashtable<ButtonName, Supplier<Integer>> POVButtonSuppliers = new Hashtable<Controller.ButtonName,Supplier<Integer>>();
+    Hashtable<ButtonName, Supplier<Boolean>> BinaryButtonSuppliers = new Hashtable<GameController.ButtonName,Supplier<Boolean>>();
+    Hashtable<ButtonName, Supplier<Double>> ValueButtonSuppliers = new Hashtable<GameController.ButtonName,Supplier<Double>>();
+    Hashtable<ButtonName, Supplier<Integer>> POVButtonSuppliers = new Hashtable<GameController.ButtonName,Supplier<Integer>>();
 
-    Hashtable<ButtonName, ArrayList<Consumer<Boolean>>> BinaryButtonConsumers = new Hashtable<Controller.ButtonName,ArrayList<Consumer<Boolean>>>();
-    Hashtable<ButtonName, ArrayList<Consumer<Double>>> ValueButtonConsumers = new Hashtable<Controller.ButtonName,ArrayList<Consumer<Double>>>();
-    Hashtable<ButtonName, ArrayList<Consumer<Integer>>> POVButtonConsumers = new Hashtable<Controller.ButtonName,ArrayList<Consumer<Integer>>>();
+    Hashtable<ButtonName, ArrayList<Consumer<Boolean>>> BinaryButtonConsumers = new Hashtable<GameController.ButtonName,ArrayList<Consumer<Boolean>>>();
+    Hashtable<ButtonName, ArrayList<Consumer<Double>>> ValueButtonConsumers = new Hashtable<GameController.ButtonName,ArrayList<Consumer<Double>>>();
+    Hashtable<ButtonName, ArrayList<Consumer<Integer>>> POVButtonConsumers = new Hashtable<GameController.ButtonName,ArrayList<Consumer<Integer>>>();
 
     Hashtable<ButtonName, Boolean> ValueButtonInversion = new Hashtable<>();
 
@@ -136,7 +136,7 @@ public class Controller {
 
     int Index;
 
-    public Controller(int index, ControllerType type) {
+    public GameController(int index, ControllerType type) {
         Index = index;
         Type = type;
         switch (Type) {
