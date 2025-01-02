@@ -5,7 +5,7 @@ import java.util.ArrayList;
 import edu.wpi.first.math.geometry.Translation3d;
 import frc.robot.ModuleController;
 
-public class AutoController implements Auto {
+public class AutoController {
 
     long startTime = 0;
     long elapsedTime = 0;
@@ -55,7 +55,7 @@ public class AutoController implements Auto {
                     case Position:
                         if (isNearby(controller.GetPosition(), event.Position, 0.5, 1.0)) {
                             System.out.printf("Auto Event %s triggered at %s", event.label, event.Position);
-                            
+
                             if (event.BoolEvent != null)
                                 event.BoolEvent.accept(event.BoolValue);
                             if (event.DoubleEvent != null)
