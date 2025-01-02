@@ -20,8 +20,7 @@ import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import frc.robot.GameController.ButtonName;
 import frc.robot.GameController.ControllerType;
 import frc.robot.auto.AutoController;
-import frc.robot.auto.AutoEvent;
-import frc.robot.auto.AutoEvent.EventType;
+import frc.robot.auto.AutoTimedShoot;
 import frc.robot.gyro.GyroBase;
 import frc.robot.encoder.AnalogAbsoluteEncoder;
 import frc.robot.encoder.Encoder;
@@ -238,41 +237,7 @@ public class Robot extends TimedRobot {
     // m_controller.RegisterValueButtonConsumer(ButtonName.RightThumbstickY,
     // modules::ProcessSpeedDilation);
 
-    AutoController timedShoot = new AutoController(modules);
-
-    AutoEvent event = new AutoEvent();
-    event.eventType = EventType.Time;
-    event.DoubleEvent = swerveDriveModule::ProcessForwardSpeed;
-    event.DoubleValue = -1.0;
-    event.Milliseconds = 0;
-    event.label = "Move Backward";
-    timedShoot.AddEvent(event);
-
-    event = new AutoEvent();
-    event.eventType = EventType.Time;
-    event.DoubleEvent = swerveDriveModule::ProcessForwardSpeed;
-    event.DoubleValue = 0.0;
-    event.Milliseconds = 2000;
-    event.label = "Stop";
-    timedShoot.AddEvent(event);
-
-    event = new AutoEvent();
-    event.eventType = EventType.Time;
-    event.BoolEvent = ejector::ProcessState;
-    event.BoolValue = true;
-    event.Milliseconds = 0;
-    event.label = "Start Shooter";
-    timedShoot.AddEvent(event);
-
-    event = new AutoEvent();
-    event.eventType = EventType.Time;
-    event.BoolEvent = ejector::ProcessState;
-    event.BoolValue = false;
-    event.Milliseconds = 2000;
-    event.label = "Stop Shooter";
-    timedShoot.AddEvent(event);
-
-    AutoModes.put("Timed_Shoot", timedShoot);
+    AutoModes.put("Timed_Shoot", new AutoTimedShoot(modules));
 
     SmartDashboard.putStringArray("Auto List", AutoModes.keySet().toArray(new String[] {}));
   }
