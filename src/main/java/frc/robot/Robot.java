@@ -20,7 +20,7 @@ import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import frc.robot.GameController.ButtonName;
 import frc.robot.GameController.ControllerType;
 import frc.robot.auto.AutoController;
-import frc.robot.auto.AutoTimedShoot;
+import frc.robot.auto.SequenceMoveAndShoot;
 import frc.robot.gyro.GyroBase;
 import frc.robot.encoder.AnalogAbsoluteEncoder;
 import frc.robot.encoder.Encoder;
@@ -237,7 +237,9 @@ public class Robot extends TimedRobot {
     // m_controller.RegisterValueButtonConsumer(ButtonName.RightThumbstickY,
     // modules::ProcessSpeedDilation);
 
-    AutoModes.put("Timed_Shoot", new AutoTimedShoot(modules));
+    AutoController timedShoot = new AutoController("MoveAndShoot");
+    timedShoot.AddSequence(new SequenceMoveAndShoot(timedShoot.GetLabel(), modules, timedShoot));
+    AutoModes.put(timedShoot.GetLabel(), timedShoot);
 
     SmartDashboard.putStringArray("Auto List", AutoModes.keySet().toArray(new String[] {}));
   }
