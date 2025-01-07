@@ -38,8 +38,7 @@ public class SequenceMoveAndShoot extends AutoSequence {
         // adds an event to stop turning the robot immediately
         event = new AutoEvent();
         event.eventType = EventType.Time;
-        event.DoubleEvent = modules.GetDriveModule()::ProcessRotationAngle;
-        event.DoubleValue = modules.GetDriveModule().GetPosition().getZ();  // set the target equal to the current value
+        event.VoidEvent = modules.GetDriveModule()::StopRotation;
         event.Milliseconds = 0;
         event.label = "Stop Turning";
         AddEvent(event);

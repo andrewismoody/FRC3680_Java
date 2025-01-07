@@ -17,6 +17,7 @@ public class AutoEvent {
     public long Milliseconds;
     public Consumer<Double> DoubleEvent;
     public Consumer<Boolean> BoolEvent;
+    public Runnable VoidEvent;
     public AutoSequence AutoEvent;
     public double DoubleValue;
     public boolean BoolValue;

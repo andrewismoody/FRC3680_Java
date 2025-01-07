@@ -9,5 +9,6 @@ public interface DriveModule {
     public void ProcessForwardSpeed(double value);  
     public void ProcessLateralSpeed(double value);
     public void ProcessRotationAngle(double value);
+    public void StopRotation();
     public Translation3d GetPosition();
 }

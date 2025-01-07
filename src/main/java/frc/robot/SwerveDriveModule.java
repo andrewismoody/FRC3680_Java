@@ -100,6 +100,16 @@ public class SwerveDriveModule implements DriveModule {
         previousRotationAngle = rotationAngle;
     }
 
+    public void StopRotation() {
+        rotationAngle = useFakeGyro ? currentAngle
+                : gyro.getAngle();
+
+        if (debug && rotationAngle != previousRotationAngle)
+            System.out.printf("%s rotationAngle: %f\n", moduleID, rotationAngle);
+
+        previousRotationAngle = rotationAngle;
+    }
+
     public void ProcessState() {
         // https://docs.wpilib.org/en/stable/docs/software/kinematics-and-odometry/swerve-drive-kinematics.htm
         // https://docs.wpilib.org/en/stable/docs/software/hardware-apis/sensors/gyros-software.html

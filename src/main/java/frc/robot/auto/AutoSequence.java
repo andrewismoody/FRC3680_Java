@@ -60,6 +60,8 @@ public class AutoSequence {
                         if (elapsedTime > event.Milliseconds) {
                             System.out.printf("Auto Event %s triggered at %d", event.label, event.Milliseconds);
 
+                            if (event.VoidEvent != null)
+                                event.VoidEvent.run();
                             if (event.BoolEvent != null)
                                 event.BoolEvent.accept(event.BoolValue);
                             if (event.DoubleEvent != null)
@@ -75,6 +77,8 @@ public class AutoSequence {
                         if (isNearby(controller.GetPosition(), event.Position, 0.5, 1.0)) {
                             System.out.printf("Auto Event %s triggered at %s", event.label, event.Position);
 
+                            if (event.VoidEvent != null)
+                                event.VoidEvent.run();
                             if (event.BoolEvent != null)
                                 event.BoolEvent.accept(event.BoolValue);
                             if (event.DoubleEvent != null)

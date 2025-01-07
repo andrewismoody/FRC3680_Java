@@ -74,6 +74,10 @@ public class DifferentialDriveModule implements DriveModule {
         rotationAngle = value;
     }
 
+    public void StopRotation() {
+        rotationAngle = 0;
+    }
+
     public void SetController(ModuleController Controller) {
         controller = Controller;
     }
