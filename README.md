@@ -38,5 +38,5 @@ If someone else has merged changes into master after you started working on your
 3. Resolve any conflicts that appear during your rebase
 4. Re-push your changes to the remote repo:
 
-  'git push --force'
+  `git push --force`
   
