@@ -21,7 +21,7 @@ import frc.robot.GameController.ButtonName;
 import frc.robot.GameController.ControllerType;
 import frc.robot.auto.AutoController;
 import frc.robot.auto.SequenceMoveAndShoot;
-import frc.robot.gyro.GyroBase;
+import frc.robot.gyro.AnalogGyro;
 import frc.robot.encoder.AnalogAbsoluteEncoder;
 import frc.robot.encoder.Encoder;
 
@@ -58,7 +58,7 @@ public class Robot extends TimedRobot {
   final Encoder m_enc1 = new AnalogAbsoluteEncoder(0);
   final Encoder m_enc2 = new AnalogAbsoluteEncoder(1);
 
-  final GyroBase m_gyro = new GyroBase(9);
+  final AnalogGyro m_gyro = new AnalogGyro(4);
 
   GameController m_controller; // = new Controller(0, ControllerType.Xbox);
 
