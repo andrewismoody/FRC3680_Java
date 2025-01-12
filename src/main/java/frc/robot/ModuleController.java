@@ -16,6 +16,9 @@ public class ModuleController {
   private boolean speedLock = false;
   private double speedDilation = 0.0;
 
+  boolean enableDrive = true;
+  double speedDilationLimit = 0.75; //0.9;
+
   public ModuleController(DriveModule DriveModule, double Divider) {
     driveModule = DriveModule;
     driveModule.SetController(this);
@@ -61,7 +64,7 @@ public class ModuleController {
 
   public void ProcessSpeedDilation(double value) {
     var sign = value > 0 ? 1.0 : -1.0;
-    speedDilation = Math.abs(value) < 0.75 ? value : 0.75 * sign;
+    speedDilation = Math.abs(value) < speedDilationLimit ? value : speedDilationLimit * sign;
   }
 
   public double ApplyModifiers(double value) {

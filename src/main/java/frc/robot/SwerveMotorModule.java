@@ -101,8 +101,11 @@ public class SwerveMotorModule {
     // slow down if we aren't aiming the right direction yet
     optState.speedMetersPerSecond *= optState.angle.minus(currentAngle).getCos();
 
-    setAngle(optState);
-    setSpeed(optState);
+
+    if (driveModule.controller.enableDrive) {
+      setAngle(optState);
+      setSpeed(optState);
+    }
   }
 
   void setAngle(SwerveModuleState state) {

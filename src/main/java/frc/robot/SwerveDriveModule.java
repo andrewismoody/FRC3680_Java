@@ -120,7 +120,9 @@ public class SwerveDriveModule implements DriveModule {
         // set the chassis speed object according to current controller values
         double forwardSpeed = this.forwardSpeed * controller.ApplyModifiers(driveSpeed);
         double lateralSpeed = this.lateralSpeed * controller.ApplyModifiers(driveSpeed);
-        double thisRotationSpeed = rotationAngle; // * controller.ApplyModifiers(this.rotationSpeed);
+        double thisRotationSpeed = controller.ApplyModifiers(rotationAngle); //rotationAngle; // * controller.ApplyModifiers(this.rotationSpeed);
+        if (debug)
+            System.out.printf("%s; thisRotationSpeed: %s\n", moduleID, thisRotationSpeed);
 
         ChassisSpeeds speeds = isFieldOriented ?
             ChassisSpeeds.fromFieldRelativeSpeeds(lateralSpeed, forwardSpeed, thisRotationSpeed, Rotation2d.fromDegrees(newAngle))
