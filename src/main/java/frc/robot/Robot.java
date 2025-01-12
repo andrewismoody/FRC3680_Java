@@ -16,6 +16,7 @@ import edu.wpi.first.wpilibj.motorcontrol.PWMSparkMax;
 import edu.wpi.first.wpilibj.motorcontrol.PWMVictorSPX;
 import edu.wpi.first.wpilibj.motorcontrol.Spark;
 import edu.wpi.first.wpilibj.motorcontrol.Talon;
+import edu.wpi.first.wpilibj.motorcontrol.Victor;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import frc.robot.GameController.ButtonName;
 import frc.robot.GameController.ControllerType;
@@ -37,15 +38,17 @@ import frc.robot.encoder.Encoder;
 public class Robot extends TimedRobot {
   final String codeBuildVersion = "2024.12.05-PreSeason";
 
-  final PWMSparkMax m_pwm1 = new PWMSparkMax(1);
-  final Talon m_pwm2 = new Talon(2);
+  final PWMSparkMax m_pwm0 = new PWMSparkMax(0);
+  final Talon m_pwm1 = new Talon(1);
+  final PWMSparkMax m_pwm2 = new PWMSparkMax(2);
+  
 
-  final Spark m_pwm3 = new Spark(3);
-  final Spark m_pwm4 = new Spark(4);
-  final Spark m_pwm5 = new Spark(5);
+  final Victor m_pwm3 = new Victor(3);
+   final PWMSparkMax m_pwm4 = new PWMSparkMax(4);
+  final Talon m_pwm5 = new Talon(5);
   final Spark m_pwm6 = new Spark(6);
 
-  final PWMVictorSPX m_pwm7 = new PWMVictorSPX(7);
+  final Victor m_pwm7 = new Victor(7);
   final PWMVictorSPX m_pwm8 = new PWMVictorSPX(8);
 
   final PWMVictorSPX m_pwm9 = new PWMVictorSPX(9);
@@ -57,6 +60,8 @@ public class Robot extends TimedRobot {
   // final Encoder m_enc1 = new QuadEncoder(0, 1, 8.108);
   final Encoder m_enc1 = new AnalogAbsoluteEncoder(0);
   final Encoder m_enc2 = new AnalogAbsoluteEncoder(1);
+  final Encoder m_enc3 = new AnalogAbsoluteEncoder(2);
+  final Encoder m_enc4 = new AnalogAbsoluteEncoder(3);
 
   final AnalogGyro m_gyro = new AnalogGyro(4);
 
@@ -110,15 +115,18 @@ public class Robot extends TimedRobot {
   DualMotorModule lifter = new DualMotorModule("lifter", m_pwm9, m_pwm10, m_liftSpeed, true, false);
   DualMotorModule intakeUpper = new DualMotorModule("intakeUpper", m_pwm6, m_pwm7, m_ejectSpeed / 2, false, true);
 
-  // total length of robot is 32.375", centerline is 16.1875" from edge. Drive
-  // axle center is 4" from edge - 12.1875" from center which is 309.56mm or
-  // 0.30956 meters
-  SwerveMotorModule leftFrontMM = new SwerveMotorModule("leftFront", new Translation2d(0.30956, 0.30956), m_pwm1,
-      m_pwm2, m_enc1, m_encoderMultiplier, m_floatTolerance, true, false);
-  SwerveMotorModule rightRearMM = new SwerveMotorModule("rightRear", new Translation2d(-0.30956, -0.30956), m_pwm3,
-      m_pwm4, m_enc2, m_encoderMultiplier, m_floatTolerance, false, false);
-  SwerveDriveModule swerveDriveModule = new SwerveDriveModule("swerveDrive", m_gyro, m_driveSpeed, m_rotationSpeed,
-      isFieldOriented, m_floatTolerance, leftFrontMM, rightRearMM);
+  // total length of robot is 32.375", centerline is 16.1875" from edge.  Drive axle center is 4" from edge - 12.1875" from center which is 309.56mm or 0.30956 meters
+  SwerveMotorModule leftFrontMM = new SwerveMotorModule("leftFront", new Translation2d(0.30956, 0.30956), m_pwm2, m_pwm1, m_enc2, m_encoderMultiplier, m_floatTolerance, true, false);
+  SwerveMotorModule rightRearMM = new SwerveMotorModule("rightRear", new Translation2d(-0.30956, -0.30956), m_pwm6, m_pwm5, m_enc3, m_encoderMultiplier, m_floatTolerance, true, false);
+  SwerveMotorModule rightFrontMM = new SwerveMotorModule("rightFront", new Translation2d(-0.30956, 0.30956), m_pwm4, m_pwm3, m_enc1, m_encoderMultiplier, m_floatTolerance, true, false);
+  SwerveMotorModule leftRearMM = new SwerveMotorModule("leftRear", new Translation2d(0.30956, -0.30956), m_pwm0, m_pwm7, m_enc4, m_encoderMultiplier, m_floatTolerance, true, true);
+
+  SwerveDriveModule swerveDriveModule = new SwerveDriveModule("swerveDrive", m_gyro, m_driveSpeed, m_rotationSpeed, isFieldOriented, m_floatTolerance
+    , leftFrontMM
+    , rightFrontMM
+    , leftRearMM
+    , rightRearMM
+  );
 
   DifferentialDriveModule diffDriveModule = new DifferentialDriveModule("differentialDrive", m_pwm1, m_pwm2);
 
@@ -165,11 +173,16 @@ public class Robot extends TimedRobot {
     modules.AddModule(lifter);
     modules.AddModule(intakeUpper);
 
+    modules.enableDrive = true;
+
     swerveDriveModule.debug = true;
     leftFrontMM.debugAngle = false;
     leftFrontMM.debugSpeed = false;
 
-    m_enc1.setAngleOffsetDeg(25);
+    m_enc1.setAngleOffsetDeg(115);//25);
+    m_enc2.setAngleOffsetDeg(207);//117);
+    m_enc3.setAngleOffsetDeg(44); //-118);
+    m_enc4.setAngleOffsetDeg(90);
 
     JoystickIndexLoop: for (int j = 0; j < 6; j++) {
       System.out.printf("Checking for joystick on port %d\n", j);
@@ -228,7 +241,7 @@ public class Robot extends TimedRobot {
     m_controller.SetValueButtonInversion(ButtonName.LeftThumbstickX, false);
     m_controller.RegisterValueButtonConsumer(ButtonName.LeftThumbstickX, swerveDriveModule::ProcessLateralSpeed);
 
-    m_controller.SetValueButtonInversion(ButtonName.RightThumbstickX, false);
+    m_controller.SetValueButtonInversion(ButtonName.RightThumbstickX, true);
     m_controller.RegisterValueButtonConsumer(ButtonName.RightThumbstickX, swerveDriveModule::ProcessRotationAngle);
 
     m_controller.RegisterValueButtonConsumer(ButtonName.RightThumbstickY, diffDriveModule::ProcessForwardSpeed);
@@ -282,6 +295,10 @@ public class Robot extends TimedRobot {
       modules.setInverseValue(-1.0);
     m_controller.ProcessButtons();
     modules.ProcessDrive();
+    SmartDashboard.putString("DB/String 5", String.valueOf(leftFrontMM.currentAngle.getDegrees()));
+    SmartDashboard.putString("DB/String 6", String.valueOf(rightFrontMM.currentAngle.getDegrees()));
+    SmartDashboard.putString("DB/String 7", String.valueOf(leftRearMM.currentAngle.getDegrees()));
+    SmartDashboard.putString("DB/String 8", String.valueOf(rightRearMM.currentAngle.getDegrees()));
   }
 
   /** This function is called once each time the robot enters test mode. */
