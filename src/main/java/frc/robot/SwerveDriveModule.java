@@ -121,8 +121,8 @@ public class SwerveDriveModule implements DriveModule {
         double forwardSpeed = this.forwardSpeed * controller.ApplyModifiers(driveSpeed);
         double lateralSpeed = this.lateralSpeed * controller.ApplyModifiers(driveSpeed);
         double thisRotationSpeed = controller.ApplyModifiers(rotationAngle); //rotationAngle; // * controller.ApplyModifiers(this.rotationSpeed);
-        if (debug)
-            System.out.printf("%s; thisRotationSpeed: %s\n", moduleID, thisRotationSpeed);
+        // if (debug)
+        //     System.out.printf("%s; thisRotationSpeed: %s\n", moduleID, thisRotationSpeed);
 
         ChassisSpeeds speeds = isFieldOriented ?
             ChassisSpeeds.fromFieldRelativeSpeeds(lateralSpeed, forwardSpeed, thisRotationSpeed, Rotation2d.fromDegrees(newAngle))
@@ -166,6 +166,7 @@ public class SwerveDriveModule implements DriveModule {
 
         // update dashboard
         SmartDashboard.putNumberArray("RobotDrive Motors", new double[] {driveModules.get(0).getSpeed(), driveModules.get(1).getSpeed(), 0.0, 0.0});
+        //SmartDashboard.putString("DB/String 9", String.valueOf(gyro.getAngle()));
         //SmartDashboard.putNumberArray("My Motors", new double[] {driveModules.get(0).getSpeed(), driveModules.get(1).getSpeed(), 0.0, 0.0});
         //System.out.printf("leftFront speed: %f\n", driveModules.get(0).getSpeed()); // , driveModules.get(1).getSpeed(), 0.0, 0.0});
     }

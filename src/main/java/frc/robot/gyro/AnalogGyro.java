@@ -1,6 +1,7 @@
 package frc.robot.gyro;
 
 import edu.wpi.first.wpilibj.AnalogInput;
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 
 public class AnalogGyro implements Gyro {
     double angle;
@@ -42,7 +43,8 @@ public class AnalogGyro implements Gyro {
     public double getAngle() {
         value = input.getValue();
 
-        angle = value / 4096.0; // convert from 12-bit to degrees
+        angle = (value - 2048) * (360.0 / 2048); // convert from 12-bit to degrees
+        SmartDashboard.putString("DB/String 9", String.valueOf(angle));
 
         return angle;
     }
