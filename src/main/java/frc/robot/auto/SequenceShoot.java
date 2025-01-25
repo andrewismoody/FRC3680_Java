@@ -8,21 +8,15 @@ public class SequenceShoot extends AutoSequence {
         super(Label, modules, MyController);
 
         // adds an event to start the ejector module
-        AutoEvent event = new AutoEvent();
-        event.eventType = EventType.Time;
-        event.BoolEvent = modules.GetModule("ejector")::ProcessState;
-        event.BoolValue = true;
-        event.Milliseconds = 0;
-        event.label = "Start Shooter";
+        AutoEventTime event = new AutoEventTime("Start Shooter", false, 0, EventType.Boolean, autoController);
+        event.boolEvent = modules.GetModule("ejector")::ProcessState;
+        event.boolValue = true;
         AddEvent(event);
 
         // adds an event to stop the ejector module
-        event = new AutoEvent();
-        event.eventType = EventType.Time;
-        event.BoolEvent = modules.GetModule("ejector")::ProcessState;
-        event.BoolValue = false;
-        event.Milliseconds = 2000;
-        event.label = "Stop Shooter";
+        event = new AutoEventTime("Stop Shooter", false, 2000, EventType.Boolean, autoController);
+        event.boolEvent = modules.GetModule("ejector")::ProcessState;
+        event.boolValue = false;
         AddEvent(event);
     }
 }

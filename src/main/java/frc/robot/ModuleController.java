@@ -25,6 +25,13 @@ public class ModuleController {
     divider = Divider;
   }
 
+  public void Initialize() {
+    for (RobotModule module : modules.values()) {
+      module.Initialize();
+    }
+    driveModule.Initialize();
+  }
+
   public DriveModule GetDriveModule() {
     return driveModule;
   }
@@ -86,8 +93,8 @@ public class ModuleController {
     return value;
   }
 
-  public void ProcessDrive() {
-    driveModule.ProcessState();
+  public void ProcessDrive(boolean isAuto) {
+    driveModule.ProcessState(isAuto);
   }
 
   public void setSpeedMod(double newSpeed) {

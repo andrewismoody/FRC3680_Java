@@ -69,8 +69,14 @@ public class SwerveDriveModule implements DriveModule {
         odometry = new SwerveDriveOdometry(kinematics, new Rotation2d(gyro.getGyroAngleZ()), positions);
     }
 
-    public void Initialize() {
+    public String GetModuleID() {
+        return moduleID;
+    }
 
+    public void Initialize() {
+        for (SwerveMotorModule module : driveModules) {
+            module.Initialize();
+        }
     }
 
     public void ProcessForwardSpeed(double value) {
@@ -110,7 +116,7 @@ public class SwerveDriveModule implements DriveModule {
         previousRotationAngle = rotationAngle;
     }
 
-    public void ProcessState() {
+    public void ProcessState(boolean isAuto) {
         // https://docs.wpilib.org/en/stable/docs/software/kinematics-and-odometry/swerve-drive-kinematics.htm
         // https://docs.wpilib.org/en/stable/docs/software/hardware-apis/sensors/gyros-software.html
         // https://www.chiefdelphi.com/t/set-motor-position-with-encoder/152088/3
@@ -121,8 +127,8 @@ public class SwerveDriveModule implements DriveModule {
         double forwardSpeed = this.forwardSpeed * controller.ApplyModifiers(driveSpeed);
         double lateralSpeed = this.lateralSpeed * controller.ApplyModifiers(driveSpeed);
         double thisRotationSpeed = controller.ApplyModifiers(rotationAngle); //rotationAngle; // * controller.ApplyModifiers(this.rotationSpeed);
-        if (debug)
-            System.out.printf("%s; thisRotationSpeed: %s\n", moduleID, thisRotationSpeed);
+        // if (debug)
+        //     System.out.printf("%s; thisRotationSpeed: %s\n", moduleID, thisRotationSpeed);
 
         ChassisSpeeds speeds = isFieldOriented ?
             ChassisSpeeds.fromFieldRelativeSpeeds(lateralSpeed, forwardSpeed, thisRotationSpeed, Rotation2d.fromDegrees(newAngle))

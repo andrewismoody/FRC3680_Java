@@ -42,7 +42,7 @@ public class AutoSequence {
     public void Initialize() {
         startTime = System.currentTimeMillis();
         for (AutoEvent event : Events) {
-            event.Complete = false;
+            event.SetComplete(false);
         }
     }
 
@@ -53,59 +53,45 @@ public class AutoSequence {
 
         // process triggers
         eventLoop: for (AutoEvent event : Events) {
-            if (!event.Complete) {
+            if (!event.IsComplete()) {
                 notFinished = true;
-                switch (event.eventType) {
+                switch (event.GetTriggerType()) {
                     case Time:
-                        if (elapsedTime > event.Milliseconds) {
-                            System.out.printf("Auto Event %s triggered at %d", event.label, event.Milliseconds);
+                        AutoEventTime timeEvent = (AutoEventTime) event;
+                        if (elapsedTime > timeEvent.milliseconds) {
+                            System.out.printf("Auto Event %s triggered at %d", timeEvent.GetLabel(),
+                                    timeEvent.GetMilliseconds());
 
-                            if (event.VoidEvent != null)
-                                event.VoidEvent.run();
-                            if (event.BoolEvent != null)
-                                event.BoolEvent.accept(event.BoolValue);
-                            if (event.DoubleEvent != null)
-                                event.DoubleEvent.accept(event.DoubleValue);
-                            if (event.AutoEvent != null) {
-                                autoController.AddSequence(event.AutoEvent);
-                            }
-                            event.Complete = true;
+                            timeEvent.Run();
                             startTime = System.currentTimeMillis();
                         }
                         break;
                     case Position:
-                        if (isNearby(controller.GetPosition(), event.Position, 0.5, 1.0)) {
-                            System.out.printf("Auto Event %s triggered at %s", event.label, event.Position);
+                        AutoEventPosition positionEvent = (AutoEventPosition) event;
+                        if (isNearby(controller.GetPosition(), positionEvent.target, 0.5, 1.0)) {
+                            System.out.printf("Auto Event %s triggered at %s", event.GetLabel(), positionEvent.target);
 
-                            if (event.VoidEvent != null)
-                                event.VoidEvent.run();
-                            if (event.BoolEvent != null)
-                                event.BoolEvent.accept(event.BoolValue);
-                            if (event.DoubleEvent != null)
-                                event.DoubleEvent.accept(event.DoubleValue);
-                            if (event.AutoEvent != null) {
-                                autoController.AddSequence(event.AutoEvent);
-                            }
-                            event.Complete = true;
+                            positionEvent.Run();
                             startTime = System.currentTimeMillis();
                         }
                         break;
                     case Auto:
-                        if (event.AutoEvent != null && event.AutoEvent.IsFinished()) {
-                            event.Complete = true;
+                        AutoEventAuto autoEvent = (AutoEventAuto) event;
+                        if (autoEvent.IsFinished()) {
+                            autoEvent.Run();
                             startTime = System.currentTimeMillis();
                         }
                 }
 
-                // only break out of the loop if this isn't a parallel event
-                if (!event.Parallel)
+                // only break out of the loop if this isn't a parallel event - otherwise, we move to the next event and kick it off
+                if (!event.IsParallel())
                     break eventLoop;
             }
         }
 
         finished = !notFinished;
 
-        controller.ProcessDrive();
+        controller.ProcessDrive(true);
     }
 
     boolean isNearby(Translation3d Position, Translation3d Target, double PositionTolerance, double AngleTolerance) {

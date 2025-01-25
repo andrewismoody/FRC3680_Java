@@ -40,7 +40,11 @@ public class DifferentialDriveModule implements DriveModule {
         driveController.setSafetyEnabled(false);
     }
 
-    public void ProcessState() {
+    public String GetModuleID() {
+        return moduleID;
+    }
+
+    public void ProcessState(boolean isAuto) {        
         currentForwardSpeed = controller.ApplyModifiers(forwardSpeed);
         if (debugSpeed && forwardSpeed != previousForwardSpeed) {
             System.out.printf("%s forwardSpeed: %f\n", moduleID, forwardSpeed);

@@ -1,26 +1,37 @@
 package frc.robot.auto;
 
-import java.util.function.Consumer;
-
-import edu.wpi.first.math.geometry.Translation3d;
-
-public class AutoEvent {
-    public enum EventType {
+public interface AutoEvent {
+    public enum TriggerType {
         Time,
         Position,
         Auto,
     }
 
-    public boolean Complete;
-    public EventType eventType;
-    public Translation3d Position;
-    public long Milliseconds;
-    public Consumer<Double> DoubleEvent;
-    public Consumer<Boolean> BoolEvent;
-    public Runnable VoidEvent;
-    public AutoSequence AutoEvent;
-    public double DoubleValue;
-    public boolean BoolValue;
-    public String label;
-    public boolean Parallel;
+    public enum EventType {
+        Auto,
+        Void,
+        Boolean,
+        Double,
+        Adaptive, // the idea of this event type is to allow the target module to perform its own calculations to meet the target
+    }
+
+    public enum ModuleType {
+        Drive,
+        Actuator,
+    }
+
+    public TriggerType GetTriggerType();
+
+    public EventType GetEventType();
+
+    public boolean IsComplete();
+
+    public void SetComplete(boolean Complete);
+
+    public String GetLabel();
+
+    public boolean IsParallel();
+
+    public void Run();
+
 }

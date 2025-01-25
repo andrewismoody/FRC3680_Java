@@ -40,17 +40,17 @@ public class Robot extends TimedRobot {
 
   final PWMSparkMax m_pwm0 = new PWMSparkMax(0);
   final Talon m_pwm1 = new Talon(1);
+
   final PWMSparkMax m_pwm2 = new PWMSparkMax(2);
-  
-
   final Victor m_pwm3 = new Victor(3);
-   final PWMSparkMax m_pwm4 = new PWMSparkMax(4);
+
+  final PWMSparkMax m_pwm4 = new PWMSparkMax(4);
   final Talon m_pwm5 = new Talon(5);
+
   final Spark m_pwm6 = new Spark(6);
-
   final Victor m_pwm7 = new Victor(7);
-  final PWMVictorSPX m_pwm8 = new PWMVictorSPX(8);
 
+  final PWMVictorSPX m_pwm8 = new PWMVictorSPX(8);
   final PWMVictorSPX m_pwm9 = new PWMVictorSPX(9);
   final PWMVictorSPX m_pwm10 = new PWMVictorSPX(10);
 
@@ -179,10 +179,15 @@ public class Robot extends TimedRobot {
     leftFrontMM.debugAngle = false;
     leftFrontMM.debugSpeed = false;
 
-    m_enc1.setAngleOffsetDeg(115);//25);
-    m_enc2.setAngleOffsetDeg(207);//117);
-    m_enc3.setAngleOffsetDeg(44); //-118);
-    m_enc4.setAngleOffsetDeg(90);
+    // // lf
+    // m_enc2.setAngleOffsetDeg(149);
+    // // rf
+    // m_enc1.setAngleOffsetDeg(114);
+    // // lr
+    // m_enc4.setAngleOffsetDeg(134);
+    // // rr
+    // m_enc3.setAngleOffsetDeg(103);
+    modules.Initialize();
 
     JoystickIndexLoop: for (int j = 0; j < 6; j++) {
       System.out.printf("Checking for joystick on port %d\n", j);
@@ -277,7 +282,6 @@ public class Robot extends TimedRobot {
    */
   @Override
   public void teleopInit() {
-    // empty
   }
 
   /** This function is called periodically during teleoperated mode. */
@@ -294,11 +298,11 @@ public class Robot extends TimedRobot {
     else
       modules.setInverseValue(-1.0);
     m_controller.ProcessButtons();
-    modules.ProcessDrive();
-    SmartDashboard.putString("DB/String 5", String.valueOf(leftFrontMM.currentAngle.getDegrees()));
-    SmartDashboard.putString("DB/String 6", String.valueOf(rightFrontMM.currentAngle.getDegrees()));
-    SmartDashboard.putString("DB/String 7", String.valueOf(leftRearMM.currentAngle.getDegrees()));
-    SmartDashboard.putString("DB/String 8", String.valueOf(rightRearMM.currentAngle.getDegrees()));
+    modules.ProcessDrive(false);
+    SmartDashboard.putString("DB/String 5", "LF: " + String.valueOf(leftFrontMM.currentAngle.getDegrees()));
+    SmartDashboard.putString("DB/String 6", "RF: " + String.valueOf(rightFrontMM.currentAngle.getDegrees()));
+    SmartDashboard.putString("DB/String 7", "LR: " + String.valueOf(leftRearMM.currentAngle.getDegrees()));
+    SmartDashboard.putString("DB/String 8", "RR: " + String.valueOf(rightRearMM.currentAngle.getDegrees()));
   }
 
   /** This function is called once each time the robot enters test mode. */
