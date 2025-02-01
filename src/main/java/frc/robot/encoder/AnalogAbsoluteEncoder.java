@@ -24,25 +24,32 @@ public class AnalogAbsoluteEncoder implements Encoder {
         angleOffsetRad = value;
     }
 
-    public double getDistance() {
-        boolean reportRadians = false;
-
+    public double getRawValue() {
         value = input.getValue();
         double returnValue = 0;
 
         returnValue = value * (6.28 / resolution); // 6.28 / 4096 = 0.001533203125 (radians)
         Rotation2d valueRot = Rotation2d.fromRadians(returnValue);
 
-        valueRot = valueRot.minus(Rotation2d.fromRadians(angleOffsetRad));
-
-        if (reportRadians)
-            returnValue = valueRot.getRadians();
-        else
-            returnValue = valueRot.getDegrees();
+        returnValue = valueRot.getRadians();
             
         //System.out.printf("pin %d, encoder value: %f\n", mypin, returnValue);
 
         return returnValue;
+    }
+
+    public double getDistance() {
+        boolean reportRadians = false;
+
+        value = getRawValue();
+        Rotation2d valueRot = Rotation2d.fromRadians(value);
+
+        valueRot = valueRot.minus(Rotation2d.fromRadians(angleOffsetRad));
+
+        if (reportRadians)
+            return valueRot.getRadians();
+        else
+            return valueRot.getDegrees();
     }
 
     public void setDistancePerPulse(double dpp) {

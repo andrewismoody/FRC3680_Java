@@ -77,6 +77,11 @@ public class SwerveMotorModule {
     AngleEncoder.setReverseDirection(InvertRotation);
   }
 
+  public void Initialize() {
+    System.out.printf("%s: offset: %f\n", moduleID, angleEncoder.getDistance());
+    angleEncoder.setAngleOffsetRad(angleEncoder.getRawValue());
+  }
+
   public SwerveModulePosition getPosition() {
     return new SwerveModulePosition(currentDistance, currentAngle);
   }
@@ -100,7 +105,6 @@ public class SwerveMotorModule {
 
     // slow down if we aren't aiming the right direction yet
     optState.speedMetersPerSecond *= optState.angle.minus(currentAngle).getCos();
-
 
     if (driveModule.controller.enableDrive) {
       setAngle(optState);

@@ -38,19 +38,23 @@ import frc.robot.encoder.Encoder;
 public class Robot extends TimedRobot {
   final String codeBuildVersion = "2024.12.05-PreSeason";
 
-  final PWMSparkMax m_pwm0 = new PWMSparkMax(0);
-  final Talon m_pwm1 = new Talon(1);
-  final PWMSparkMax m_pwm2 = new PWMSparkMax(2);
-  
+  // RR
+  final PWMSparkMax pwm_drive_rr = new PWMSparkMax(0);
+  final Talon pwm_steer_rr = new Talon(4);
 
-  final Victor m_pwm3 = new Victor(3);
-   final PWMSparkMax m_pwm4 = new PWMSparkMax(4);
-  final Talon m_pwm5 = new Talon(5);
-  final Spark m_pwm6 = new Spark(6);
+  // LF
+  final PWMSparkMax pwm_drive_lf = new PWMSparkMax(3);
+  final Victor pwm_steer_lf = new Victor(6);
 
-  final Victor m_pwm7 = new Victor(7);
+  // RF
+  final PWMSparkMax pwm_drive_rf = new PWMSparkMax(2);
+  final Talon pwm_steer_rf = new Talon(7);
+
+  // LR
+  final PWMSparkMax pwm_drive_lr = new PWMSparkMax(1);
+  final Victor pwm_steer_lr = new Victor(5);
+
   final PWMVictorSPX m_pwm8 = new PWMVictorSPX(8);
-
   final PWMVictorSPX m_pwm9 = new PWMVictorSPX(9);
   final PWMVictorSPX m_pwm10 = new PWMVictorSPX(10);
 
@@ -58,10 +62,14 @@ public class Robot extends TimedRobot {
   // 8.108 degress per pulse.
   // not used for absolute encoders
   // final Encoder m_enc1 = new QuadEncoder(0, 1, 8.108);
-  final Encoder m_enc1 = new AnalogAbsoluteEncoder(0);
-  final Encoder m_enc2 = new AnalogAbsoluteEncoder(1);
-  final Encoder m_enc3 = new AnalogAbsoluteEncoder(2);
-  final Encoder m_enc4 = new AnalogAbsoluteEncoder(3);
+  // rf
+  final Encoder enc_rf = new AnalogAbsoluteEncoder(2);
+  // lf
+  final Encoder enc_lf = new AnalogAbsoluteEncoder(0);
+  // rr
+  final Encoder enc_rr = new AnalogAbsoluteEncoder(3);
+  // lr
+  final Encoder enc_lr = new AnalogAbsoluteEncoder(1);
 
   final AnalogGyro m_gyro = new AnalogGyro(4);
 
@@ -108,18 +116,18 @@ public class Robot extends TimedRobot {
   double m_rotationSpeed = 35.168; // 17.584; // 21.98; //32.40 / m_speedMod; // should be actual radians per
                                    // second that is achievable by the rotation motor
 
-  SingleMotorModule intake = new SingleMotorModule("intake", m_pwm5, m_intakeSpeed, false);
-  DualMotorModule ejector = new DualMotorModule("ejector", m_pwm6, m_pwm7, m_ejectSpeed, true, false);
-  DualMotorModule ejectorSlow = new DualMotorModule("ejectorSlow", m_pwm6, m_pwm7, m_ejectSpeed / 2, true, false);
+  SingleMotorModule intake = new SingleMotorModule("intake", pwm_steer_rf, m_intakeSpeed, false);
+  DualMotorModule ejector = new DualMotorModule("ejector", pwm_drive_lr, pwm_steer_lr, m_ejectSpeed, true, false);
+  DualMotorModule ejectorSlow = new DualMotorModule("ejectorSlow", pwm_drive_lr, pwm_steer_lr, m_ejectSpeed / 2, true, false);
   SingleMotorModule feeder = new SingleMotorModule("feeder", m_pwm8, m_feedSpeed, true);
   DualMotorModule lifter = new DualMotorModule("lifter", m_pwm9, m_pwm10, m_liftSpeed, true, false);
-  DualMotorModule intakeUpper = new DualMotorModule("intakeUpper", m_pwm6, m_pwm7, m_ejectSpeed / 2, false, true);
+  DualMotorModule intakeUpper = new DualMotorModule("intakeUpper", pwm_drive_lr, pwm_steer_lr, m_ejectSpeed / 2, false, true);
 
   // total length of robot is 32.375", centerline is 16.1875" from edge.  Drive axle center is 4" from edge - 12.1875" from center which is 309.56mm or 0.30956 meters
-  SwerveMotorModule leftFrontMM = new SwerveMotorModule("leftFront", new Translation2d(0.30956, 0.30956), m_pwm2, m_pwm1, m_enc2, m_encoderMultiplier, m_floatTolerance, true, false);
-  SwerveMotorModule rightRearMM = new SwerveMotorModule("rightRear", new Translation2d(-0.30956, -0.30956), m_pwm6, m_pwm5, m_enc3, m_encoderMultiplier, m_floatTolerance, true, false);
-  SwerveMotorModule rightFrontMM = new SwerveMotorModule("rightFront", new Translation2d(-0.30956, 0.30956), m_pwm4, m_pwm3, m_enc1, m_encoderMultiplier, m_floatTolerance, true, false);
-  SwerveMotorModule leftRearMM = new SwerveMotorModule("leftRear", new Translation2d(0.30956, -0.30956), m_pwm0, m_pwm7, m_enc4, m_encoderMultiplier, m_floatTolerance, true, true);
+  SwerveMotorModule leftFrontMM = new SwerveMotorModule("leftFront", new Translation2d(0.30956, 0.30956), pwm_drive_lf, pwm_steer_lf, enc_lf, m_encoderMultiplier, m_floatTolerance, true, false);
+  SwerveMotorModule rightRearMM = new SwerveMotorModule("rightRear", new Translation2d(-0.30956, -0.30956), pwm_drive_rr, pwm_steer_rr, enc_rr, m_encoderMultiplier, m_floatTolerance, true, false);
+  SwerveMotorModule rightFrontMM = new SwerveMotorModule("rightFront", new Translation2d(-0.30956, 0.30956), pwm_drive_rf, pwm_steer_rf, enc_rf, m_encoderMultiplier, m_floatTolerance, true, false);
+  SwerveMotorModule leftRearMM = new SwerveMotorModule("leftRear", new Translation2d(0.30956, -0.30956), pwm_drive_lr, pwm_steer_lr, enc_lr, m_encoderMultiplier, m_floatTolerance, true, false);
 
   SwerveDriveModule swerveDriveModule = new SwerveDriveModule("swerveDrive", m_gyro, m_driveSpeed, m_rotationSpeed, isFieldOriented, m_floatTolerance
     , leftFrontMM
@@ -128,7 +136,7 @@ public class Robot extends TimedRobot {
     , rightRearMM
   );
 
-  DifferentialDriveModule diffDriveModule = new DifferentialDriveModule("differentialDrive", m_pwm1, m_pwm2);
+  DifferentialDriveModule diffDriveModule = new DifferentialDriveModule("differentialDrive", pwm_steer_rr, pwm_drive_lf);
 
   ModuleController modules;
 
@@ -179,10 +187,15 @@ public class Robot extends TimedRobot {
     leftFrontMM.debugAngle = false;
     leftFrontMM.debugSpeed = false;
 
-    m_enc1.setAngleOffsetDeg(115);//25);
-    m_enc2.setAngleOffsetDeg(207);//117);
-    m_enc3.setAngleOffsetDeg(44); //-118);
-    m_enc4.setAngleOffsetDeg(90);
+    // // lf
+    // m_enc2.setAngleOffsetDeg(149);
+    // // rf
+    // m_enc1.setAngleOffsetDeg(114);
+    // // lr
+    // m_enc4.setAngleOffsetDeg(134);
+    // // rr
+    // m_enc3.setAngleOffsetDeg(103);
+    modules.Initialize();
 
     JoystickIndexLoop: for (int j = 0; j < 6; j++) {
       System.out.printf("Checking for joystick on port %d\n", j);
@@ -218,8 +231,8 @@ public class Robot extends TimedRobot {
     }
 
     // three different modules operate the same component differently
-    m_controller.RegisterBinaryButtonConsumer(ButtonName.LeftButton, ejector::ProcessState);
-    m_controller.RegisterBinaryButtonConsumer(ButtonName.RightButton, ejectorSlow::ProcessState);
+    // m_controller.RegisterBinaryButtonConsumer(ButtonName.LeftButton, ejector::ProcessState);
+    // m_controller.RegisterBinaryButtonConsumer(ButtonName.RightButton, ejectorSlow::ProcessState);
     m_controller.RegisterBinaryButtonConsumer(ButtonName.LeftShoulderButton, intakeUpper::ProcessState);
 
     // map both of these actions to the same button
@@ -227,6 +240,9 @@ public class Robot extends TimedRobot {
     m_controller.RegisterBinaryButtonConsumer(ButtonName.TopButton, feeder::ProcessState);
 
     m_controller.RegisterBinaryButtonConsumer(ButtonName.BottomButton, lifter::ProcessState);
+
+    m_controller.RegisterBinaryButtonConsumer(ButtonName.LeftButton, swerveDriveModule::LockPosition);
+    m_controller.RegisterBinaryButtonConsumer(ButtonName.RightButton, swerveDriveModule::ReturnToZero);
 
     m_controller.RegisterBinaryButtonConsumer(ButtonName.RightShoulderButton, modules::ProcessInverse);
 
@@ -277,7 +293,6 @@ public class Robot extends TimedRobot {
    */
   @Override
   public void teleopInit() {
-    // empty
   }
 
   /** This function is called periodically during teleoperated mode. */
@@ -294,11 +309,11 @@ public class Robot extends TimedRobot {
     else
       modules.setInverseValue(-1.0);
     m_controller.ProcessButtons();
-    modules.ProcessDrive();
-    SmartDashboard.putString("DB/String 5", String.valueOf(leftFrontMM.currentAngle.getDegrees()));
-    SmartDashboard.putString("DB/String 6", String.valueOf(rightFrontMM.currentAngle.getDegrees()));
-    SmartDashboard.putString("DB/String 7", String.valueOf(leftRearMM.currentAngle.getDegrees()));
-    SmartDashboard.putString("DB/String 8", String.valueOf(rightRearMM.currentAngle.getDegrees()));
+    modules.ProcessDrive(false);
+    SmartDashboard.putString("DB/String 5", "LF: " + String.valueOf(leftFrontMM.currentAngle.getDegrees()));
+    SmartDashboard.putString("DB/String 6", "RF: " + String.valueOf(rightFrontMM.currentAngle.getDegrees()));
+    SmartDashboard.putString("DB/String 7", "LR: " + String.valueOf(leftRearMM.currentAngle.getDegrees()));
+    SmartDashboard.putString("DB/String 8", "RR: " + String.valueOf(rightRearMM.currentAngle.getDegrees()));
   }
 
   /** This function is called once each time the robot enters test mode. */

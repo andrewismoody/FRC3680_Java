@@ -32,10 +32,14 @@ public class I2CAbsoluteEncoder implements Encoder {
         angleOffsetRad = value;
     }
 
+    public double getRawValue() {
+        return readRegister(0x0C);                        // combine bytes to get 12-bit value 11:0
+    }
+
     public double getDistance() {
         double rawAngle;
 
-        rawAngle = readRegister(0x0C);                        // combine bytes to get 12-bit value 11:0
+        rawAngle = getRawValue();
 
         boolean reportRadians = false;
 

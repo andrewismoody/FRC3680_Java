@@ -39,6 +39,10 @@ public class QuadEncoder implements Encoder {
         internalEncoder.setReverseDirection(reverse);
     }
 
+    public double getRawValue() {
+        return internalEncoder.getRaw();
+    }
+
     public double getDistance() {
         // TODO: implement angle offset
         

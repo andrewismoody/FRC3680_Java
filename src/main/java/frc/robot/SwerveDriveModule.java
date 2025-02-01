@@ -12,6 +12,8 @@ import edu.wpi.first.math.kinematics.SwerveModulePosition;
 import edu.wpi.first.math.kinematics.SwerveModuleState;
 import edu.wpi.first.wpilibj.RobotBase;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
+import edu.wpi.first.math.kinematics.SwerveModuleState;
+
 import frc.robot.gyro.Gyro;
 
 public class SwerveDriveModule implements DriveModule {
@@ -43,6 +45,9 @@ public class SwerveDriveModule implements DriveModule {
     double previousAngle = 0.0;
     double fakeGyroRate = 0.3;
 
+    boolean isZeroPressed = false;
+    boolean isLockPressed = false;
+
     public SwerveDriveModule(String ModuleID, Gyro Gyro, double DriveSpeed, double RotationSpeed,
             boolean IsFieldOriented, double FloatTolerance, SwerveMotorModule ... modules) {
         moduleID = ModuleID;
@@ -69,8 +74,56 @@ public class SwerveDriveModule implements DriveModule {
         odometry = new SwerveDriveOdometry(kinematics, new Rotation2d(gyro.getGyroAngleZ()), positions);
     }
 
-    public void Initialize() {
+    public String GetModuleID() {
+        return moduleID;
+    }
 
+    public void ReturnToZero(boolean isPressed) {
+        isZeroPressed = isPressed;
+
+        /*
+        if (isPressed) {
+            System.out.println("ReturnToZero");
+            for (SwerveMotorModule module : driveModules) {
+                var zero = new SwerveModuleState();
+                module.setAngle(zero);
+                module.setSpeed(zero);
+            }
+        }
+        */
+    }
+
+    public SwerveModuleState[] GetZeroStates() {
+        var returnStates = new SwerveModuleState[driveModules.size()];
+
+        for (int i = 0; i < driveModules.size(); i++) {
+            returnStates[i] = new SwerveModuleState();
+        }
+        
+        return returnStates;
+    }
+
+    public void LockPosition(boolean isPressed) {
+        isLockPressed = isPressed;
+    }
+
+    public SwerveModuleState[] GetLockStates() {
+        var returnStates = new SwerveModuleState[driveModules.size()];
+
+        for (int i = 0; i < driveModules.size(); i++) {
+            var lock = new SwerveModuleState();
+            var angle = i % 2 == 0 ? 0.25 : -0.25;
+            lock.angle = new Rotation2d(angle);
+            returnStates[i] = lock;
+        }
+
+        return returnStates;
+    }
+
+    public void Initialize() {
+        for (SwerveMotorModule module : driveModules) {
+            module.Initialize();
+        }
     }
 
     public void ProcessForwardSpeed(double value) {
@@ -110,7 +163,7 @@ public class SwerveDriveModule implements DriveModule {
         previousRotationAngle = rotationAngle;
     }
 
-    public void ProcessState() {
+    public void ProcessState(boolean isAuto) {
         // https://docs.wpilib.org/en/stable/docs/software/kinematics-and-odometry/swerve-drive-kinematics.htm
         // https://docs.wpilib.org/en/stable/docs/software/hardware-apis/sensors/gyros-software.html
         // https://www.chiefdelphi.com/t/set-motor-position-with-encoder/152088/3
@@ -121,14 +174,21 @@ public class SwerveDriveModule implements DriveModule {
         double forwardSpeed = this.forwardSpeed * controller.ApplyModifiers(driveSpeed);
         double lateralSpeed = this.lateralSpeed * controller.ApplyModifiers(driveSpeed);
         double thisRotationSpeed = controller.ApplyModifiers(rotationAngle); //rotationAngle; // * controller.ApplyModifiers(this.rotationSpeed);
-        if (debug)
-            System.out.printf("%s; thisRotationSpeed: %s\n", moduleID, thisRotationSpeed);
+        // if (debug)
+        //     System.out.printf("%s; thisRotationSpeed: %s\n", moduleID, thisRotationSpeed);
 
         ChassisSpeeds speeds = isFieldOriented ?
             ChassisSpeeds.fromFieldRelativeSpeeds(lateralSpeed, forwardSpeed, thisRotationSpeed, Rotation2d.fromDegrees(newAngle))
             : new ChassisSpeeds(lateralSpeed, forwardSpeed, thisRotationSpeed);
 
-        SwerveModuleState[] moduleStates = kinematics.toSwerveModuleStates(speeds);
+        SwerveModuleState[] moduleStates;
+
+        if (isLockPressed)
+            moduleStates = GetLockStates();
+        else if (isZeroPressed)
+            moduleStates = GetZeroStates();
+        else
+            moduleStates = kinematics.toSwerveModuleStates(speeds);
 
         var i = 0;
         SwerveModulePosition[] positions = new SwerveModulePosition[driveModules.size()];

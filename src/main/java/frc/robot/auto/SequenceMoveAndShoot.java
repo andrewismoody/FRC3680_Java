@@ -8,73 +8,50 @@ public class SequenceMoveAndShoot extends AutoSequence {
         super(Label, modules, MyController);
 
         // adds an event to start driving the motors immediately
-        AutoEvent event = new AutoEvent();
-        event.eventType = EventType.Time;
-        event.DoubleEvent = modules.GetDriveModule()::ProcessForwardSpeed;
-        event.DoubleValue = -1.0;
-        event.Milliseconds = 0;
-        event.label = "Move Backward";
-        event.Parallel = true;
-        AddEvent(event);
+        AutoEventTime event0 = new AutoEventTime("Move Backward", true, 0, EventType.Double, autoController);
+        event0.doubleEvent = modules.GetDriveModule()::ProcessForwardSpeed;
+        event0.doubleValue = -1.0;
+        AddEvent(event0);
 
-        // adds an event to start turning the robot immediately - this will run at the same time as the forward driving event
-        event = new AutoEvent();
-        event.eventType = EventType.Time;
-        event.DoubleEvent = modules.GetDriveModule()::ProcessRotationAngle;
-        event.DoubleValue = 30.0;
-        event.Milliseconds = 0;
-        event.label = "Rotate 30 Degrees";
-        AddEvent(event);
+        // adds an event to start turning the robot immediately - this will run at the
+        // same time as the forward driving event
+        AutoEventTime event1 = new AutoEventTime("Rotate 30 Degrees", false, 0, EventType.Double, autoController);
+        event1.doubleEvent = modules.GetDriveModule()::ProcessRotationAngle;
+        event1.doubleValue = 30.0;
+        AddEvent(event1);
 
         // adds an event to stop driving the motors after some time
-        event = new AutoEvent();
-        event.eventType = EventType.Time;
-        event.DoubleEvent = modules.GetDriveModule()::ProcessForwardSpeed;
-        event.DoubleValue = 0.0;
-        event.Milliseconds = 2000;
-        event.label = "Stop Driving";
-        AddEvent(event);
+        AutoEventTime event2 = new AutoEventTime("Stop Driving", false, 2000, EventType.Double, autoController);
+        event2.doubleEvent = modules.GetDriveModule()::ProcessForwardSpeed;
+        event2.doubleValue = 0.0;
+        AddEvent(event2);
 
         // adds an event to stop turning the robot immediately
-        event = new AutoEvent();
-        event.eventType = EventType.Time;
-        event.VoidEvent = modules.GetDriveModule()::StopRotation;
-        event.Milliseconds = 0;
-        event.label = "Stop Turning";
-        AddEvent(event);
+        AutoEventTime event3 = new AutoEventTime("Stop Turning", false, 0, EventType.Void, autoController);
+        event3.voidEvent = modules.GetDriveModule()::StopRotation;
+        AddEvent(event3);
 
         // adds an event to trigger the nested sequence at a particular time
         AutoSequence ShootSequence = new SequenceShoot("Shoot", modules, MyController);
-        event = new AutoEvent();
-        event.eventType = EventType.Time;
-        event.AutoEvent = ShootSequence;
-        event.Milliseconds = 2000;
-        event.label = "Start Shoot";
-        AddEvent(event);
+        AutoEventTime event4 = new AutoEventTime("Start Shoot", false, 2000, EventType.Auto, autoController);
+        event4.autoEvent = ShootSequence;
+        AddEvent(event4);
 
-        // adds an event to capture when the nested sequence is finished (need to send the same sequence instance here so we can check IsFinished())
-        event = new AutoEvent();
-        event.eventType = EventType.Auto;
-        event.AutoEvent = ShootSequence;
-        event.label = "Finish Shoot";
-        AddEvent(event);
+        // adds an event to capture when the nested sequence is finished (need to send
+        // the same sequence instance here so we can check IsFinished())
+        AutoEventAuto event5 = new AutoEventAuto("Finish Shoot", false, ShootSequence, EventType.Auto);
+        AddEvent(event5);
 
         // adds an event to start driving the motors immediately
-        event = new AutoEvent();
-        event.eventType = EventType.Time;
-        event.DoubleEvent = modules.GetDriveModule()::ProcessForwardSpeed;
-        event.DoubleValue = 1.0;
-        event.Milliseconds = 0;
-        event.label = "Move Forward";
+        AutoEventTime event = new AutoEventTime("Move Forward", false, 0, EventType.Double, autoController);
+        event.doubleEvent = modules.GetDriveModule()::ProcessForwardSpeed;
+        event.doubleValue = 1.0;
         AddEvent(event);
 
         // adds an event to stop driving the motors after some time
-        event = new AutoEvent();
-        event.eventType = EventType.Time;
-        event.DoubleEvent = modules.GetDriveModule()::ProcessForwardSpeed;
-        event.DoubleValue = 0.0;
-        event.Milliseconds = 2000;
-        event.label = "Stop";
+        event = new AutoEventTime("Stop", false, 2000, EventType.Double, autoController);
+        event.doubleEvent = modules.GetDriveModule()::ProcessForwardSpeed;
+        event.doubleValue = 0.0;
         AddEvent(event);
     }
 }
