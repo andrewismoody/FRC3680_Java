@@ -12,7 +12,7 @@ import edu.wpi.first.math.kinematics.SwerveModulePosition;
 import edu.wpi.first.math.kinematics.SwerveModuleState;
 import edu.wpi.first.wpilibj.RobotBase;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
-import edu.wpi.first.math.kinematics.SwerveModuleState;
+import frc.robot.positioner.Positioner;
 
 import frc.robot.gyro.Gyro;
 
@@ -26,6 +26,7 @@ public class SwerveDriveModule implements DriveModule {
     SwerveDriveKinematics kinematics;
     boolean isFieldOriented;
     Gyro gyro;
+    Positioner positioner;
     SwerveDriveOdometry odometry;
 
     Translation2d currentPosition = new Translation2d();
@@ -48,7 +49,7 @@ public class SwerveDriveModule implements DriveModule {
     boolean isZeroPressed = false;
     boolean isLockPressed = false;
 
-    public SwerveDriveModule(String ModuleID, Gyro Gyro, double DriveSpeed, double RotationSpeed,
+    public SwerveDriveModule(String ModuleID, Gyro Gyro, Positioner Positioner, double DriveSpeed, double RotationSpeed,
             boolean IsFieldOriented, double FloatTolerance, SwerveMotorModule ... modules) {
         moduleID = ModuleID;
 
@@ -68,6 +69,7 @@ public class SwerveDriveModule implements DriveModule {
         rotationSpeed = RotationSpeed;
         isFieldOriented = IsFieldOriented;
         gyro = Gyro;
+        positioner = Positioner;
         floatTolerance = FloatTolerance;
 
         kinematics = new SwerveDriveKinematics(translations);
@@ -235,6 +237,7 @@ public class SwerveDriveModule implements DriveModule {
     }
 
     public Translation3d GetPosition() {
-        return new Translation3d(currentPosition.getX(), currentPosition.getY(), currentAngle);
+        return positioner.GetPosition();
+        // return new Translation3d(currentPosition.getX(), currentPosition.getY(), currentAngle);
     }
 }
