@@ -14,7 +14,6 @@ import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj.motorcontrol.PWMSparkMax;
 import edu.wpi.first.wpilibj.motorcontrol.PWMVictorSPX;
-import edu.wpi.first.wpilibj.motorcontrol.Spark;
 import edu.wpi.first.wpilibj.motorcontrol.Talon;
 import edu.wpi.first.wpilibj.motorcontrol.Victor;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
@@ -23,6 +22,7 @@ import frc.robot.GameController.ControllerType;
 import frc.robot.auto.AutoController;
 import frc.robot.auto.SequenceMoveAndShoot;
 import frc.robot.gyro.AnalogGyro;
+import frc.robot.positioner.LimeLightPositioner;
 import frc.robot.encoder.AnalogAbsoluteEncoder;
 import frc.robot.encoder.Encoder;
 
@@ -72,6 +72,8 @@ public class Robot extends TimedRobot {
   final Encoder enc_lr = new AnalogAbsoluteEncoder(1);
 
   final AnalogGyro m_gyro = new AnalogGyro(4);
+
+  final LimeLightPositioner m_positioner = new LimeLightPositioner();
 
   GameController m_controller; // = new Controller(0, ControllerType.Xbox);
 
@@ -129,7 +131,7 @@ public class Robot extends TimedRobot {
   SwerveMotorModule rightFrontMM = new SwerveMotorModule("rightFront", new Translation2d(-0.30956, 0.30956), pwm_drive_rf, pwm_steer_rf, enc_rf, m_encoderMultiplier, m_floatTolerance, true, false);
   SwerveMotorModule leftRearMM = new SwerveMotorModule("leftRear", new Translation2d(0.30956, -0.30956), pwm_drive_lr, pwm_steer_lr, enc_lr, m_encoderMultiplier, m_floatTolerance, true, false);
 
-  SwerveDriveModule swerveDriveModule = new SwerveDriveModule("swerveDrive", m_gyro, m_driveSpeed, m_rotationSpeed, isFieldOriented, m_floatTolerance
+  SwerveDriveModule swerveDriveModule = new SwerveDriveModule("swerveDrive", m_gyro, m_positioner, m_driveSpeed, m_rotationSpeed, isFieldOriented, m_floatTolerance
     , leftFrontMM
     , rightFrontMM
     , leftRearMM
