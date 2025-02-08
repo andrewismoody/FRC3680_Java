@@ -1,5 +1,6 @@
 package frc.robot;
 
+import edu.wpi.first.math.geometry.Pose3d;
 import edu.wpi.first.wpilibj.motorcontrol.MotorController;
 
 public class SingleMotorModule implements RobotModule {
@@ -44,5 +45,9 @@ public class SingleMotorModule implements RobotModule {
 
     public String GetModuleID() {
         return moduleID;
+    }
+
+    public void ApproachTarget(Pose3d TargetPose) {
+        // TODO: Implement this.
     }
 }

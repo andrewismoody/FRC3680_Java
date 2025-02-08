@@ -34,19 +34,23 @@ public class AutoEventTime implements AutoEvent {
     public void Run() {
         switch (eventType) {
             case Void:
-                voidEvent.run();
+                if (voidEvent != null)
+                    voidEvent.run();
                 break;
             case Boolean:
-                boolEvent.accept(boolValue);
+                if (boolEvent != null)
+                    boolEvent.accept(boolValue);
                 break;
             case Double:
-                doubleEvent.accept(doubleValue);
+                if (doubleEvent != null)
+                    doubleEvent.accept(doubleValue);
                 break;
             case Auto:
-                autoController.AddSequence(autoEvent);
+                if (autoEvent != null)
+                    autoController.AddSequence(autoEvent);
                 break;
             case Adaptive:
-                // not implemented - shouldn't be used for Time triggers, as there's no target to meet.
+                // not implemented for Time Event Type
                 break;
         }
         complete = true;
