@@ -3,6 +3,7 @@ package frc.robot;
 import java.util.ArrayList;
 
 import edu.wpi.first.math.geometry.Rotation2d;
+import edu.wpi.first.math.geometry.Rotation3d;
 import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.geometry.Translation3d;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
@@ -10,10 +11,11 @@ import edu.wpi.first.math.kinematics.SwerveDriveKinematics;
 import edu.wpi.first.math.kinematics.SwerveDriveOdometry;
 import edu.wpi.first.math.kinematics.SwerveModulePosition;
 import edu.wpi.first.math.kinematics.SwerveModuleState;
+import edu.wpi.first.math.geometry.Pose3d;
 import edu.wpi.first.wpilibj.RobotBase;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
-import frc.robot.positioner.Positioner;
 
+import frc.robot.positioner.Positioner;
 import frc.robot.gyro.Gyro;
 
 public class SwerveDriveModule implements DriveModule {
@@ -120,6 +122,16 @@ public class SwerveDriveModule implements DriveModule {
         }
 
         return returnStates;
+    }
+
+    public void ApproachTarget(Pose3d TargetPose) {
+        Translation2d TargetPosition = new Translation2d(TargetPose.getX(), TargetPose.getY());
+        double TargetYaw = TargetPose.getRotation().getZ();
+        Translation2d Heading = currentPosition.minus(TargetPosition);
+
+        ProcessForwardSpeed(Heading.getY() / this.driveSpeed);
+        ProcessLateralSpeed(Heading.getX() / this.driveSpeed);
+        ProcessRotationAngle(TargetYaw);
     }
 
     public void Initialize() {
