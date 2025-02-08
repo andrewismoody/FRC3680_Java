@@ -72,6 +72,7 @@ public class SwerveMotorModule {
     floatTolerance = FloatTolerance;
     invertDrive = InvertDrive;
     encoderMultiplier = EncoderMultipier;
+    // decelFactor = driveModule.rotationSpeed / 1.5;
 
     // not used for absolute encoders
     AngleEncoder.setReverseDirection(InvertRotation);
@@ -101,14 +102,14 @@ public class SwerveMotorModule {
 
     currentAngle = Rotation2d.fromDegrees(distance);
 
-    var optState = SwerveModuleState.optimize(moduleState, currentAngle);  
+    moduleState.optimize(currentAngle);  
 
     // slow down if we aren't aiming the right direction yet
-    optState.speedMetersPerSecond *= optState.angle.minus(currentAngle).getCos();
+    moduleState.speedMetersPerSecond *= moduleState.angle.minus(currentAngle).getCos();
 
     if (driveModule.controller.enableDrive) {
-      setAngle(optState);
-      setSpeed(optState);
+      setAngle(moduleState);
+      setSpeed(moduleState);
     }
   }
 
@@ -140,12 +141,16 @@ public class SwerveMotorModule {
     }
 
     var delAngle = tarAngle.minus(currentAngle).getRadians() + 0.0; // add 0 to prevent negative zero
-    // attempted to adjust for deceleration
-    var rate = (previousCurrentAngle - currentRad) / (elapsedTime / 1000);
-    var decelDistance = rate / (driveModule.rotationSpeed / 1.5);
+
+    // attempt to adjust for deceleration
+    // var rate = (previousCurrentAngle - currentRad) / (elapsedTime / 1000);
+    // var decelDistance = rate / decelFactor;
+    // distance = rate * time; remove the time factor and we only have the distance; this is how far it moved in a single time slice:
+    var decelDistance = previousCurrentAngle - currentRad;
+
     if (Math.abs(previousDeltaAngle - delAngle) > floatTolerance) {
       if (debugAngle) {
-        System.out.printf("%d | %s delta angle: %f; target angle: %f; current angle: %f; elapsed time: %f; rate: %f\n", now, moduleID, delAngle, tarRad, currentRad, elapsedTime / 1000, rate);
+        System.out.printf("%d | %s delta angle: %f; target angle: %f; current angle: %f; elapsed time: %f\n", now, moduleID, delAngle, tarRad, currentRad, elapsedTime / 1000);
       }
       previousDeltaAngle = delAngle;
 
@@ -203,6 +208,7 @@ public class SwerveMotorModule {
     if (invertRotation)
       motorSpeed *= -1;
     
+      // shut off the motor if the target is closer than the deceleration distance
     if (Math.abs(delAngle) < Math.abs(decelDistance))
       motorSpeed = 0.0;
 
