@@ -25,6 +25,13 @@ public class DualMotorModule implements RobotModule {
     Switch upperLimit;
     Switch lowerLimit;
 
+    double rightRotationCount = 0.0;
+    double leftRotationCount = 0.0;
+    double fullRotation = 6.28;
+
+    double previousleftEncValue = 0.0;
+    double previousRightEncValue = 0.0;
+
     public DualMotorModule(String ModuleID, MotorController LeftDriveMotor, MotorController RightDriveMotor, double DriveSpeed, boolean InvertLeft, boolean InvertRight, Switch UpperLimit, Switch LowerLimit, Encoder RightEnc, Encoder LeftEnc) {
         moduleID = ModuleID;
         leftDriveMotor = LeftDriveMotor;
@@ -64,6 +71,25 @@ public class DualMotorModule implements RobotModule {
             }
             leftDriveMotor.setVoltage(0);
             rightDriveMotor.setVoltage(0);
+        }
+
+        if (lowerLimit.GetState()) {
+            leftRotationCount = 0.0;
+            rightRotationCount = 0.0;
+        }
+        else {
+            if (leftEnc != null)
+                leftRotationCount += fullRotation - (previousleftEncValue - leftEnc.getDistance());
+            if (rightEnc != null)
+                rightRotationCount += fullRotation - (previousRightEncValue - rightEnc.getDistance());
+        }
+
+        if (rightEnc != null) {
+            previousRightEncValue = rightEnc.getDistance();
+        }
+
+        if (leftEnc != null) {
+            previousleftEncValue = leftEnc.getDistance();
         }
     }
 

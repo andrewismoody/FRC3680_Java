@@ -18,6 +18,10 @@ public class SingleMotorModule implements RobotModule {
     Switch upperLimit;
     Switch lowerLimit;
 
+    double fullRotation = 6.28;
+    double previousEncValue = 0.0;
+    double rotationCount = 0.0;
+
     public boolean debug = false;
     double previousDriveSpeed;
     double currentDriveSpeed;
@@ -56,6 +60,17 @@ public class SingleMotorModule implements RobotModule {
                 System.out.println("limit reached, not driving motor");
             }
             driveMotor.setVoltage(0);
+        }
+
+        if (enc != null) {
+            if (lowerLimit.GetState()) {
+                rotationCount = 0.0;
+            }
+            else {
+                rotationCount += fullRotation - (previousEncValue - enc.getDistance());
+            }
+
+            previousEncValue = enc.getDistance();
         }
     }
 
