@@ -118,12 +118,12 @@ public class Robot extends TimedRobot {
   double m_rotationSpeed = 35.168; // 17.584; // 21.98; //32.40 / m_speedMod; // should be actual radians per
                                    // second that is achievable by the rotation motor
 
-  SingleMotorModule intake = new SingleMotorModule("intake", pwm_steer_rf, m_intakeSpeed, false);
-  DualMotorModule ejector = new DualMotorModule("ejector", pwm_drive_lr, pwm_steer_lr, m_ejectSpeed, true, false);
-  DualMotorModule ejectorSlow = new DualMotorModule("ejectorSlow", pwm_drive_lr, pwm_steer_lr, m_ejectSpeed / 2, true, false);
-  SingleMotorModule feeder = new SingleMotorModule("feeder", m_pwm8, m_feedSpeed, true);
-  DualMotorModule lifter = new DualMotorModule("lifter", m_pwm9, m_pwm10, m_liftSpeed, true, false);
-  DualMotorModule intakeUpper = new DualMotorModule("intakeUpper", pwm_drive_lr, pwm_steer_lr, m_ejectSpeed / 2, false, true);
+  SingleMotorModule intake = new SingleMotorModule("intake", pwm_steer_rf, m_intakeSpeed, false, null, null, null);
+  DualMotorModule ejector = new DualMotorModule("ejector", pwm_drive_lr, pwm_steer_lr, m_ejectSpeed, true, false, null, null, null, null);
+  DualMotorModule ejectorSlow = new DualMotorModule("ejectorSlow", pwm_drive_lr, pwm_steer_lr, m_ejectSpeed / 2, true, false, null, null, null, null);
+  SingleMotorModule feeder = new SingleMotorModule("feeder", m_pwm8, m_feedSpeed, true, null, null, null);
+  DualMotorModule lifter = new DualMotorModule("lifter", m_pwm9, m_pwm10, m_liftSpeed, true, false, null, null, null, null);
+  DualMotorModule intakeUpper = new DualMotorModule("intakeUpper", pwm_drive_lr, pwm_steer_lr, m_ejectSpeed / 2, false, true, null, null, null, null);
 
   // total length of robot is 32.375", centerline is 16.1875" from edge.  Drive axle center is 4" from edge - 12.1875" from center which is 309.56mm or 0.30956 meters
   SwerveMotorModule leftFrontMM = new SwerveMotorModule("leftFront", new Translation2d(0.30956, 0.30956), pwm_drive_lf, pwm_steer_lf, enc_lf, m_encoderMultiplier, m_floatTolerance, true, false);

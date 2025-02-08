@@ -8,4 +8,5 @@ public interface RobotModule {
     public void SetController(ModuleController controller);
     public String GetModuleID();
     public void ApproachTarget(Pose3d TargetPose);
+    public Pose3d GetPosition();
 }

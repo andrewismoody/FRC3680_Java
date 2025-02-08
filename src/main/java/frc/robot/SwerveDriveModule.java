@@ -3,8 +3,8 @@ package frc.robot;
 import java.util.ArrayList;
 
 import edu.wpi.first.math.geometry.Rotation2d;
+import edu.wpi.first.math.geometry.Rotation3d;
 import edu.wpi.first.math.geometry.Translation2d;
-import edu.wpi.first.math.geometry.Translation3d;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.math.kinematics.SwerveDriveKinematics;
 import edu.wpi.first.math.kinematics.SwerveDriveOdometry;
@@ -247,8 +247,9 @@ public class SwerveDriveModule implements DriveModule {
         controller = Controller;
     }
 
-    public Translation3d GetPosition() {
-        return positioner.GetPosition();
+    @Override
+    public Pose3d GetPosition() {
+        return new Pose3d(positioner.GetPosition(), new Rotation3d(0, 0, currentAngle));
         // return new Translation3d(currentPosition.getX(), currentPosition.getY(), currentAngle);
     }
 }

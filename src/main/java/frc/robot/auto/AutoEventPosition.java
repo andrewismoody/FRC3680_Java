@@ -3,7 +3,6 @@ package frc.robot.auto;
 import java.util.function.Consumer;
 
 import edu.wpi.first.math.geometry.Pose3d;
-import edu.wpi.first.math.geometry.Translation3d;
 import frc.robot.RobotModule;
 
 public class AutoEventPosition implements AutoEvent {
@@ -12,7 +11,7 @@ public class AutoEventPosition implements AutoEvent {
     String label;
     AutoController autoController;
 
-    Translation3d target;
+    Pose3d target;
 
     EventType eventType;
 
@@ -29,7 +28,7 @@ public class AutoEventPosition implements AutoEvent {
     RobotModule targetModule; // for adaptive events
     Pose3d targetPose;
 
-    public AutoEventPosition(String Label, Boolean Parallel, Translation3d Target, EventType EventType, AutoController AutoController) {
+    public AutoEventPosition(String Label, Boolean Parallel, Pose3d Target, EventType EventType, AutoController AutoController) {
         label = Label;
         parallel = Parallel;
         eventType = EventType;

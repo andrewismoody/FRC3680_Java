@@ -1,7 +1,11 @@
 package frc.robot;
 
 import edu.wpi.first.math.geometry.Pose3d;
+import edu.wpi.first.math.geometry.Rotation3d;
+import edu.wpi.first.math.geometry.Translation3d;
 import edu.wpi.first.wpilibj.motorcontrol.MotorController;
+import frc.robot.encoder.Encoder;
+import frc.robot.switches.Switch;
 
 public class SingleMotorModule implements RobotModule {
     String moduleID;
@@ -10,15 +14,23 @@ public class SingleMotorModule implements RobotModule {
     boolean invert;
     ModuleController controller;
 
+    Encoder enc;
+    Switch upperLimit;
+    Switch lowerLimit;
+
     public boolean debug = false;
     double previousDriveSpeed;
     double currentDriveSpeed;
 
-    public SingleMotorModule(String ModuleID, MotorController DriveMotor, double DriveSpeed, boolean Invert) {
+    public SingleMotorModule(String ModuleID, MotorController DriveMotor, double DriveSpeed, boolean Invert, Switch UpperLimit, Switch LowerLimit, Encoder Enc) {
         moduleID = ModuleID;
         driveMotor = DriveMotor;
         driveSpeed = DriveSpeed;
         invert = Invert;
+
+        upperLimit = UpperLimit;
+        lowerLimit = LowerLimit;
+        enc = Enc;
     }
 
     public void Initialize() {
@@ -35,8 +47,16 @@ public class SingleMotorModule implements RobotModule {
             System.out.printf("%s currentDriveSpeed %f\n", moduleID, currentDriveSpeed);
             previousDriveSpeed = currentDriveSpeed;
         }
-            
-        driveMotor.set(invert ? -currentDriveSpeed : currentDriveSpeed);
+        
+        if (currentDriveSpeed > 0 && !upperLimit.GetState() ||
+            currentDriveSpeed < 0 && !lowerLimit.GetState()) {
+                driveMotor.setVoltage(invert ? -currentDriveSpeed : currentDriveSpeed);
+        } else {
+            if (debug) {
+                System.out.println("limit reached, not driving motor");
+            }
+            driveMotor.setVoltage(0);
+        }
     }
 
     public void SetController(ModuleController Controller) {
@@ -49,5 +69,12 @@ public class SingleMotorModule implements RobotModule {
 
     public void ApproachTarget(Pose3d TargetPose) {
         // TODO: Implement this.
+    }
+
+    public Pose3d GetPosition() {
+        if (enc != null)
+            return new Pose3d(new Translation3d(enc.getDistance(), 0, 0), new Rotation3d());
+        
+        return new Pose3d();
     }
 }

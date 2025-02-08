@@ -2,7 +2,7 @@ package frc.robot;
 
 import java.util.Hashtable;
 
-import edu.wpi.first.math.geometry.Translation3d;
+import edu.wpi.first.math.geometry.Pose3d;
 
 public class ModuleController {
   Hashtable<String, RobotModule> modules = new Hashtable<String, RobotModule>();
@@ -106,7 +106,7 @@ public class ModuleController {
     inverseValue = newInverse;
   }
 
-  public Translation3d GetPosition() {
+  public Pose3d GetPosition() {
     return driveModule.GetPosition();
   }
 }

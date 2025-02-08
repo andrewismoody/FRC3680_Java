@@ -1,6 +1,7 @@
 package frc.robot;
 
 import edu.wpi.first.math.geometry.Pose3d;
+import edu.wpi.first.math.geometry.Rotation3d;
 import edu.wpi.first.math.geometry.Translation3d;
 import edu.wpi.first.wpilibj.drive.DifferentialDrive;
 import edu.wpi.first.wpilibj.motorcontrol.MotorController;
@@ -87,8 +88,8 @@ public class DifferentialDriveModule implements DriveModule {
         controller = Controller;
     }
 
-    public Translation3d GetPosition() {
-        return currentPosition;
+    public Pose3d GetPosition() {
+        return new Pose3d(currentPosition, new Rotation3d(0, 0, currentRotationAngle));
     }
 
     public void ApproachTarget(Pose3d TargetPose) {
