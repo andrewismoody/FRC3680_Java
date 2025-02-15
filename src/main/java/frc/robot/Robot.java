@@ -13,7 +13,6 @@ import edu.wpi.first.wpilibj.Preferences;
 import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj.motorcontrol.PWMSparkMax;
-import edu.wpi.first.wpilibj.motorcontrol.PWMVictorSPX;
 import edu.wpi.first.wpilibj.motorcontrol.Talon;
 import edu.wpi.first.wpilibj.motorcontrol.Victor;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
@@ -39,8 +38,8 @@ public class Robot extends TimedRobot {
   final String codeBuildVersion = "2024.12.05-PreSeason";
 
   // RR
-  final PWMSparkMax pwm_drive_rr = new PWMSparkMax(0);
-  final Talon pwm_steer_rr = new Talon(4);
+  final PWMSparkMax pwm_drive_rr = new PWMSparkMax(1);
+  final Victor pwm_steer_rr = new Victor(5);
 
   // LF
   final PWMSparkMax pwm_drive_lf = new PWMSparkMax(3);
@@ -51,12 +50,10 @@ public class Robot extends TimedRobot {
   final Talon pwm_steer_rf = new Talon(7);
 
   // LR
-  final PWMSparkMax pwm_drive_lr = new PWMSparkMax(1);
-  final Victor pwm_steer_lr = new Victor(5);
+  final PWMSparkMax pwm_drive_lr = new PWMSparkMax(0);
+  final Talon pwm_steer_lr = new Talon(4);
 
-  final PWMVictorSPX m_pwm8 = new PWMVictorSPX(8);
-  final PWMVictorSPX m_pwm9 = new PWMVictorSPX(9);
-  final PWMVictorSPX m_pwm10 = new PWMVictorSPX(10);
+  final PWMSparkMax pwm_elev = new PWMSparkMax(8);
 
   // JE motor is 44.4 pulses per rotation, and it reports in degrees, so there are
   // 8.108 degress per pulse.
@@ -71,7 +68,9 @@ public class Robot extends TimedRobot {
   // lr
   final Encoder enc_lr = new AnalogAbsoluteEncoder(1);
 
-  final AnalogGyro m_gyro = new AnalogGyro(4);
+  final AnalogGyro m_gyro = new AnalogGyro(5);
+
+  final Encoder enc_elev = new AnalogAbsoluteEncoder(4);
 
   final LimeLightPositioner m_positioner = new LimeLightPositioner();
 
@@ -82,10 +81,7 @@ public class Robot extends TimedRobot {
   final boolean isFieldOriented = false;
 
   final double m_floatTolerance = 0.08; // 0.2;
-  final double m_ejectSpeed = 1.0;
-  final double m_intakeSpeed = 1.0;
-  final double m_liftSpeed = 1.0;
-  final double m_feedSpeed = 1.0;
+  final double m_elevatorSpeed = 0.3;
   // 24 teeth on driver, 42 teeth on driven = 24/42 = 0.5714
   final double m_encoderMultiplier = 1.0; // 0.5714;
 
@@ -118,18 +114,14 @@ public class Robot extends TimedRobot {
   double m_rotationSpeed = 35.168; // 17.584; // 21.98; //32.40 / m_speedMod; // should be actual radians per
                                    // second that is achievable by the rotation motor
 
-  SingleMotorModule intake = new SingleMotorModule("intake", pwm_steer_rf, m_intakeSpeed, false, null, null, null);
-  DualMotorModule ejector = new DualMotorModule("ejector", pwm_drive_lr, pwm_steer_lr, m_ejectSpeed, true, false, null, null, null, null);
-  DualMotorModule ejectorSlow = new DualMotorModule("ejectorSlow", pwm_drive_lr, pwm_steer_lr, m_ejectSpeed / 2, true, false, null, null, null, null);
-  SingleMotorModule feeder = new SingleMotorModule("feeder", m_pwm8, m_feedSpeed, true, null, null, null);
-  DualMotorModule lifter = new DualMotorModule("lifter", m_pwm9, m_pwm10, m_liftSpeed, true, false, null, null, null, null);
-  DualMotorModule intakeUpper = new DualMotorModule("intakeUpper", pwm_drive_lr, pwm_steer_lr, m_ejectSpeed / 2, false, true, null, null, null, null);
+  SingleMotorModule elevator = new SingleMotorModule("elevatorUp", pwm_elev, m_elevatorSpeed, false, null, null, enc_elev);
+//  SingleMotorModule elevatorDown = new SingleMotorModule("elevatorDown", pwm_elev, m_elevatorSpeed, true, null, null, null);
 
   // total length of robot is 32.375", centerline is 16.1875" from edge.  Drive axle center is 4" from edge - 12.1875" from center which is 309.56mm or 0.30956 meters
   SwerveMotorModule leftFrontMM = new SwerveMotorModule("leftFront", new Translation2d(0.30956, 0.30956), pwm_drive_lf, pwm_steer_lf, enc_lf, m_encoderMultiplier, m_floatTolerance, true, false);
   SwerveMotorModule rightRearMM = new SwerveMotorModule("rightRear", new Translation2d(-0.30956, -0.30956), pwm_drive_rr, pwm_steer_rr, enc_rr, m_encoderMultiplier, m_floatTolerance, true, false);
-  SwerveMotorModule rightFrontMM = new SwerveMotorModule("rightFront", new Translation2d(-0.30956, 0.30956), pwm_drive_rf, pwm_steer_rf, enc_rf, m_encoderMultiplier, m_floatTolerance, true, false);
-  SwerveMotorModule leftRearMM = new SwerveMotorModule("leftRear", new Translation2d(0.30956, -0.30956), pwm_drive_lr, pwm_steer_lr, enc_lr, m_encoderMultiplier, m_floatTolerance, true, false);
+  SwerveMotorModule rightFrontMM = new SwerveMotorModule("rightFront", new Translation2d(0.30956, -0.30956), pwm_drive_rf, pwm_steer_rf, enc_rf, m_encoderMultiplier, m_floatTolerance, true, false);
+  SwerveMotorModule leftRearMM = new SwerveMotorModule("leftRear", new Translation2d(-0.30956, 0.30956), pwm_drive_lr, pwm_steer_lr, enc_lr, m_encoderMultiplier, m_floatTolerance, true, false);
 
   SwerveDriveModule swerveDriveModule = new SwerveDriveModule("swerveDrive", m_gyro, m_positioner, m_driveSpeed, m_rotationSpeed, isFieldOriented, m_floatTolerance
     , leftFrontMM
@@ -167,27 +159,11 @@ public class Robot extends TimedRobot {
     Preferences.initString(DriveSelectionKey, DriveSelectionSwerve);
     String DriveSelection = Preferences.getString(DriveSelectionKey, DriveSelectionSwerve);
 
-    switch (DriveSelection) {
-      case DriveSelectionDifferential:
-        modules = new ModuleController(diffDriveModule, m_divider);
-      case DriveSelectionSwerve:
-      default:
-        modules = new ModuleController(swerveDriveModule, m_divider);
-        break;
-    }
-
-    modules.AddModule(intake);
-    modules.AddModule(ejector);
-    modules.AddModule(ejectorSlow);
-    modules.AddModule(feeder);
-    modules.AddModule(lifter);
-    modules.AddModule(intakeUpper);
-
-    modules.enableDrive = true;
-
     swerveDriveModule.debug = true;
     leftFrontMM.debugAngle = false;
     leftFrontMM.debugSpeed = false;
+
+    elevator.debug = true;
 
     // // lf
     // m_enc2.setAngleOffsetDeg(149);
@@ -197,7 +173,6 @@ public class Robot extends TimedRobot {
     // m_enc4.setAngleOffsetDeg(134);
     // // rr
     // m_enc3.setAngleOffsetDeg(103);
-    modules.Initialize();
 
     JoystickIndexLoop: for (int j = 0; j < 6; j++) {
       System.out.printf("Checking for joystick on port %d\n", j);
@@ -232,16 +207,32 @@ public class Robot extends TimedRobot {
       m_controller = new GameController(0, ControllerType.Xbox);
     }
 
+    switch (DriveSelection) {
+      case DriveSelectionDifferential:
+        modules = new ModuleController(diffDriveModule, m_divider, m_controller);
+      case DriveSelectionSwerve:
+      default:
+        modules = new ModuleController(swerveDriveModule, m_divider, m_controller);
+        break;
+    }
+
+    modules.AddModule(elevator);
+
+    modules.enableDrive = true;
+    
+    modules.Initialize();
+
     // three different modules operate the same component differently
-    // m_controller.RegisterBinaryButtonConsumer(ButtonName.LeftButton, ejector::ProcessState);
-    // m_controller.RegisterBinaryButtonConsumer(ButtonName.RightButton, ejectorSlow::ProcessState);
-    m_controller.RegisterBinaryButtonConsumer(ButtonName.LeftShoulderButton, intakeUpper::ProcessState);
+    // m_controller.RegisterBinaryButtonConsumer(ButtonName.LeftButton, ejector::ApplyValue);
+    // m_controller.RegisterBinaryButtonConsumer(ButtonName.RightButton, ejectorSlow::ApplyValue);
+    // m_controller.RegisterBinaryButtonConsumer(ButtonName.LeftShoulderButton, intakeUpper::ApplyValue);
 
     // map both of these actions to the same button
-    m_controller.RegisterBinaryButtonConsumer(ButtonName.TopButton, intake::ProcessState);
-    m_controller.RegisterBinaryButtonConsumer(ButtonName.TopButton, feeder::ProcessState);
+    // m_controller.RegisterBinaryButtonConsumer(ButtonName.TopButton, intake::ApplyValue);
+    // m_controller.RegisterBinaryButtonConsumer(ButtonName.TopButton, feeder::ApplyValue);
 
-    m_controller.RegisterBinaryButtonConsumer(ButtonName.BottomButton, lifter::ProcessState);
+    m_controller.RegisterBinaryButtonConsumer(ButtonName.BottomButton, elevator::ApplyInverse);
+    m_controller.RegisterBinaryButtonConsumer(ButtonName.TopButton, elevator::ApplyValue);
 
     m_controller.RegisterBinaryButtonConsumer(ButtonName.LeftButton, swerveDriveModule::LockPosition);
     m_controller.RegisterBinaryButtonConsumer(ButtonName.RightButton, swerveDriveModule::ReturnToZero);
@@ -269,7 +260,7 @@ public class Robot extends TimedRobot {
     // modules::ProcessSpeedDilation);
 
     AutoController timedShoot = new AutoController("MoveAndShoot");
-    timedShoot.AddSequence(new SequenceMoveAndShoot(timedShoot.GetLabel(), modules, timedShoot));
+    //timedShoot.AddSequence(new SequenceMoveAndShoot(timedShoot.GetLabel(), modules, timedShoot));
     AutoModes.put(timedShoot.GetLabel(), timedShoot);
 
     SmartDashboard.putStringArray("Auto List", AutoModes.keySet().toArray(new String[] {}));
@@ -306,16 +297,18 @@ public class Robot extends TimedRobot {
     // slider 0 is motor speed
     modules.setSpeedMod(SmartDashboard.getNumber("DB/Slider 0", 1.0));
 
-    if (SmartDashboard.getBoolean("DB/Button 0", false))
-      modules.setInverseValue(1.0);
-    else
-      modules.setInverseValue(-1.0);
-    m_controller.ProcessButtons();
-    modules.ProcessDrive(false);
+    // if (SmartDashboard.getBoolean("DB/Button 0", false))
+    //   modules.setInverseValue(1.0);
+    // else
+    //   modules.setInverseValue(-1.0);
+
+    modules.ProcessState(false);
+
     SmartDashboard.putString("DB/String 5", "LF: " + String.valueOf(leftFrontMM.currentAngle.getDegrees()));
     SmartDashboard.putString("DB/String 6", "RF: " + String.valueOf(rightFrontMM.currentAngle.getDegrees()));
     SmartDashboard.putString("DB/String 7", "LR: " + String.valueOf(leftRearMM.currentAngle.getDegrees()));
     SmartDashboard.putString("DB/String 8", "RR: " + String.valueOf(rightRearMM.currentAngle.getDegrees()));
+    SmartDashboard.putString("DB/String 9", "Elev: " + String.valueOf(elevator.rotationCount));
   }
 
   /** This function is called once each time the robot enters test mode. */

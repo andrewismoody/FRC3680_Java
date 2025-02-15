@@ -21,6 +21,8 @@ public class SingleMotorModule implements RobotModule {
     double fullRotation = 6.28;
     double previousEncValue = 0.0;
     double rotationCount = 0.0;
+    double previousRotationCount = 0.0;
+    double m_floatTolerance = 0.5f;
 
     public boolean debug = false;
     double previousDriveSpeed;
@@ -35,43 +37,66 @@ public class SingleMotorModule implements RobotModule {
         upperLimit = UpperLimit;
         lowerLimit = LowerLimit;
         enc = Enc;
+
+        if (enc != null)
+            previousEncValue = enc.getDistance();
     }
 
     public void Initialize() {
 
     }
+
+    @Override
+    public void ApplyInverse(boolean value) {
+        if (value) {
+            currentDriveSpeed += controller.ApplyModifiers(-driveSpeed);
+            System.out.printf("%s: ApplyInverse; -driveSpeed %f; currentDriveSpeed %f\n", moduleID, -driveSpeed, currentDriveSpeed);
+        }
+    }
+
+    @Override
+    public void ApplyValue(boolean value) {
+        if (value) {
+            currentDriveSpeed += controller.ApplyModifiers(driveSpeed);
+            System.out.printf("%s: ApplyValue; driveSpeed %f; currentDriveSpeed %f\n", moduleID, driveSpeed, currentDriveSpeed);
+        }
+    }
     
-    public void ProcessState(boolean value) {
-        currentDriveSpeed = 0.0;
-
-        if (value)
-            currentDriveSpeed = controller.ApplyModifiers(driveSpeed);
-
-        if (debug && previousDriveSpeed != currentDriveSpeed) {
+    @Override
+    public void ProcessState(boolean isAuto) {
+        if (debug && Math.abs(previousDriveSpeed - currentDriveSpeed) > m_floatTolerance) {
             System.out.printf("%s currentDriveSpeed %f\n", moduleID, currentDriveSpeed);
             previousDriveSpeed = currentDriveSpeed;
         }
-        
-        if (currentDriveSpeed > 0 && !upperLimit.GetState() ||
-            currentDriveSpeed < 0 && !lowerLimit.GetState()) {
-                driveMotor.setVoltage(invert ? -currentDriveSpeed : currentDriveSpeed);
+
+        if ((currentDriveSpeed > 0 && (upperLimit == null || !upperLimit.GetState())) ||
+            (currentDriveSpeed < 0 && (lowerLimit == null || !lowerLimit.GetState()))) {
+                System.out.printf("%s: currentDriveSpeed %f\n", moduleID, invert ? -currentDriveSpeed : currentDriveSpeed);
+                driveMotor.set(invert ? -currentDriveSpeed : currentDriveSpeed);
         } else {
-            if (debug) {
+            if (debug  && currentDriveSpeed != 0.0) {
                 System.out.println("limit reached, not driving motor");
             }
-            driveMotor.setVoltage(0);
+            driveMotor.set(0);
         }
 
         if (enc != null) {
-            if (lowerLimit.GetState()) {
+            if (lowerLimit != null && lowerLimit.GetState()) {
                 rotationCount = 0.0;
             }
             else {
-                rotationCount += fullRotation - (previousEncValue - enc.getDistance());
+                rotationCount += (previousEncValue - enc.getDistance());
             }
 
             previousEncValue = enc.getDistance();
         }
+
+        if (Math.abs(rotationCount - previousRotationCount) > m_floatTolerance && debug) {
+            System.out.printf("%s: Rotation Count %f\n", moduleID, rotationCount);
+            previousRotationCount = rotationCount;
+        }
+
+        currentDriveSpeed = 0.0;
     }
 
     public void SetController(ModuleController Controller) {

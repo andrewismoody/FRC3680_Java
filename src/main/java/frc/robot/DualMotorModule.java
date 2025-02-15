@@ -49,28 +49,39 @@ public class DualMotorModule implements RobotModule {
     public void Initialize() {
         
     }
+
+    @Override
+    public void ApplyInverse(boolean value) {
+        if (value) {
+            System.out.printf("%s: ApplyInverse\n", moduleID);
+            currentDriveSpeed += controller.ApplyModifiers(-driveSpeed);
+        }
+    }
+
+    @Override
+    public void ApplyValue(boolean value) {
+        if (value) {
+            System.out.printf("%s: ApplyValue\n", moduleID);
+            currentDriveSpeed += controller.ApplyModifiers(driveSpeed);
+        }  
+    }
     
-    public void ProcessState(boolean value) {
-        var currentDriveSpeed = 0.0;
-
-        if (value)
-            currentDriveSpeed = controller.ApplyModifiers(driveSpeed);
-
+    public void ProcessState(boolean isAuto) {
         if (debug && previousDriveSpeed != currentDriveSpeed) {
             System.out.printf("%s currentDriveSpeed %f\n", moduleID, currentDriveSpeed);
             previousDriveSpeed = currentDriveSpeed;
         }
         
-        if (currentDriveSpeed > 0 && !upperLimit.GetState() ||
-            currentDriveSpeed < 0 && !lowerLimit.GetState()) {
-                leftDriveMotor.setVoltage(invertLeft ? -currentDriveSpeed : currentDriveSpeed);
-                rightDriveMotor.setVoltage(invertRight ? -currentDriveSpeed : currentDriveSpeed);
+        if ((currentDriveSpeed > 0 && (upperLimit == null || !upperLimit.GetState())) ||
+            (currentDriveSpeed < 0 && (lowerLimit == null || !lowerLimit.GetState()))) {
+                leftDriveMotor.set(invertLeft ? -currentDriveSpeed : currentDriveSpeed);
+                rightDriveMotor.set(invertRight ? -currentDriveSpeed : currentDriveSpeed);
         } else {
-            if (debug) {
+            if (debug && currentDriveSpeed != 0.0) {
                 System.out.println("limit reached, not driving motor");
             }
-            leftDriveMotor.setVoltage(0);
-            rightDriveMotor.setVoltage(0);
+            leftDriveMotor.set(0);
+            rightDriveMotor.set(0);
         }
 
         if (lowerLimit.GetState()) {
@@ -91,6 +102,8 @@ public class DualMotorModule implements RobotModule {
         if (leftEnc != null) {
             previousleftEncValue = leftEnc.getDistance();
         }
+
+        currentDriveSpeed = 0.0;
     }
 
     public void SetController(ModuleController Controller) {

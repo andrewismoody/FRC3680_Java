@@ -7,6 +7,7 @@ import edu.wpi.first.math.geometry.Pose3d;
 public class ModuleController {
   Hashtable<String, RobotModule> modules = new Hashtable<String, RobotModule>();
   DriveModule driveModule;
+  GameController controller;
 
   double divider = 0.5;
   double speedMod = 1.0;
@@ -19,10 +20,11 @@ public class ModuleController {
   boolean enableDrive = true;
   double speedDilationLimit = 0.75; //0.9;
 
-  public ModuleController(DriveModule DriveModule, double Divider) {
+  public ModuleController(DriveModule DriveModule, double Divider, GameController Controller) {
     driveModule = DriveModule;
     driveModule.SetController(this);
     divider = Divider;
+    controller = Controller;
   }
 
   public void Initialize() {
@@ -79,6 +81,7 @@ public class ModuleController {
   }
 
   public double ApplyModifiers(double value, boolean affectSpeed) {
+    System.out.printf("input value: %f;inverseValue: %f\n", value, inverseValue);
     value *= inverseValue;
     var thisSpeedMod = speedMod;
 
@@ -89,12 +92,24 @@ public class ModuleController {
 
     if (affectSpeed)
       value *= dividerValue * thisSpeedMod;
+
+    System.out.printf("return value: %f\n", value);
     
     return value;
   }
 
   public void ProcessDrive(boolean isAuto) {
     driveModule.ProcessState(isAuto);
+  }
+
+  public void ProcessState(boolean isAuto) {
+    controller.ProcessButtons();
+
+    ProcessDrive(isAuto);
+
+    for (RobotModule module : modules.values()) {
+      module.ProcessState(isAuto);
+    }
   }
 
   public void setSpeedMod(double newSpeed) {

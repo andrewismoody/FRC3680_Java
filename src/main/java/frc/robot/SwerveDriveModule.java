@@ -176,6 +176,14 @@ public class SwerveDriveModule implements DriveModule {
         previousRotationAngle = rotationAngle;
     }
 
+    public void ApplyInverse(boolean isAuto) {
+        // not implemented
+    }
+
+    public void ApplyValue(boolean isAuto) {
+        // not implemented
+    }
+
     public void ProcessState(boolean isAuto) {
         // https://docs.wpilib.org/en/stable/docs/software/kinematics-and-odometry/swerve-drive-kinematics.htm
         // https://docs.wpilib.org/en/stable/docs/software/hardware-apis/sensors/gyros-software.html

@@ -46,6 +46,16 @@ public class DifferentialDriveModule implements DriveModule {
         return moduleID;
     }
 
+    @Override
+    public void ApplyInverse(boolean isAuto) {
+        // not implemented
+    }
+
+    @Override
+    public void ApplyValue(boolean isAuto) {
+        // not implemented
+    }
+
     public void ProcessState(boolean isAuto) {        
         currentForwardSpeed = controller.ApplyModifiers(forwardSpeed);
         if (debugSpeed && forwardSpeed != previousForwardSpeed) {
