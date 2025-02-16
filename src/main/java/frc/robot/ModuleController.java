@@ -81,8 +81,8 @@ public class ModuleController {
   }
 
   public double ApplyModifiers(double value, boolean affectSpeed) {
-    System.out.printf("input value: %f;inverseValue: %f\n", value, inverseValue);
-    value *= inverseValue;
+    // disable inversion for now
+    // value *= inverseValue;
     var thisSpeedMod = speedMod;
 
     if (!speedLock && speedDilation < 0)
@@ -92,8 +92,6 @@ public class ModuleController {
 
     if (affectSpeed)
       value *= dividerValue * thisSpeedMod;
-
-    System.out.printf("return value: %f\n", value);
     
     return value;
   }

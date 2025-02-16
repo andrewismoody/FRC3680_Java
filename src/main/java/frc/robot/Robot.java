@@ -19,7 +19,6 @@ import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import frc.robot.GameController.ButtonName;
 import frc.robot.GameController.ControllerType;
 import frc.robot.auto.AutoController;
-import frc.robot.auto.SequenceMoveAndShoot;
 import frc.robot.gyro.AnalogGyro;
 import frc.robot.positioner.LimeLightPositioner;
 import frc.robot.encoder.AnalogAbsoluteEncoder;
@@ -35,7 +34,7 @@ import frc.robot.encoder.Encoder;
  * directory.
  */
 public class Robot extends TimedRobot {
-  final String codeBuildVersion = "2024.12.05-PreSeason";
+  final String codeBuildVersion = "2025.02.15-PreSeason";
 
   // RR
   final PWMSparkMax pwm_drive_rr = new PWMSparkMax(1);
@@ -114,14 +113,14 @@ public class Robot extends TimedRobot {
   double m_rotationSpeed = 35.168; // 17.584; // 21.98; //32.40 / m_speedMod; // should be actual radians per
                                    // second that is achievable by the rotation motor
 
-  SingleMotorModule elevator = new SingleMotorModule("elevatorUp", pwm_elev, m_elevatorSpeed, false, null, null, enc_elev);
+  SingleMotorModule elevator = new SingleMotorModule("elevator", pwm_elev, m_elevatorSpeed, false, null, null, enc_elev);
 //  SingleMotorModule elevatorDown = new SingleMotorModule("elevatorDown", pwm_elev, m_elevatorSpeed, true, null, null, null);
 
   // total length of robot is 32.375", centerline is 16.1875" from edge.  Drive axle center is 4" from edge - 12.1875" from center which is 309.56mm or 0.30956 meters
-  SwerveMotorModule leftFrontMM = new SwerveMotorModule("leftFront", new Translation2d(0.30956, 0.30956), pwm_drive_lf, pwm_steer_lf, enc_lf, m_encoderMultiplier, m_floatTolerance, true, false);
-  SwerveMotorModule rightRearMM = new SwerveMotorModule("rightRear", new Translation2d(-0.30956, -0.30956), pwm_drive_rr, pwm_steer_rr, enc_rr, m_encoderMultiplier, m_floatTolerance, true, false);
+  SwerveMotorModule leftFrontMM = new SwerveMotorModule("leftFront", new Translation2d(-0.30956, -0.30956), pwm_drive_lf, pwm_steer_lf, enc_lf, m_encoderMultiplier, m_floatTolerance, true, false);
   SwerveMotorModule rightFrontMM = new SwerveMotorModule("rightFront", new Translation2d(0.30956, -0.30956), pwm_drive_rf, pwm_steer_rf, enc_rf, m_encoderMultiplier, m_floatTolerance, true, false);
   SwerveMotorModule leftRearMM = new SwerveMotorModule("leftRear", new Translation2d(-0.30956, 0.30956), pwm_drive_lr, pwm_steer_lr, enc_lr, m_encoderMultiplier, m_floatTolerance, true, false);
+  SwerveMotorModule rightRearMM = new SwerveMotorModule("rightRear", new Translation2d(0.30956, 0.30956), pwm_drive_rr, pwm_steer_rr, enc_rr, m_encoderMultiplier, m_floatTolerance, true, false);
 
   SwerveDriveModule swerveDriveModule = new SwerveDriveModule("swerveDrive", m_gyro, m_positioner, m_driveSpeed, m_rotationSpeed, isFieldOriented, m_floatTolerance
     , leftFrontMM
@@ -159,7 +158,7 @@ public class Robot extends TimedRobot {
     Preferences.initString(DriveSelectionKey, DriveSelectionSwerve);
     String DriveSelection = Preferences.getString(DriveSelectionKey, DriveSelectionSwerve);
 
-    swerveDriveModule.debug = true;
+    swerveDriveModule.debug = false;
     leftFrontMM.debugAngle = false;
     leftFrontMM.debugSpeed = false;
 

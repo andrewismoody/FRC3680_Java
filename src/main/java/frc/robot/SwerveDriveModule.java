@@ -204,23 +204,25 @@ public class SwerveDriveModule implements DriveModule {
 
         SwerveModuleState[] moduleStates;
 
-        if (isLockPressed)
+        boolean optimize = true;
+        if (isLockPressed) {
             moduleStates = GetLockStates();
-        else if (isZeroPressed)
+            optimize = false;
+        } else if (isZeroPressed) {
+            optimize = false;
             moduleStates = GetZeroStates();
-        else
+        } else
             moduleStates = kinematics.toSwerveModuleStates(speeds);
 
-        var i = 0;
         SwerveModulePosition[] positions = new SwerveModulePosition[driveModules.size()];
         double[] driveSpeeds = new double[4]; //always 4 because of dashboard setup
 
-        for (SwerveMotorModule module : driveModules) {
-            module.updateModuleValues(moduleStates[i]);
+        for (int i = 0; i < driveModules.size(); i++) {
+            SwerveMotorModule module = driveModules.get(i);
+            module.updateModuleValues(moduleStates[i], optimize);
             positions[i] = module.getPosition();
             if (i < driveSpeeds.length)
                 driveSpeeds[i] = module.getSpeed();
-            i++;
         }
 
         odometry.update(Rotation2d.fromDegrees(newAngle), positions);

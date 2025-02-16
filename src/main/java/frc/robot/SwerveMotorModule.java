@@ -92,7 +92,7 @@ public class SwerveMotorModule {
     encoderSimRate = driveModule.rotationSpeed;
   }
 
-  public void updateModuleValues(SwerveModuleState moduleState) {
+  public void updateModuleValues(SwerveModuleState moduleState, boolean optimize) {
     double distance = useFakeEncoder ?
       currentAngle.getDegrees()
       :
@@ -102,7 +102,9 @@ public class SwerveMotorModule {
 
     currentAngle = Rotation2d.fromDegrees(distance);
 
-    moduleState.optimize(currentAngle);  
+    if (optimize) {
+      moduleState.optimize(currentAngle);
+    }
 
     // slow down if we aren't aiming the right direction yet
     moduleState.speedMetersPerSecond *= moduleState.angle.minus(currentAngle).getCos();
