@@ -51,6 +51,10 @@ public class SwerveMotorModule {
   long rotationStartTime = 0;
   long rotationLimitTime = 2 * 1000;
 
+  int sampleCount = 0;
+  int sampleMin = 100;
+  double maxDistance = 0.0;
+
   PIDController pidController = new PIDController(0.15, 0.0005, 0); // p=0.2
 
   public boolean debugAngle = false;
@@ -149,6 +153,10 @@ public class SwerveMotorModule {
     // var decelDistance = rate / decelFactor;
     // distance = rate * time; remove the time factor and we only have the distance; this is how far it moved in a single time slice:
     var decelDistance = previousCurrentAngle - currentRad;
+    if (decelDistance > maxDistance) {
+      maxDistance = decelDistance;
+      sampleCount++;
+    }
 
     if (Math.abs(previousDeltaAngle - delAngle) > floatTolerance) {
       if (debugAngle) {
@@ -175,6 +183,13 @@ public class SwerveMotorModule {
     // can't use this in conjunction with PID controller - not sure this is true?
     motorSpeed = // usePID ? motorSpeed :
       motorSpeed * (driveModule.rotationSpeed * (elapsedTime / 1000));
+
+    if (sampleCount > sampleMin && delAngle < maxDistance) {
+      var adjustmentFactor = (delAngle / maxDistance);
+      System.out.printf("%s achieved sample count; adjusting motorSpeed by factor %f", moduleID, adjustmentFactor);
+      // TODO: turn this on and test
+      // motorSpeed *= adjustmentFactor;
+    }
 
     // if we haven't moved, and our delta angle is larger than float tolerance, boost the motor voltage
     if (Math.abs(previousCurrentAngle - currentRad) <= floatTolerance && Math.abs(delAngle) > floatTolerance) {

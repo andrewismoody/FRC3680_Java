@@ -51,17 +51,19 @@ public class DualMotorModule implements RobotModule {
     }
 
     @Override
-    public void ApplyInverse(boolean value) {
-        if (value) {
-            System.out.printf("%s: ApplyInverse\n", moduleID);
+    public void ApplyInverse(boolean isPressed) {
+        if (isPressed) {
+            if (debug)
+                System.out.printf("%s: ApplyInverse\n", moduleID);
             currentDriveSpeed += controller.ApplyModifiers(-driveSpeed);
         }
     }
 
     @Override
-    public void ApplyValue(boolean value) {
-        if (value) {
-            System.out.printf("%s: ApplyValue\n", moduleID);
+    public void ApplyValue(boolean isPressed) {
+        if (isPressed) {
+            if (debug)
+                System.out.printf("%s: ApplyValue\n", moduleID);
             currentDriveSpeed += controller.ApplyModifiers(driveSpeed);
         }  
     }

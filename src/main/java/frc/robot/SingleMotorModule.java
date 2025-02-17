@@ -47,18 +47,20 @@ public class SingleMotorModule implements RobotModule {
     }
 
     @Override
-    public void ApplyInverse(boolean value) {
-        if (value) {
+    public void ApplyInverse(boolean isPressed) {
+        if (isPressed) {
             currentDriveSpeed += controller.ApplyModifiers(-driveSpeed);
-            System.out.printf("%s: ApplyInverse; -driveSpeed %f; currentDriveSpeed %f\n", moduleID, -driveSpeed, currentDriveSpeed);
+            if (debug)
+                System.out.printf("%s: ApplyInverse; -driveSpeed %f; currentDriveSpeed %f\n", moduleID, -driveSpeed, currentDriveSpeed);
         }
     }
 
     @Override
-    public void ApplyValue(boolean value) {
-        if (value) {
+    public void ApplyValue(boolean isPressed) {
+        if (isPressed) {
             currentDriveSpeed += controller.ApplyModifiers(driveSpeed);
-            System.out.printf("%s: ApplyValue; driveSpeed %f; currentDriveSpeed %f\n", moduleID, driveSpeed, currentDriveSpeed);
+            if (debug)
+                System.out.printf("%s: ApplyValue; driveSpeed %f; currentDriveSpeed %f\n", moduleID, driveSpeed, currentDriveSpeed);
         }
     }
     
