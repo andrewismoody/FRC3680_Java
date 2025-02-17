@@ -2,8 +2,8 @@ package frc.robot.auto;
 
 import java.util.function.Consumer;
 
-import edu.wpi.first.math.geometry.Pose3d;
 import frc.robot.RobotModule;
+import frc.robot.action.ActionPose;
 
 public class AutoEventPosition implements AutoEvent {
     boolean complete;
@@ -11,7 +11,7 @@ public class AutoEventPosition implements AutoEvent {
     String label;
     AutoController autoController;
 
-    Pose3d target;
+    ActionPose target;
 
     EventType eventType;
 
@@ -26,9 +26,8 @@ public class AutoEventPosition implements AutoEvent {
     AutoSequence autoEvent;
 
     RobotModule targetModule; // for adaptive events
-    Pose3d targetPose;
 
-    public AutoEventPosition(String Label, Boolean Parallel, Pose3d Target, EventType EventType, AutoController AutoController) {
+    public AutoEventPosition(String Label, Boolean Parallel, ActionPose Target, EventType EventType, AutoController AutoController) {
         label = Label;
         parallel = Parallel;
         eventType = EventType;
@@ -56,8 +55,8 @@ public class AutoEventPosition implements AutoEvent {
                     autoController.AddSequence(autoEvent);
                 break;
             case Adaptive:
-                if (targetModule != null && targetPose != null)
-                    targetModule.ApproachTarget(targetPose);
+                if (targetModule != null && target != null)
+                    targetModule.SetTargetActionPose(target.action, target.primary, target.secondary);
                 break;
         }
         complete = true;

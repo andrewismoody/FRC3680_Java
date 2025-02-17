@@ -68,7 +68,7 @@ public class AutoSequence {
                         break;
                     case Position:
                         AutoEventPosition positionEvent = (AutoEventPosition) event;
-                        if (isNearby(controller.GetPosition(), positionEvent.target, 0.5, 1.0)) {
+                        if (isNearby(controller.GetPosition(), positionEvent.target.position, 0.5, 1.0)) {
                             System.out.printf("Auto Event %s triggered at %s", event.GetLabel(), positionEvent.target);
 
                             positionEvent.Run();

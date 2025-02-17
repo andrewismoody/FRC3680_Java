@@ -60,4 +60,7 @@ public class AnalogAbsoluteEncoder implements Encoder {
         // not implememented for absolute position
     }
 
+    public boolean isAbsolute() {
+        return true;
+    }
 }

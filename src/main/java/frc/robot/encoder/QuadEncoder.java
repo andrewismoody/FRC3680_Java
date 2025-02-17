@@ -48,4 +48,8 @@ public class QuadEncoder implements Encoder {
         
         return internalEncoder.getDistance();
     }
+
+    public boolean isAbsolute() {
+        return false;
+    }
 }

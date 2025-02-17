@@ -15,6 +15,8 @@ import edu.wpi.first.wpilibj.RobotBase;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 
 import frc.robot.positioner.Positioner;
+import frc.robot.action.Action;
+import frc.robot.action.ActionPose;
 import frc.robot.gyro.Gyro;
 
 public class SwerveDriveModule implements DriveModule {
@@ -49,6 +51,8 @@ public class SwerveDriveModule implements DriveModule {
 
     boolean isZeroPressed = false;
     boolean isLockPressed = false;
+
+    ArrayList<ActionPose> actionPoses = new ArrayList<ActionPose>();
 
     public SwerveDriveModule(String ModuleID, Gyro Gyro, Positioner Positioner, double DriveSpeed, double RotationSpeed,
             boolean IsFieldOriented, double FloatTolerance, SwerveMotorModule ... modules) {
@@ -123,9 +127,10 @@ public class SwerveDriveModule implements DriveModule {
         return returnStates;
     }
 
-    public void ApproachTarget(Pose3d TargetPose) {
-        Translation2d TargetPosition = new Translation2d(TargetPose.getX(), TargetPose.getY());
-        double TargetYaw = TargetPose.getRotation().getZ();
+    public void SetTargetActionPose(Action action, int primary, int secondary) {
+        Pose3d actionPose = GetActionPose(action, primary, secondary).position;
+        Translation2d TargetPosition = new Translation2d(actionPose.getX(), actionPose.getY());
+        double TargetYaw = actionPose.getRotation().getZ();
         Translation2d Heading = currentPosition.minus(TargetPosition);
 
         ProcessForwardSpeed(Heading.getY() / this.driveSpeed);
@@ -182,6 +187,22 @@ public class SwerveDriveModule implements DriveModule {
 
     public void ApplyValue(boolean isAuto) {
         // not implemented
+    }
+
+    public void AddActionPose(ActionPose newAction) {
+        if (GetActionPose(newAction.action, newAction.primary, newAction.secondary) == null) {
+            actionPoses.add(newAction);
+        }
+    }
+
+    public ActionPose GetActionPose(Action action, int primary, int secondary) {
+        for (ActionPose pose : actionPoses) {
+            if (pose.action == action && pose.primary == primary && pose.secondary == secondary) {
+                return pose;
+            }
+        }
+
+        return null;      
     }
 
     public void ProcessState(boolean isAuto) {

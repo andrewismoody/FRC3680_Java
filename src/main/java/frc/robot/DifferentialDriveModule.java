@@ -1,11 +1,15 @@
 package frc.robot;
 
+import java.util.ArrayList;
+
 import edu.wpi.first.math.geometry.Pose3d;
 import edu.wpi.first.math.geometry.Rotation3d;
 import edu.wpi.first.math.geometry.Translation3d;
 import edu.wpi.first.wpilibj.drive.DifferentialDrive;
 import edu.wpi.first.wpilibj.motorcontrol.MotorController;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
+import frc.robot.action.Action;
+import frc.robot.action.ActionPose;
 
 public class DifferentialDriveModule implements DriveModule {
     String moduleID;
@@ -28,6 +32,8 @@ public class DifferentialDriveModule implements DriveModule {
 
     Translation3d currentPosition = new Translation3d();
 
+    ArrayList<ActionPose> actionPoses = new ArrayList<ActionPose>();
+
     public DifferentialDriveModule(String ModuleID, MotorController LeftMotor, MotorController RightMotor) {
         moduleID = ModuleID;
         leftMotor = LeftMotor;
@@ -44,6 +50,22 @@ public class DifferentialDriveModule implements DriveModule {
 
     public String GetModuleID() {
         return moduleID;
+    }
+
+    public void AddActionPose(ActionPose newAction) {
+        if (GetActionPose(newAction.action, newAction.primary, newAction.secondary) == null) {
+            actionPoses.add(newAction);
+        }
+    }
+
+    public ActionPose GetActionPose(Action action, int primary, int secondary) {
+        for (ActionPose pose : actionPoses) {
+            if (pose.action == action && pose.primary == primary && pose.secondary == secondary) {
+                return pose;
+            }
+        }
+
+        return null;      
     }
 
     @Override
@@ -102,7 +124,7 @@ public class DifferentialDriveModule implements DriveModule {
         return new Pose3d(currentPosition, new Rotation3d(0, 0, currentRotationAngle));
     }
 
-    public void ApproachTarget(Pose3d TargetPose) {
+    public void SetTargetActionPose(Action action, int primary, int secondary) {
         // TODO: Implement this.
     }    
 }

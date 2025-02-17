@@ -1,9 +1,13 @@
 package frc.robot;
 
+import java.util.ArrayList;
+
 import edu.wpi.first.math.geometry.Pose3d;
 import edu.wpi.first.math.geometry.Rotation3d;
 import edu.wpi.first.math.geometry.Translation3d;
 import edu.wpi.first.wpilibj.motorcontrol.MotorController;
+import frc.robot.action.Action;
+import frc.robot.action.ActionPose;
 import frc.robot.encoder.Encoder;
 import frc.robot.switches.Switch;
 
@@ -32,6 +36,8 @@ public class DualMotorModule implements RobotModule {
     double previousleftEncValue = 0.0;
     double previousRightEncValue = 0.0;
 
+    ArrayList<ActionPose> actionPoses = new ArrayList<ActionPose>();
+
     public DualMotorModule(String ModuleID, MotorController LeftDriveMotor, MotorController RightDriveMotor, double DriveSpeed, boolean InvertLeft, boolean InvertRight, Switch UpperLimit, Switch LowerLimit, Encoder RightEnc, Encoder LeftEnc) {
         moduleID = ModuleID;
         leftDriveMotor = LeftDriveMotor;
@@ -48,6 +54,22 @@ public class DualMotorModule implements RobotModule {
 
     public void Initialize() {
         
+    }
+
+    public void AddActionPose(ActionPose newAction) {
+        if (GetActionPose(newAction.action, newAction.primary, newAction.secondary) == null) {
+            actionPoses.add(newAction);
+        }
+    }
+
+    public ActionPose GetActionPose(Action action, int primary, int secondary) {
+        for (ActionPose pose : actionPoses) {
+            if (pose.action == action && pose.primary == primary && pose.secondary == secondary) {
+                return pose;
+            }
+        }
+
+        return null;      
     }
 
     @Override
@@ -116,7 +138,7 @@ public class DualMotorModule implements RobotModule {
         return moduleID;
     }
 
-    public void ApproachTarget(Pose3d TargetPose) {
+    public void SetTargetActionPose(Action action, int primary, int secondary) {
         // TODO: Implement this.
     }
 

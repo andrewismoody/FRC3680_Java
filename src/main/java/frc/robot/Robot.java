@@ -6,7 +6,10 @@ package frc.robot;
 
 import java.util.Hashtable;
 
+import edu.wpi.first.math.geometry.Pose3d;
+import edu.wpi.first.math.geometry.Rotation3d;
 import edu.wpi.first.math.geometry.Translation2d;
+import edu.wpi.first.math.geometry.Translation3d;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.GenericHID;
 import edu.wpi.first.wpilibj.Preferences;
@@ -18,6 +21,8 @@ import edu.wpi.first.wpilibj.motorcontrol.Victor;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import frc.robot.GameController.ButtonName;
 import frc.robot.GameController.ControllerType;
+import frc.robot.action.Action;
+import frc.robot.action.ActionPose;
 import frc.robot.auto.AutoController;
 import frc.robot.gyro.AnalogGyro;
 import frc.robot.positioner.LimeLightPositioner;
@@ -113,7 +118,7 @@ public class Robot extends TimedRobot {
   double m_rotationSpeed = 35.168; // 17.584; // 21.98; //32.40 / m_speedMod; // should be actual radians per
                                    // second that is achievable by the rotation motor
 
-  SingleMotorModule elevator = new SingleMotorModule("elevator", pwm_elev, m_elevatorSpeed, false, null, null, enc_elev);
+  SingleMotorModule elevator = new SingleMotorModule("elevator", pwm_elev, m_elevatorSpeed, true, null, null, enc_elev);
 //  SingleMotorModule elevatorDown = new SingleMotorModule("elevatorDown", pwm_elev, m_elevatorSpeed, true, null, null, null);
 
   // total length of robot is 32.375", centerline is 16.1875" from edge.  Drive axle center is 4" from edge - 12.1875" from center which is 309.56mm or 0.30956 meters
@@ -215,6 +220,7 @@ public class Robot extends TimedRobot {
         break;
     }
 
+    elevator.AddActionPose(new ActionPose(Action.Score, 1, 1, new Pose3d(new Translation3d(1.5, 0, 0), new Rotation3d())));
     modules.AddModule(elevator);
 
     modules.enableDrive = true;
@@ -230,8 +236,8 @@ public class Robot extends TimedRobot {
     // m_controller.RegisterBinaryButtonConsumer(ButtonName.TopButton, intake::ApplyValue);
     // m_controller.RegisterBinaryButtonConsumer(ButtonName.TopButton, feeder::ApplyValue);
 
-    m_controller.RegisterBinaryButtonConsumer(ButtonName.BottomButton, elevator::ApplyInverse);
-    m_controller.RegisterBinaryButtonConsumer(ButtonName.TopButton, elevator::ApplyValue);
+    m_controller.RegisterBinaryButtonConsumer(ButtonName.BottomButton, elevator::SetNoPose);
+    m_controller.RegisterBinaryButtonConsumer(ButtonName.TopButton, elevator::SetScoringPoseOneOne);
 
     m_controller.RegisterBinaryButtonConsumer(ButtonName.LeftButton, swerveDriveModule::LockPosition);
     m_controller.RegisterBinaryButtonConsumer(ButtonName.RightButton, swerveDriveModule::ReturnToZero);
