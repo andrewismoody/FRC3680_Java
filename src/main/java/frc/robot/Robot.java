@@ -85,7 +85,7 @@ public class Robot extends TimedRobot {
   final boolean isFieldOriented = false;
 
   final double m_floatTolerance = 0.08; // 0.2;
-  final double m_elevatorSpeed = 0.3;
+  final double m_elevatorSpeed = 0.4;
   // 24 teeth on driver, 42 teeth on driven = 24/42 = 0.5714
   final double m_encoderMultiplier = 1.0; // 0.5714;
 

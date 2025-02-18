@@ -152,7 +152,7 @@ public class SwerveMotorModule {
     // var rate = (previousCurrentAngle - currentRad) / (elapsedTime / 1000);
     // var decelDistance = rate / decelFactor;
     // distance = rate * time; remove the time factor and we only have the distance; this is how far it moved in a single time slice:
-    var decelDistance = previousCurrentAngle - currentRad;
+    var decelDistance = Math.abs(previousCurrentAngle - currentRad);
     if (decelDistance > maxDistance) {
       maxDistance = decelDistance;
       sampleCount++;
@@ -184,9 +184,9 @@ public class SwerveMotorModule {
     motorSpeed = // usePID ? motorSpeed :
       motorSpeed * (driveModule.rotationSpeed * (elapsedTime / 1000));
 
-    if (sampleCount > sampleMin && delAngle < maxDistance) {
-      var adjustmentFactor = (delAngle / maxDistance);
-      System.out.printf("%s achieved sample count; adjusting motorSpeed by factor %f", moduleID, adjustmentFactor);
+    if (sampleCount > sampleMin && Math.abs(delAngle) < maxDistance) {
+      var adjustmentFactor = (Math.abs(delAngle) / maxDistance);
+      System.out.printf("%s achieved sample count; adjusting motorSpeed by factor %f\n", moduleID, adjustmentFactor);
       // TODO: turn this on and test
       // motorSpeed *= adjustmentFactor;
     }

@@ -32,6 +32,11 @@ public class SingleMotorModule implements RobotModule {
     double previousDriveSpeed;
     double currentDriveSpeed;
 
+    int sampleCount = 0;
+    int sampleMin = 20;
+    double maxDistance = 0.0;
+    double previousTargetDistance = 0.0;
+
     Pose3d target;
 
     ArrayList<ActionPose> actionPoses = new ArrayList<ActionPose>();
@@ -81,9 +86,9 @@ public class SingleMotorModule implements RobotModule {
             var encVal = getEncValAdj();
 
             var delta = encVal - previousEncValue;
-            if (Math.abs(encVal - previousEncValue) > m_floatTolerance && debug) {
-                System.out.printf("%s: encValue %f; previousEncValue: %f delta: %f\n", moduleID, encVal, previousEncValue, delta);
-            }
+            // if (Math.abs(delta) > m_floatTolerance && debug) {
+            //     System.out.printf("%s: encValue %f; previousEncValue: %f delta: %f\n", moduleID, encVal, previousEncValue, delta);
+            // }
 
             if (lowerLimit != null && lowerLimit.GetState()) {
                 System.out.printf("%s: limit hit, resetting rotationCount\n", moduleID);
@@ -105,11 +110,6 @@ public class SingleMotorModule implements RobotModule {
                     System.out.printf("%s: throwing away errant value %f\n", moduleID, delta);
             }
 
-            if (Math.abs(rotationCount - previousRotationCount) > 0.005 && debug) {
-                System.out.printf("%s: rotationCount: %f\n", moduleID, rotationCount);
-                previousRotationCount = rotationCount;
-            }
-
             previousEncValue = encVal;
     }
 
@@ -117,8 +117,8 @@ public class SingleMotorModule implements RobotModule {
     public void ApplyInverse(boolean isPressed) {
         if (isPressed) {
             currentDriveSpeed += controller.ApplyModifiers(invert ? driveSpeed : -driveSpeed);
-            if (debug)
-                System.out.printf("%s: ApplyInverse; driveSpeed %f; currentDriveSpeed %f\n", moduleID, driveSpeed, currentDriveSpeed);
+            // if (debug)
+            //     System.out.printf("%s: ApplyInverse; driveSpeed %f; currentDriveSpeed %f\n", moduleID, driveSpeed, currentDriveSpeed);
         }
     }
 
@@ -126,17 +126,28 @@ public class SingleMotorModule implements RobotModule {
     public void ApplyValue(boolean isPressed) {
         if (isPressed) {
             currentDriveSpeed += controller.ApplyModifiers(invert ? -driveSpeed : driveSpeed);
-            if (debug)
-                System.out.printf("%s: ApplyValue; driveSpeed %f; currentDriveSpeed %f\n", moduleID, driveSpeed, currentDriveSpeed);
+            // if (debug)
+            //     System.out.printf("%s: ApplyValue; driveSpeed %f; currentDriveSpeed %f\n", moduleID, driveSpeed, currentDriveSpeed);
         }
     }
     
     @Override
     public void ProcessState(boolean isAuto) {
+        if (enc != null) {
+            if (enc.isAbsolute())
+                setRotationFromAbsolute();
+        }
+
         if (target != null && currentDriveSpeed == 0.0) {
             // we have a target and we're not manually applying a value, try to get to it.
             var targetRotation = target.getX();
-            var shouldMove = (Math.abs(targetRotation - rotationCount) > m_floatTolerance);
+            var targetDistance = Math.abs(targetRotation - rotationCount);
+            if (debug && Math.abs(previousTargetDistance - targetDistance) > 0.001) {
+                System.out.printf("%s: targetDistance %f\n", moduleID, targetDistance);
+                previousTargetDistance = targetDistance;
+            }
+
+            var shouldMove = (Math.abs(targetDistance) > 0.001);
             if (targetRotation > rotationCount) {
                 if (shouldMove) {
                     ApplyValue(true);
@@ -146,7 +157,22 @@ public class SingleMotorModule implements RobotModule {
                     ApplyInverse(true);
                 }
             }
+
+            var driveDistance = Math.abs(rotationCount - previousRotationCount);
+            if (driveDistance > maxDistance && sampleCount < sampleMin) {
+                System.out.printf("%s: driveDistance %f; maxDistance: %f\n", moduleID, driveDistance, maxDistance);
+                maxDistance = driveDistance;
+            }
+            
+            if (sampleCount >= sampleMin && targetDistance < maxDistance) {
+                var adjustmentFactor = (targetDistance / maxDistance);
+                //System.out.printf("%s achieved sample count; adjusting motorSpeed by factor %f\n", moduleID, adjustmentFactor);
+                currentDriveSpeed *= adjustmentFactor;
+            }
+
+            sampleCount++;
         }
+
 
         if (debug && Math.abs(previousDriveSpeed - currentDriveSpeed) > m_floatTolerance) {
             System.out.printf("%s: currentDriveSpeed %f\n", moduleID, currentDriveSpeed);
@@ -163,9 +189,9 @@ public class SingleMotorModule implements RobotModule {
             driveMotor.set(0);
         }
 
-        if (enc != null) {
-            if (enc.isAbsolute())
-                setRotationFromAbsolute();
+        if (Math.abs(rotationCount - previousRotationCount) > 0.001 && debug) {
+            System.out.printf("%s: rotationCount: %f\n", moduleID, rotationCount);
+            previousRotationCount = rotationCount;
         }
 
         currentDriveSpeed = 0.0;
