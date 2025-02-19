@@ -52,7 +52,7 @@ public class SwerveMotorModule {
   long rotationLimitTime = 2 * 1000;
 
   int sampleCount = 0;
-  int sampleMin = 20;
+  int sampleMin = 100;
   double maxDistance = 0.0;
 
   PIDController pidController = new PIDController(0.15, 0.0005, 0); // p=0.2
@@ -152,12 +152,9 @@ public class SwerveMotorModule {
     // var rate = (previousCurrentAngle - currentRad) / (elapsedTime / 1000);
     // var decelDistance = rate / decelFactor;
     // distance = rate * time; remove the time factor and we only have the distance; this is how far it moved in a single time slice:
-    var decelDistance = Math.abs(previousCurrentAngle - currentRad);
-    if (decelDistance > maxDistance && sampleCount < sampleMin) {
+    var decelDistance = previousCurrentAngle - currentRad;
+    if (decelDistance > maxDistance) {
       maxDistance = decelDistance;
-    }
-
-    if (decelDistance > 0) {
       sampleCount++;
     }
 
@@ -187,6 +184,13 @@ public class SwerveMotorModule {
     motorSpeed = // usePID ? motorSpeed :
       motorSpeed * (driveModule.rotationSpeed * (elapsedTime / 1000));
 
+    if (sampleCount > sampleMin && delAngle < maxDistance) {
+      var adjustmentFactor = (delAngle / maxDistance);
+      System.out.printf("%s achieved sample count; adjusting motorSpeed by factor %f", moduleID, adjustmentFactor);
+      // TODO: turn this on and test
+      // motorSpeed *= adjustmentFactor;
+    }
+
     // if we haven't moved, and our delta angle is larger than float tolerance, boost the motor voltage
     if (Math.abs(previousCurrentAngle - currentRad) <= floatTolerance && Math.abs(delAngle) > floatTolerance) {
       double speedIncrement = 0.01;
@@ -215,14 +219,6 @@ public class SwerveMotorModule {
     double sign = motorSpeed > 0 ? 1 : -1;
 
     motorSpeed = motorSpeed + (accumulatedMotorSpeed * sign);
-
-    if (sampleCount >= sampleMin && Math.abs(delAngle) < maxDistance) {
-      var adjustmentFactor = (Math.abs(delAngle) / maxDistance);
-      if (debugAngle)
-        System.out.printf("%s achieved sample count; adjusting motorSpeed by factor %f\n", moduleID, adjustmentFactor);
-      // TODO: test this
-      // motorSpeed *= adjustmentFactor;
-    }
 
     // need to apply the inversion before this point - if we're not turning the right way, our calculations up to this point will be wrong
     // should consider inverting the target angle?
