@@ -164,7 +164,7 @@ public class Robot extends TimedRobot {
     String DriveSelection = Preferences.getString(DriveSelectionKey, DriveSelectionSwerve);
 
     swerveDriveModule.debug = false;
-    leftFrontMM.debugAngle = false;
+    leftRearMM.debugAngle = true;
     leftFrontMM.debugSpeed = false;
 
     elevator.debug = true;

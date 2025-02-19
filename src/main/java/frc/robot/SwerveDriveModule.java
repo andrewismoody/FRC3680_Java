@@ -263,7 +263,7 @@ public class SwerveDriveModule implements DriveModule {
 
         // update fake gyro angle
         currentAngle += thisRotationSpeed * fakeGyroRate;
-        if (Math.abs(previousAngle - currentAngle) > floatTolerance) {
+        if (debug && Math.abs(previousAngle - currentAngle) > floatTolerance) {
             System.out.printf("currentAngle: %f; previousAngle: %f\n", currentAngle, previousAngle);
             previousAngle = currentAngle;
         }
