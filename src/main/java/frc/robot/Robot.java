@@ -18,6 +18,8 @@ import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj.motorcontrol.PWMSparkMax;
 import edu.wpi.first.wpilibj.motorcontrol.Talon;
 import edu.wpi.first.wpilibj.motorcontrol.Victor;
+import edu.wpi.first.wpilibj.motorcontrol.VictorSP;
+import edu.wpi.first.wpilibj.motorcontrol.PWMVictorSPX;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import frc.robot.GameController.ButtonName;
 import frc.robot.GameController.ControllerType;
@@ -43,19 +45,19 @@ public class Robot extends TimedRobot {
 
   // RR
   final PWMSparkMax pwm_drive_rr = new PWMSparkMax(1);
-  final Victor pwm_steer_rr = new Victor(5);
+  final PWMVictorSPX pwm_steer_rr = new PWMVictorSPX(5);
 
   // LF
   final PWMSparkMax pwm_drive_lf = new PWMSparkMax(3);
-  final Victor pwm_steer_lf = new Victor(6);
+  final PWMVictorSPX pwm_steer_lf = new PWMVictorSPX(6);
 
   // RF
   final PWMSparkMax pwm_drive_rf = new PWMSparkMax(2);
-  final Talon pwm_steer_rf = new Talon(7);
+  final PWMVictorSPX pwm_steer_rf = new PWMVictorSPX(7);
 
   // LR
   final PWMSparkMax pwm_drive_lr = new PWMSparkMax(0);
-  final Talon pwm_steer_lr = new Talon(4);
+  final PWMVictorSPX pwm_steer_lr = new PWMVictorSPX(4);
 
   final PWMSparkMax pwm_elev = new PWMSparkMax(8);
 
