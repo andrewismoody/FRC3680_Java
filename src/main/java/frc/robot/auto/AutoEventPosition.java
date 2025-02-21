@@ -2,8 +2,8 @@ package frc.robot.auto;
 
 import java.util.function.Consumer;
 
-import edu.wpi.first.math.geometry.Translation3d;
 import frc.robot.RobotModule;
+import frc.robot.action.ActionPose;
 
 public class AutoEventPosition implements AutoEvent {
     boolean complete;
@@ -11,7 +11,7 @@ public class AutoEventPosition implements AutoEvent {
     String label;
     AutoController autoController;
 
-    Translation3d target;
+    ActionPose target;
 
     EventType eventType;
 
@@ -27,7 +27,7 @@ public class AutoEventPosition implements AutoEvent {
 
     RobotModule targetModule; // for adaptive events
 
-    public AutoEventPosition(String Label, Boolean Parallel, Translation3d Target, EventType EventType, AutoController AutoController) {
+    public AutoEventPosition(String Label, Boolean Parallel, ActionPose Target, EventType EventType, AutoController AutoController) {
         label = Label;
         parallel = Parallel;
         eventType = EventType;
@@ -39,19 +39,24 @@ public class AutoEventPosition implements AutoEvent {
     public void Run() {
         switch (eventType) {
             case Void:
-                voidEvent.run();
+                if (voidEvent != null)
+                    voidEvent.run();
                 break;
             case Boolean:
-                boolEvent.accept(boolValue);
+                if (boolEvent != null)
+                    boolEvent.accept(boolValue);
                 break;
             case Double:
-                doubleEvent.accept(doubleValue);
+                if (doubleEvent != null)
+                    doubleEvent.accept(doubleValue);
                 break;
             case Auto:
-                autoController.AddSequence(autoEvent);
+                if (autoEvent != null)
+                    autoController.AddSequence(autoEvent);
                 break;
             case Adaptive:
-                // not implemented - need to provide functions in the target module to take appropriate action to meet the goal
+                if (targetModule != null && target != null)
+                    targetModule.SetTargetActionPose(target.action, target.primary, target.secondary);
                 break;
         }
         complete = true;

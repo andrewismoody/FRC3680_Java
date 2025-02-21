@@ -2,11 +2,12 @@ package frc.robot;
 
 import java.util.Hashtable;
 
-import edu.wpi.first.math.geometry.Translation3d;
+import edu.wpi.first.math.geometry.Pose3d;
 
 public class ModuleController {
   Hashtable<String, RobotModule> modules = new Hashtable<String, RobotModule>();
   DriveModule driveModule;
+  GameController controller;
 
   double divider = 0.5;
   double speedMod = 1.0;
@@ -19,10 +20,11 @@ public class ModuleController {
   boolean enableDrive = true;
   double speedDilationLimit = 0.75; //0.9;
 
-  public ModuleController(DriveModule DriveModule, double Divider) {
+  public ModuleController(DriveModule DriveModule, double Divider, GameController Controller) {
     driveModule = DriveModule;
     driveModule.SetController(this);
     divider = Divider;
+    controller = Controller;
   }
 
   public void Initialize() {
@@ -79,7 +81,8 @@ public class ModuleController {
   }
 
   public double ApplyModifiers(double value, boolean affectSpeed) {
-    value *= inverseValue;
+    // disable inversion for now
+    // value *= inverseValue;
     var thisSpeedMod = speedMod;
 
     if (!speedLock && speedDilation < 0)
@@ -97,6 +100,16 @@ public class ModuleController {
     driveModule.ProcessState(isAuto);
   }
 
+  public void ProcessState(boolean isAuto) {
+    controller.ProcessButtons();
+
+    ProcessDrive(isAuto);
+
+    for (RobotModule module : modules.values()) {
+      module.ProcessState(isAuto);
+    }
+  }
+
   public void setSpeedMod(double newSpeed) {
     if (newSpeed > 0.0)
       speedMod = newSpeed;
@@ -106,7 +119,7 @@ public class ModuleController {
     inverseValue = newInverse;
   }
 
-  public Translation3d GetPosition() {
+  public Pose3d GetPosition() {
     return driveModule.GetPosition();
   }
 }

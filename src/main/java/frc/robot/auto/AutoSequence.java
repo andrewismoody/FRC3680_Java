@@ -2,7 +2,7 @@ package frc.robot.auto;
 
 import java.util.ArrayList;
 
-import edu.wpi.first.math.geometry.Translation3d;
+import edu.wpi.first.math.geometry.Pose3d;
 import frc.robot.ModuleController;
 
 public class AutoSequence {
@@ -68,7 +68,7 @@ public class AutoSequence {
                         break;
                     case Position:
                         AutoEventPosition positionEvent = (AutoEventPosition) event;
-                        if (isNearby(controller.GetPosition(), positionEvent.target, 0.5, 1.0)) {
+                        if (isNearby(controller.GetPosition(), positionEvent.target.position, 0.5, 1.0)) {
                             System.out.printf("Auto Event %s triggered at %s", event.GetLabel(), positionEvent.target);
 
                             positionEvent.Run();
@@ -94,14 +94,14 @@ public class AutoSequence {
         controller.ProcessDrive(true);
     }
 
-    boolean isNearby(Translation3d Position, Translation3d Target, double PositionTolerance, double AngleTolerance) {
+    boolean isNearby(Pose3d Position, Pose3d Target, double PositionTolerance, double AngleTolerance) {
         if (Math.abs(Position.getX() - Target.getX()) > PositionTolerance)
             return false;
 
         if (Math.abs(Position.getY() - Target.getY()) > PositionTolerance)
             return false;
 
-        if (Math.abs(Position.getZ() - Target.getZ()) > AngleTolerance)
+        if (Math.abs(Position.getRotation().getZ() - Target.getRotation().getZ()) > AngleTolerance)
             return false;
 
         return true;

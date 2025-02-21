@@ -83,4 +83,8 @@ public class I2CAbsoluteEncoder implements Encoder {
             myI2c = null;
         }  
     }
+
+    public boolean isAbsolute() {
+        return true;
+    }
 }

@@ -7,4 +7,5 @@ public interface Encoder {
     public void setReverseDirection(boolean reverse);
     public void setAngleOffsetDeg(double value);
     public void setAngleOffsetRad(double value);
+    public boolean isAbsolute();
 }

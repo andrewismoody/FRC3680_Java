@@ -3,17 +3,20 @@ package frc.robot;
 import java.util.ArrayList;
 
 import edu.wpi.first.math.geometry.Rotation2d;
+import edu.wpi.first.math.geometry.Rotation3d;
 import edu.wpi.first.math.geometry.Translation2d;
-import edu.wpi.first.math.geometry.Translation3d;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.math.kinematics.SwerveDriveKinematics;
 import edu.wpi.first.math.kinematics.SwerveDriveOdometry;
 import edu.wpi.first.math.kinematics.SwerveModulePosition;
 import edu.wpi.first.math.kinematics.SwerveModuleState;
+import edu.wpi.first.math.geometry.Pose3d;
 import edu.wpi.first.wpilibj.RobotBase;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
-import frc.robot.positioner.Positioner;
 
+import frc.robot.positioner.Positioner;
+import frc.robot.action.Action;
+import frc.robot.action.ActionPose;
 import frc.robot.gyro.Gyro;
 
 public class SwerveDriveModule implements DriveModule {
@@ -48,6 +51,8 @@ public class SwerveDriveModule implements DriveModule {
 
     boolean isZeroPressed = false;
     boolean isLockPressed = false;
+
+    ArrayList<ActionPose> actionPoses = new ArrayList<ActionPose>();
 
     public SwerveDriveModule(String ModuleID, Gyro Gyro, Positioner Positioner, double DriveSpeed, double RotationSpeed,
             boolean IsFieldOriented, double FloatTolerance, SwerveMotorModule ... modules) {
@@ -122,6 +127,17 @@ public class SwerveDriveModule implements DriveModule {
         return returnStates;
     }
 
+    public void SetTargetActionPose(Action action, int primary, int secondary) {
+        Pose3d actionPose = GetActionPose(action, primary, secondary).position;
+        Translation2d TargetPosition = new Translation2d(actionPose.getX(), actionPose.getY());
+        double TargetYaw = actionPose.getRotation().getZ();
+        Translation2d Heading = currentPosition.minus(TargetPosition);
+
+        ProcessForwardSpeed(Heading.getY() / this.driveSpeed);
+        ProcessLateralSpeed(Heading.getX() / this.driveSpeed);
+        ProcessRotationAngle(TargetYaw);
+    }
+
     public void Initialize() {
         for (SwerveMotorModule module : driveModules) {
             module.Initialize();
@@ -165,6 +181,30 @@ public class SwerveDriveModule implements DriveModule {
         previousRotationAngle = rotationAngle;
     }
 
+    public void ApplyInverse(boolean isAuto) {
+        // not implemented
+    }
+
+    public void ApplyValue(boolean isAuto) {
+        // not implemented
+    }
+
+    public void AddActionPose(ActionPose newAction) {
+        if (GetActionPose(newAction.action, newAction.primary, newAction.secondary) == null) {
+            actionPoses.add(newAction);
+        }
+    }
+
+    public ActionPose GetActionPose(Action action, int primary, int secondary) {
+        for (ActionPose pose : actionPoses) {
+            if (pose.action == action && pose.primary == primary && pose.secondary == secondary) {
+                return pose;
+            }
+        }
+
+        return null;      
+    }
+
     public void ProcessState(boolean isAuto) {
         // https://docs.wpilib.org/en/stable/docs/software/kinematics-and-odometry/swerve-drive-kinematics.htm
         // https://docs.wpilib.org/en/stable/docs/software/hardware-apis/sensors/gyros-software.html
@@ -185,23 +225,25 @@ public class SwerveDriveModule implements DriveModule {
 
         SwerveModuleState[] moduleStates;
 
-        if (isLockPressed)
+        boolean optimize = true;
+        if (isLockPressed) {
             moduleStates = GetLockStates();
-        else if (isZeroPressed)
+            optimize = false;
+        } else if (isZeroPressed) {
+            optimize = false;
             moduleStates = GetZeroStates();
-        else
+        } else
             moduleStates = kinematics.toSwerveModuleStates(speeds);
 
-        var i = 0;
         SwerveModulePosition[] positions = new SwerveModulePosition[driveModules.size()];
         double[] driveSpeeds = new double[4]; //always 4 because of dashboard setup
 
-        for (SwerveMotorModule module : driveModules) {
-            module.updateModuleValues(moduleStates[i]);
+        for (int i = 0; i < driveModules.size(); i++) {
+            SwerveMotorModule module = driveModules.get(i);
+            module.updateModuleValues(moduleStates[i], optimize);
             positions[i] = module.getPosition();
             if (i < driveSpeeds.length)
                 driveSpeeds[i] = module.getSpeed();
-            i++;
         }
 
         odometry.update(Rotation2d.fromDegrees(newAngle), positions);
@@ -221,7 +263,7 @@ public class SwerveDriveModule implements DriveModule {
 
         // update fake gyro angle
         currentAngle += thisRotationSpeed * fakeGyroRate;
-        if (Math.abs(previousAngle - currentAngle) > floatTolerance) {
+        if (debug && Math.abs(previousAngle - currentAngle) > floatTolerance) {
             System.out.printf("currentAngle: %f; previousAngle: %f\n", currentAngle, previousAngle);
             previousAngle = currentAngle;
         }
@@ -236,8 +278,9 @@ public class SwerveDriveModule implements DriveModule {
         controller = Controller;
     }
 
-    public Translation3d GetPosition() {
-        return positioner.GetPosition();
+    @Override
+    public Pose3d GetPosition() {
+        return new Pose3d(positioner.GetPosition(), new Rotation3d(0, 0, currentAngle));
         // return new Translation3d(currentPosition.getX(), currentPosition.getY(), currentAngle);
     }
 }
