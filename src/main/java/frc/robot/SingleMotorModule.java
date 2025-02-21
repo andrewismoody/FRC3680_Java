@@ -50,7 +50,7 @@ public class SingleMotorModule implements RobotModule {
         lowerLimit = LowerLimit;
         enc = Enc;
 
-        if (enc != null)
+        if (enc != null && enc.isAbsolute())
             previousEncValue = getEncValAdj();
     }
 
@@ -106,34 +106,34 @@ public class SingleMotorModule implements RobotModule {
     }
 
     void setRotationFromAbsolute() {
-            var encVal = getEncValAdj();
+        var encVal = getEncValAdj();
 
-            var delta = encVal - previousEncValue;
-            // if (Math.abs(delta) > m_floatTolerance && debug) {
-            //     System.out.printf("%s: encValue %f; previousEncValue: %f delta: %f\n", moduleID, encVal, previousEncValue, delta);
-            // }
+        var delta = encVal - previousEncValue;
+        // if (Math.abs(delta) > m_floatTolerance && debug) {
+        //     System.out.printf("%s: encValue %f; previousEncValue: %f delta: %f\n", moduleID, encVal, previousEncValue, delta);
+        // }
 
-            if (lowerLimit != null && lowerLimit.GetState()) {
-                System.out.printf("%s: limit hit, resetting rotationCount\n", moduleID);
-                rotationCount = 0.0;
+        if (lowerLimit != null && lowerLimit.GetState()) {
+            System.out.printf("%s: limit hit, resetting rotationCount\n", moduleID);
+            rotationCount = 0.0;
+        }
+        else {
+            if (delta > fullRotation * 0.5 && encVal > fullRotation * 0.75)
+                // we crossed zero boundary going backwards
+                delta -= fullRotation;
+            else if (delta < -(fullRotation * 0.5) && encVal < fullRotation * 0.25)
+                // we crossed zero boundary going forwards
+                delta += fullRotation;
+
+            // filter noisy responses
+            if (Math.abs(delta) < fullRotation * 0.5) {
+                rotationCount += (invert ? -delta : delta) / fullRotation;
             }
-            else {
-                if (delta > fullRotation * 0.5 && encVal > fullRotation * 0.75)
-                    // we crossed zero boundary going backwards
-                    delta -= fullRotation;
-                else if (delta < -(fullRotation * 0.5) && encVal < fullRotation * 0.25)
-                    // we crossed zero boundary going forwards
-                    delta += fullRotation;
+            else
+                System.out.printf("%s: throwing away errant value %f\n", moduleID, delta);
+        }
 
-                // filter noisy responses
-                if (Math.abs(delta) < fullRotation * 0.5) {
-                    rotationCount += (invert ? -delta : delta) / fullRotation;
-                }
-                else
-                    System.out.printf("%s: throwing away errant value %f\n", moduleID, delta);
-            }
-
-            previousEncValue = encVal;
+        previousEncValue = encVal;
     }
 
     @Override
@@ -159,6 +159,8 @@ public class SingleMotorModule implements RobotModule {
         if (enc != null) {
             if (enc.isAbsolute())
                 setRotationFromAbsolute();
+            else
+                rotationCount = enc.getDistance();
         }
 
         if (target != null && currentDriveSpeed == 0.0) {

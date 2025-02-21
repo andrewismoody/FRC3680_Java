@@ -16,8 +16,12 @@ import edu.wpi.first.wpilibj.Preferences;
 import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj.motorcontrol.PWMSparkMax;
+import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.motorcontrol.PWMVictorSPX;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
+
+import com.revrobotics.spark.SparkLowLevel.MotorType;
+import com.revrobotics.spark.SparkMax;
 
 import frc.robot.GameController.ButtonName;
 import frc.robot.GameController.ControllerType;
@@ -29,6 +33,7 @@ import frc.robot.positioner.LimeLightPositioner;
 import frc.robot.positioner.Positioner;
 import frc.robot.encoder.AnalogAbsoluteEncoder;
 import frc.robot.encoder.Encoder;
+import frc.robot.encoder.REVEncoder;
 
 /**
  * The VM is configured to automatically run this class, and to call the
@@ -60,6 +65,8 @@ public class Robot extends TimedRobot {
 
   final PWMSparkMax pwm_elev = new PWMSparkMax(8);
 
+  final SparkMax can_grabber = new SparkMax(1, MotorType.kBrushless);
+
   // JE motor is 44.4 pulses per rotation, and it reports in degrees, so there are
   // 8.108 degress per pulse.
   // not used for absolute encoders
@@ -77,7 +84,9 @@ public class Robot extends TimedRobot {
 
   final Encoder enc_elev = new AnalogAbsoluteEncoder(4);
 
-  final Positioner m_positioner = new LimeLightPositioner(true);
+  final Encoder enc_grabber = new REVEncoder(can_grabber.getEncoder());
+
+  final LimeLightPositioner m_positioner = new LimeLightPositioner();
 
   GameController m_controller; // = new Controller(0, ControllerType.Xbox);
 
@@ -120,7 +129,7 @@ public class Robot extends TimedRobot {
                                    // second that is achievable by the rotation motor
 
   SingleMotorModule elevator = new SingleMotorModule("elevator", pwm_elev, m_elevatorSpeed, true, null, null, enc_elev);
-//  SingleMotorModule elevatorDown = new SingleMotorModule("elevatorDown", pwm_elev, m_elevatorSpeed, true, null, null, null);
+  SingleMotorModule grabber = new SingleMotorModule("grabber", can_grabber, m_elevatorSpeed, false, null, null, enc_grabber);
 
   // total length of robot is 32.375", centerline is 16.1875" from edge.  Drive axle center is 4" from edge - 12.1875" from center which is 309.56mm or 0.30956 meters
   SwerveMotorModule leftFrontMM = new SwerveMotorModule("leftFront", new Translation2d(-0.30956, -0.30956), pwm_drive_lf, pwm_steer_lf, enc_lf, m_encoderMultiplier, m_floatTolerance, true, false);
@@ -164,11 +173,30 @@ public class Robot extends TimedRobot {
     Preferences.initString(DriveSelectionKey, DriveSelectionSwerve);
     String DriveSelection = Preferences.getString(DriveSelectionKey, DriveSelectionSwerve);
 
-    swerveDriveModule.debug = true;
-    leftRearMM.debugAngle = false;
+    SendableChooser<String> ActionChooser = new SendableChooser<>();
+    for (Action action : Action.class.getEnumConstants()) {
+      ActionChooser.addOption(action.toString(), DriveSelection);
+    }
+    SmartDashboard.putData(ActionChooser);
+
+    SendableChooser<Integer> PrimaryChooser = new SendableChooser<>();
+    for (int i = 0; i < 8; i++) {
+      PrimaryChooser.addOption(String.valueOf(i), i);
+    }
+    SmartDashboard.putData(PrimaryChooser);
+
+    SendableChooser<Integer> SecondaryChooser = new SendableChooser<>();
+    for (int i = 0; i < 8; i++) {
+      SecondaryChooser.addOption(String.valueOf(i), i);
+    }
+    SmartDashboard.putData(SecondaryChooser);
+
+    swerveDriveModule.debug = false;
+    leftRearMM.debugAngle = true;
     leftFrontMM.debugSpeed = false;
 
-    elevator.debug = false;
+    elevator.debug = true;
+
     
 
     // // lf

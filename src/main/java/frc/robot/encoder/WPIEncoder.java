@@ -1,24 +1,24 @@
 package frc.robot.encoder;
 
-public class QuadEncoder implements Encoder {
+public class WPIEncoder implements Encoder {
     
     edu.wpi.first.wpilibj.Encoder internalEncoder;
     double angleOffsetRad = 0.0; // angle to subtract from actual angle to zero the encoder
 
-    public QuadEncoder(int pinA, int pinB) {
-        internalEncoder = new edu.wpi.first.wpilibj.Encoder(pinA, pinB);
+    public WPIEncoder(edu.wpi.first.wpilibj.Encoder WrappedEncoder) {
+        internalEncoder = WrappedEncoder;
 
         internalEncoder.reset();
     }
 
-    public QuadEncoder(int pinA, int pinB, double DistancePerPulse) {
-        this(pinA, pinB);
+    public WPIEncoder(edu.wpi.first.wpilibj.Encoder WrappedEncoder, double DistancePerPulse) {
+        this(WrappedEncoder);
 
         setDistancePerPulse(DistancePerPulse);
     }
 
-    public QuadEncoder(int pinA, int pinB, double DistancePerPulse, boolean reverse) {
-        this(pinA, pinB, DistancePerPulse);
+    public WPIEncoder(edu.wpi.first.wpilibj.Encoder WrappedEncoder, double DistancePerPulse, boolean reverse) {
+        this(WrappedEncoder, DistancePerPulse);
         
         setReverseDirection(reverse);
     }
