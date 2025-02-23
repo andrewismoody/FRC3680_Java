@@ -4,4 +4,8 @@ import edu.wpi.first.math.geometry.Translation3d;
 
 public interface Positioner {
     public Translation3d GetPosition();
+    public void SetRobotOrientation(String name, double yaw, double yawRate, 
+    double pitch, double pitchRate, 
+    double roll, double rollRate);
+    public boolean IsValid();
 }
