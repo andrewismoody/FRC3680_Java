@@ -151,6 +151,8 @@ public class SwerveDriveModule implements DriveModule {
         var startupPosition = positioner.GetPosition();
         System.out.printf("%s startupPosition: {%f, %f, %f}", moduleID, startupPosition.getX(), startupPosition.getY(), startupPosition.getZ());
 
+        positioner.Initialize();
+
         for (SwerveMotorModule module : driveModules) {
             module.Initialize();
         }

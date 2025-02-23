@@ -11,6 +11,11 @@ public class LimeLightPositioner implements Positioner {
         useMegatagTwo = UseMegatagTwo;
     }
 
+    public void Initialize() {
+        // set IMU mode to 2 which fusions the provided orientation with the calculated positions
+        LimelightHelpers.SetIMUMode("", 2);
+    }
+
     public Translation3d GetPosition() {
         return LimelightHelpers.getBotPose3d("").getTranslation(); 
     }
@@ -22,23 +27,13 @@ public class LimeLightPositioner implements Positioner {
     }
 
     public boolean IsValid() {
-        var alliance = DriverStation.getAlliance();
-        if (alliance.isPresent()) {
-            if (alliance.get() == Alliance.Red) {
-                if (useMegatagTwo) {
-                    return LimelightHelpers.getBotPoseEstimate_wpiRed_MegaTag2("").tagCount > 0;
-                } else {
-                    return LimelightHelpers.getBotPoseEstimate_wpiRed("").tagCount > 0;
-                }
-            } else {
-                if (useMegatagTwo) {
-                    return LimelightHelpers.getBotPoseEstimate_wpiBlue_MegaTag2("").tagCount > 0;
-                } else {
-                    return LimelightHelpers.getBotPoseEstimate_wpiBlue("").tagCount > 0;
-                }
-            }
-        }
+        //Always use blue alliance orientation according to 2024+ rules
+        // https://docs.limelightvision.io/docs/docs-limelight/pipeline-apriltag/apriltag-coordinate-systems
 
-        return false;
+        if (useMegatagTwo) {
+            return LimelightHelpers.getBotPoseEstimate_wpiBlue_MegaTag2("").tagCount > 0;
+        } else {
+            return LimelightHelpers.getBotPoseEstimate_wpiBlue("").tagCount > 0;
+        }
     }
 }

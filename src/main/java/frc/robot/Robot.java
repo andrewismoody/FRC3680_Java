@@ -28,6 +28,7 @@ import frc.robot.auto.AutoController;
 import frc.robot.gyro.AHRSGyro;
 import frc.robot.gyro.Gyro;
 import frc.robot.positioner.LimeLightPositioner;
+import frc.robot.positioner.Positioner;
 import frc.robot.encoder.AnalogAbsoluteEncoder;
 import frc.robot.encoder.Encoder;
 
@@ -272,11 +273,12 @@ public class Robot extends TimedRobot {
     AutoModes.put(timedShoot.GetLabel(), timedShoot);
 
     SmartDashboard.putStringArray("Auto List", AutoModes.keySet().toArray(new String[] {}));
+
     // Make sure you only configure port forwarding once in your robot code.
-        // Do not place these function calls in any periodic functions
-        for (int port = 5800; port <= 5809; port++) {
-            PortForwarder.add(port, "limelight.local", port);
-        };
+    // Do not place these function calls in any periodic functions
+    for (int port = 5800; port <= 5809; port++) {
+        PortForwarder.add(port, "limelight.local", port);
+    };
   }
 
   /** This function is run once each time the robot enters autonomous mode. */
