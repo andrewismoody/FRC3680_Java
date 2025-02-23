@@ -10,23 +10,23 @@ import edu.wpi.first.math.geometry.Pose3d;
 import edu.wpi.first.math.geometry.Rotation3d;
 import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.geometry.Translation3d;
+import edu.wpi.first.net.PortForwarder;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.GenericHID;
 import edu.wpi.first.wpilibj.Preferences;
 import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj.motorcontrol.PWMSparkMax;
-import edu.wpi.first.wpilibj.motorcontrol.Talon;
-import edu.wpi.first.wpilibj.motorcontrol.Victor;
-import edu.wpi.first.wpilibj.motorcontrol.VictorSP;
 import edu.wpi.first.wpilibj.motorcontrol.PWMVictorSPX;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
+
 import frc.robot.GameController.ButtonName;
 import frc.robot.GameController.ControllerType;
 import frc.robot.action.Action;
 import frc.robot.action.ActionPose;
 import frc.robot.auto.AutoController;
-import frc.robot.gyro.AnalogGyro;
+import frc.robot.gyro.AHRSGyro;
+import frc.robot.gyro.Gyro;
 import frc.robot.positioner.LimeLightPositioner;
 import frc.robot.encoder.AnalogAbsoluteEncoder;
 import frc.robot.encoder.Encoder;
@@ -74,20 +74,20 @@ public class Robot extends TimedRobot {
   // lr
   final Encoder enc_lr = new AnalogAbsoluteEncoder(1);
 
-  final AnalogGyro m_gyro = new AnalogGyro(5);
+  final Gyro m_gyro = new AHRSGyro();
 
   final Encoder enc_elev = new AnalogAbsoluteEncoder(4);
 
-  final LimeLightPositioner m_positioner = new LimeLightPositioner();
+  final LimeLightPositioner m_positioner = new LimeLightPositioner(true);
 
   GameController m_controller; // = new Controller(0, ControllerType.Xbox);
 
   final Timer m_timer = new Timer();
 
-  final boolean isFieldOriented = false;
+  final boolean isFieldOriented = true;
 
   final double m_floatTolerance = 0.08; // 0.2;
-  final double m_elevatorSpeed = 0.4;
+  final double m_elevatorSpeed = 0.6;
   // 24 teeth on driver, 42 teeth on driven = 24/42 = 0.5714
   final double m_encoderMultiplier = 1.0; // 0.5714;
 
@@ -165,11 +165,12 @@ public class Robot extends TimedRobot {
     Preferences.initString(DriveSelectionKey, DriveSelectionSwerve);
     String DriveSelection = Preferences.getString(DriveSelectionKey, DriveSelectionSwerve);
 
-    swerveDriveModule.debug = false;
-    leftRearMM.debugAngle = true;
+    swerveDriveModule.debug = true;
+    leftRearMM.debugAngle = false;
     leftFrontMM.debugSpeed = false;
 
-    elevator.debug = true;
+    elevator.debug = false;
+    
 
     // // lf
     // m_enc2.setAngleOffsetDeg(149);
@@ -271,6 +272,11 @@ public class Robot extends TimedRobot {
     AutoModes.put(timedShoot.GetLabel(), timedShoot);
 
     SmartDashboard.putStringArray("Auto List", AutoModes.keySet().toArray(new String[] {}));
+    // Make sure you only configure port forwarding once in your robot code.
+        // Do not place these function calls in any periodic functions
+        for (int port = 5800; port <= 5809; port++) {
+            PortForwarder.add(port, "limelight.local", port);
+        };
   }
 
   /** This function is run once each time the robot enters autonomous mode. */
@@ -315,7 +321,7 @@ public class Robot extends TimedRobot {
     SmartDashboard.putString("DB/String 6", "RF: " + String.valueOf(rightFrontMM.currentAngle.getDegrees()));
     SmartDashboard.putString("DB/String 7", "LR: " + String.valueOf(leftRearMM.currentAngle.getDegrees()));
     SmartDashboard.putString("DB/String 8", "RR: " + String.valueOf(rightRearMM.currentAngle.getDegrees()));
-    SmartDashboard.putString("DB/String 9", "Elev: " + String.valueOf(elevator.rotationCount));
+    SmartDashboard.putString("DB/String 9", "gyro: " + String.valueOf(m_gyro.getAngle()));
   }
 
   /** This function is called once each time the robot enters test mode. */

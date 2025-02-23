@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Rotation3d;
 import edu.wpi.first.math.geometry.Translation2d;
+import edu.wpi.first.math.geometry.Translation3d;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.math.kinematics.SwerveDriveKinematics;
 import edu.wpi.first.math.kinematics.SwerveDriveOdometry;
@@ -32,8 +33,8 @@ public class SwerveDriveModule implements DriveModule {
     Positioner positioner;
     SwerveDriveOdometry odometry;
 
-    Translation2d currentPosition = new Translation2d();
-    Translation2d previousPosition = new Translation2d();
+    Translation3d currentPosition = new Translation3d();
+    Translation3d previousPosition = new Translation3d();
 
     double forwardSpeed = 0.0;
     double lateralSpeed = 0.0;
@@ -41,7 +42,10 @@ public class SwerveDriveModule implements DriveModule {
     double previousForwardSpeed = 0.0;
     double previousLateralSpeed = 0.0;
     double previousRotationAngle = 0.0;
+    double previousActualAngle = 0.0;
+    double angleOffset = 0.0;
     double floatTolerance;
+    double deltaLimit = 0.5;
 
     boolean debug;
     public boolean useFakeGyro = !RobotBase.isReal();
@@ -129,9 +133,9 @@ public class SwerveDriveModule implements DriveModule {
 
     public void SetTargetActionPose(Action action, int primary, int secondary) {
         Pose3d actionPose = GetActionPose(action, primary, secondary).position;
-        Translation2d TargetPosition = new Translation2d(actionPose.getX(), actionPose.getY());
+        Translation3d TargetPosition = actionPose.getTranslation();
         double TargetYaw = actionPose.getRotation().getZ();
-        Translation2d Heading = currentPosition.minus(TargetPosition);
+        Translation3d Heading = currentPosition.minus(TargetPosition);
 
         ProcessForwardSpeed(Heading.getY() / this.driveSpeed);
         ProcessLateralSpeed(Heading.getX() / this.driveSpeed);
@@ -139,9 +143,28 @@ public class SwerveDriveModule implements DriveModule {
     }
 
     public void Initialize() {
+        var startupAngle = useFakeGyro ? currentAngle
+        : gyro.getAngle();
+        System.out.printf("%s actualAngle: %f\n", moduleID, startupAngle);
+        angleOffset = startupAngle + 180;
+
+        var startupPosition = positioner.GetPosition();
+        System.out.printf("%s startupPosition: {%f, %f, %f}", moduleID, startupPosition.getX(), startupPosition.getY(), startupPosition.getZ());
+
         for (SwerveMotorModule module : driveModules) {
             module.Initialize();
         }
+    }
+
+    public double getGyroAngle() {
+        var newAngle = useFakeGyro ? currentAngle
+        : gyro.getAngle();
+
+        newAngle -= angleOffset;
+
+        positioner.SetRobotOrientation("", newAngle, 0,0,0,0,0);
+
+        return newAngle;        
     }
 
     public void ProcessForwardSpeed(double value) {
@@ -172,8 +195,7 @@ public class SwerveDriveModule implements DriveModule {
     }
 
     public void StopRotation() {
-        rotationAngle = useFakeGyro ? currentAngle
-                : gyro.getAngle();
+        rotationAngle = getGyroAngle();
 
         if (debug && rotationAngle != previousRotationAngle)
             System.out.printf("%s rotationAngle: %f\n", moduleID, rotationAngle);
@@ -209,8 +231,12 @@ public class SwerveDriveModule implements DriveModule {
         // https://docs.wpilib.org/en/stable/docs/software/kinematics-and-odometry/swerve-drive-kinematics.htm
         // https://docs.wpilib.org/en/stable/docs/software/hardware-apis/sensors/gyros-software.html
         // https://www.chiefdelphi.com/t/set-motor-position-with-encoder/152088/3
-        double newAngle = useFakeGyro ? currentAngle
-                : gyro.getAngle();
+        double newAngle = getGyroAngle();
+
+        if (debug && Math.abs(previousActualAngle - newAngle) > floatTolerance) {
+            System.out.printf("%s actualAngle: %f\n", moduleID, newAngle);
+            previousActualAngle = newAngle;
+        }
 
         // set the chassis speed object according to current controller values
         double forwardSpeed = this.forwardSpeed * controller.ApplyModifiers(driveSpeed);
@@ -251,12 +277,16 @@ public class SwerveDriveModule implements DriveModule {
         var primaryModule = driveModules.get(0);
         if (primaryModule != null) {
             // calculate and store current field position and rotation
-            var centerOffset = new Translation2d(Math.cos(gyro.getAngle()) * primaryModule.modulePosition.getX(),
-                    Math.sin(gyro.getAngle()) * primaryModule.modulePosition.getY());
-            currentPosition = primaryModule.currentPosition.minus(centerOffset);
+            // var centerOffset = new Translation2d(Math.cos(getGyroAngle()) * primaryModule.modulePosition.getX(),
+            //         Math.sin(getGyroAngle()) * primaryModule.modulePosition.getY());
+            currentPosition = GetPosition().getTranslation(); //primaryModule.currentPosition.minus(centerOffset);
             if ((Math.abs(previousPosition.minus(currentPosition).getX()) > floatTolerance
-                    || Math.abs(previousPosition.minus(currentPosition).getY()) > floatTolerance) && debug) {
-                System.out.printf("%s ProcessState: currentPosition: %s\n", moduleID, currentPosition);
+                    || Math.abs(previousPosition.minus(currentPosition).getY()) > floatTolerance)
+                    && Math.abs(previousPosition.minus(currentPosition).getNorm()) < deltaLimit) {
+                if (debug) {
+                    System.out.printf("%s ProcessState: currentPosition: %s\n", moduleID, currentPosition);
+                }
+
                 previousPosition = currentPosition;
             }
         }
@@ -280,7 +310,7 @@ public class SwerveDriveModule implements DriveModule {
 
     @Override
     public Pose3d GetPosition() {
-        return new Pose3d(positioner.GetPosition(), new Rotation3d(0, 0, currentAngle));
+        return new Pose3d(positioner.GetPosition(), new Rotation3d(0, 0, getGyroAngle()));
         // return new Translation3d(currentPosition.getX(), currentPosition.getY(), currentAngle);
     }
 }
