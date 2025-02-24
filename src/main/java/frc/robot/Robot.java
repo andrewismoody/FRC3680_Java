@@ -229,6 +229,9 @@ public class Robot extends TimedRobot {
     
     modules.Initialize();
 
+
+    // TODO: need to move button mappings to preferences and initialize in game controller class
+
     // three different modules operate the same component differently
     // m_controller.RegisterBinaryButtonConsumer(ButtonName.LeftButton, ejector::ApplyValue);
     // m_controller.RegisterBinaryButtonConsumer(ButtonName.RightButton, ejectorSlow::ApplyValue);
@@ -266,6 +269,7 @@ public class Robot extends TimedRobot {
     // m_controller.RegisterValueButtonConsumer(ButtonName.RightThumbstickY,
     // modules::ProcessSpeedDilation);
 
+    // TODO: need to move this definition to preferences and initialize in automodes rather than hard coding
     AutoController timedShoot = new AutoController("MoveAndShoot");
     //timedShoot.AddSequence(new SequenceMoveAndShoot(timedShoot.GetLabel(), modules, timedShoot));
     AutoModes.put(timedShoot.GetLabel(), timedShoot);
@@ -311,6 +315,7 @@ public class Robot extends TimedRobot {
 
     modules.ProcessState(false);
 
+    // TODO: figure out why these print blank values sometimes
     SmartDashboard.putString("DB/String 5", "LF: " + String.valueOf(leftFrontMM.currentAngle.getDegrees()));
     SmartDashboard.putString("DB/String 6", "RF: " + String.valueOf(rightFrontMM.currentAngle.getDegrees()));
     SmartDashboard.putString("DB/String 7", "LR: " + String.valueOf(leftRearMM.currentAngle.getDegrees()));
