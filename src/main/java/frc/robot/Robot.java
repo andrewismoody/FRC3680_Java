@@ -86,7 +86,7 @@ public class Robot extends TimedRobot {
 
   final Encoder enc_grabber = new REVEncoder(can_grabber.getEncoder());
 
-  final LimeLightPositioner m_positioner = new LimeLightPositioner();
+  final Positioner m_positioner = new LimeLightPositioner(true);
 
   GameController m_controller; // = new Controller(0, ControllerType.Xbox);
 
@@ -173,23 +173,35 @@ public class Robot extends TimedRobot {
     Preferences.initString(DriveSelectionKey, DriveSelectionSwerve);
     String DriveSelection = Preferences.getString(DriveSelectionKey, DriveSelectionSwerve);
 
-    SendableChooser<String> ActionChooser = new SendableChooser<>();
-    for (Action action : Action.class.getEnumConstants()) {
-      ActionChooser.addOption(action.toString(), DriveSelection);
+    SendableChooser<Group> GroupChooser = new SendableChooser<>();
+    for (Group item : Group.class.getEnumConstants()) {
+      GroupChooser.addOption(item.toString(), item);
+    }
+    SmartDashboard.putData(GroupChooser);
+
+    SendableChooser<Location> LocationChooser = new SendableChooser<>();
+    for (Location item : Location.class.getEnumConstants()) {
+      LocationChooser.addOption(item.toString(), item);
+    }
+    SmartDashboard.putData(LocationChooser);
+
+    SendableChooser<Integer> IndexChooser = new SendableChooser<>();
+    for (int i = 0; i < 8; i++) {
+      IndexChooser.addOption(String.valueOf(i), i);
+    }
+    SmartDashboard.putData(IndexChooser);
+
+    SendableChooser<Position> PositionChooser = new SendableChooser<>();
+    for (Position item : Position.class.getEnumConstants()) {
+      PositionChooser.addOption(item.toString(), item);
+    }
+    SmartDashboard.putData(PositionChooser);
+
+    SendableChooser<Action> ActionChooser = new SendableChooser<>();
+    for (Action item : Action.class.getEnumConstants()) {
+      ActionChooser.addOption(item.toString(), item);
     }
     SmartDashboard.putData(ActionChooser);
-
-    SendableChooser<Integer> PrimaryChooser = new SendableChooser<>();
-    for (int i = 0; i < 8; i++) {
-      PrimaryChooser.addOption(String.valueOf(i), i);
-    }
-    SmartDashboard.putData(PrimaryChooser);
-
-    SendableChooser<Integer> SecondaryChooser = new SendableChooser<>();
-    for (int i = 0; i < 8; i++) {
-      SecondaryChooser.addOption(String.valueOf(i), i);
-    }
-    SmartDashboard.putData(SecondaryChooser);
 
     swerveDriveModule.debug = false;
     leftRearMM.debugAngle = true;
