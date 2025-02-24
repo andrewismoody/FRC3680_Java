@@ -8,8 +8,7 @@ import edu.wpi.first.math.geometry.Translation3d;
 import edu.wpi.first.wpilibj.drive.DifferentialDrive;
 import edu.wpi.first.wpilibj.motorcontrol.MotorController;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
-import frc.robot.action.Action;
-import frc.robot.action.ActionPose;
+import frc.robot.action.*;
 
 public class DifferentialDriveModule implements DriveModule {
     String moduleID;
@@ -53,19 +52,9 @@ public class DifferentialDriveModule implements DriveModule {
     }
 
     public void AddActionPose(ActionPose newAction) {
-        if (GetActionPose(newAction.action, newAction.primary, newAction.secondary) == null) {
+        if (GetActionPose(newAction.group, newAction.location, newAction.locationIndex, newAction.position, newAction.action) == null) {
             actionPoses.add(newAction);
         }
-    }
-
-    public ActionPose GetActionPose(Action action, int primary, int secondary) {
-        for (ActionPose pose : actionPoses) {
-            if (pose.action == action && pose.primary == primary && pose.secondary == secondary) {
-                return pose;
-            }
-        }
-
-        return null;      
     }
 
     @Override
@@ -124,7 +113,31 @@ public class DifferentialDriveModule implements DriveModule {
         return new Pose3d(currentPosition, new Rotation3d(0, 0, currentRotationAngle));
     }
 
-    public void SetTargetActionPose(Action action, int primary, int secondary) {
+    public ActionPose GetActionPose(ActionPose newAction) {
+        return GetActionPose(newAction.group, newAction.location, newAction.locationIndex, newAction.position, newAction.action);
+    }
+
+    public ActionPose GetActionPose(Group group, Location location, int locationIndex, Position position, Action action) {
+        for (ActionPose pose : actionPoses) {
+            if (
+                (pose.group == group || pose.group == Group.Any)
+                && (pose.locationIndex == locationIndex || pose.locationIndex == -1)
+                && (pose.location == location || pose.location == Location.Any)
+                && (pose.position == position || pose.position == Position.Any)
+                && (pose.action == action || pose.action == Action.Any)
+            ) {
+                return pose;
+            }
+        }
+
+        return null;      
+    }
+
+    public void SetTargetActionPose(ActionPose actionPose) {
+        // TODO: Implement this.
+    }    
+
+    public void SetTargetActionPose(Group group, Location location, int locationIndex, Position position, Action action) {
         // TODO: Implement this.
     }    
 }

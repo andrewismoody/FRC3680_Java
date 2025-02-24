@@ -10,7 +10,6 @@ import edu.wpi.first.math.geometry.Pose3d;
 import edu.wpi.first.math.geometry.Rotation3d;
 import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.geometry.Translation3d;
-import edu.wpi.first.net.PortForwarder;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.GenericHID;
 import edu.wpi.first.wpilibj.Preferences;
@@ -22,8 +21,7 @@ import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 
 import frc.robot.GameController.ButtonName;
 import frc.robot.GameController.ControllerType;
-import frc.robot.action.Action;
-import frc.robot.action.ActionPose;
+import frc.robot.action.*;
 import frc.robot.auto.AutoController;
 import frc.robot.gyro.AHRSGyro;
 import frc.robot.gyro.Gyro;
@@ -79,7 +77,7 @@ public class Robot extends TimedRobot {
 
   final Encoder enc_elev = new AnalogAbsoluteEncoder(4);
 
-  final LimeLightPositioner m_positioner = new LimeLightPositioner(true);
+  final Positioner m_positioner = new LimeLightPositioner(true);
 
   GameController m_controller; // = new Controller(0, ControllerType.Xbox);
 
@@ -224,7 +222,7 @@ public class Robot extends TimedRobot {
         break;
     }
 
-    elevator.AddActionPose(new ActionPose(Action.Score, 1, 1, new Pose3d(new Translation3d(1.5, 0, 0), new Rotation3d())));
+    elevator.AddActionPose(new ActionPose(Group.Score, Location.Any, -1, Position.Upper, Action.Any, new Pose3d(new Translation3d(1.5, 0, 0), new Rotation3d())));
     modules.AddModule(elevator);
 
     modules.enableDrive = true;
@@ -273,12 +271,6 @@ public class Robot extends TimedRobot {
     AutoModes.put(timedShoot.GetLabel(), timedShoot);
 
     SmartDashboard.putStringArray("Auto List", AutoModes.keySet().toArray(new String[] {}));
-
-    // Make sure you only configure port forwarding once in your robot code.
-    // Do not place these function calls in any periodic functions
-    for (int port = 5800; port <= 5809; port++) {
-        PortForwarder.add(port, "limelight.local", port);
-    };
   }
 
   /** This function is run once each time the robot enters autonomous mode. */

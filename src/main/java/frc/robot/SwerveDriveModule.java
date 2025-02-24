@@ -16,8 +16,7 @@ import edu.wpi.first.wpilibj.RobotBase;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 
 import frc.robot.positioner.Positioner;
-import frc.robot.action.Action;
-import frc.robot.action.ActionPose;
+import frc.robot.action.*;
 import frc.robot.gyro.Gyro;
 
 public class SwerveDriveModule implements DriveModule {
@@ -131,17 +130,6 @@ public class SwerveDriveModule implements DriveModule {
         return returnStates;
     }
 
-    public void SetTargetActionPose(Action action, int primary, int secondary) {
-        Pose3d actionPose = GetActionPose(action, primary, secondary).position;
-        Translation3d TargetPosition = actionPose.getTranslation();
-        double TargetYaw = actionPose.getRotation().getZ();
-        Translation3d Heading = currentPosition.minus(TargetPosition);
-
-        ProcessForwardSpeed(Heading.getY() / this.driveSpeed);
-        ProcessLateralSpeed(Heading.getX() / this.driveSpeed);
-        ProcessRotationAngle(TargetYaw);
-    }
-
     public void Initialize() {
         var startupAngle = useFakeGyro ? currentAngle
         : gyro.getAngle();
@@ -213,20 +201,52 @@ public class SwerveDriveModule implements DriveModule {
         // not implemented
     }
 
+
     public void AddActionPose(ActionPose newAction) {
-        if (GetActionPose(newAction.action, newAction.primary, newAction.secondary) == null) {
+        if (GetActionPose(newAction) == null) {
             actionPoses.add(newAction);
         }
     }
 
-    public ActionPose GetActionPose(Action action, int primary, int secondary) {
+    public ActionPose GetActionPose(ActionPose newAction) {
+        return GetActionPose(newAction.group, newAction.location, newAction.locationIndex, newAction.position, newAction.action);
+    }
+
+    public ActionPose GetActionPose(Group group, Location location, int locationIndex, Position position, Action action) {
         for (ActionPose pose : actionPoses) {
-            if (pose.action == action && pose.primary == primary && pose.secondary == secondary) {
+            if (
+                (pose.group == group || pose.group == Group.Any)
+                && (pose.locationIndex == locationIndex || pose.locationIndex == -1)
+                && (pose.location == location || pose.location == Location.Any)
+                && (pose.position == position || pose.position == Position.Any)
+                && (pose.action == action || pose.action == Action.Any)
+            ) {
                 return pose;
             }
         }
 
         return null;      
+    }
+
+    public void SetTargetActionPose(ActionPose actionPose) {
+        SetTargetActionPose(actionPose.group, actionPose.location, actionPose.locationIndex, actionPose.position, actionPose.action);
+    }      
+
+    public void SetTargetActionPose(Group group, Location location, int locationIndex, Position position, Action action) {
+        Pose3d actionPose = GetActionPose(group, location, locationIndex, position, action).pose;
+        if (actionPose != null) {
+            if (debug) {
+                System.out.printf("%s: Setting Pose %s %s %d %s %s\n", moduleID, group, location, locationIndex, position, action);
+            }
+
+            Translation3d TargetPosition = actionPose.getTranslation();
+            double TargetYaw = actionPose.getRotation().getZ();
+            Translation3d Heading = currentPosition.minus(TargetPosition);
+
+            ProcessForwardSpeed(Heading.getY() / this.driveSpeed);
+            ProcessLateralSpeed(Heading.getX() / this.driveSpeed);
+            ProcessRotationAngle(TargetYaw);
+        }
     }
 
     public void ProcessState(boolean isAuto) {

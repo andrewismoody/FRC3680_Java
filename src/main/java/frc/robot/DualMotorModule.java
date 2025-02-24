@@ -6,8 +6,7 @@ import edu.wpi.first.math.geometry.Pose3d;
 import edu.wpi.first.math.geometry.Rotation3d;
 import edu.wpi.first.math.geometry.Translation3d;
 import edu.wpi.first.wpilibj.motorcontrol.MotorController;
-import frc.robot.action.Action;
-import frc.robot.action.ActionPose;
+import frc.robot.action.*;
 import frc.robot.encoder.Encoder;
 import frc.robot.switches.Switch;
 
@@ -57,14 +56,20 @@ public class DualMotorModule implements RobotModule {
     }
 
     public void AddActionPose(ActionPose newAction) {
-        if (GetActionPose(newAction.action, newAction.primary, newAction.secondary) == null) {
+        if (GetActionPose(newAction.group, newAction.location, newAction.locationIndex, newAction.position, newAction.action) == null) {
             actionPoses.add(newAction);
         }
     }
 
-    public ActionPose GetActionPose(Action action, int primary, int secondary) {
+    public ActionPose GetActionPose(Group group, Location location, int locationIndex, Position position, Action action) {
         for (ActionPose pose : actionPoses) {
-            if (pose.action == action && pose.primary == primary && pose.secondary == secondary) {
+            if (
+                (pose.group == group || pose.group == Group.Any)
+                && (pose.locationIndex == locationIndex || pose.locationIndex == -1)
+                && (pose.location == location || pose.location == Location.Any)
+                && (pose.position == position || pose.position == Position.Any)
+                && (pose.action == action || pose.action == Action.Any)
+            ) {
                 return pose;
             }
         }
@@ -138,9 +143,13 @@ public class DualMotorModule implements RobotModule {
         return moduleID;
     }
 
-    public void SetTargetActionPose(Action action, int primary, int secondary) {
+    public void SetTargetActionPose(Group group, Location location, int locationIndex, Position position, Action action) {
         // TODO: Implement this.
-    }
+    }    
+
+    public void SetTargetActionPose(ActionPose actionPose) {
+        // TODO: Implement this.
+    }   
 
     public Pose3d GetPosition() {
         double leftVal = 0;

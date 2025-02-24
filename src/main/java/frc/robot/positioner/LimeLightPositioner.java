@@ -1,8 +1,7 @@
 package frc.robot.positioner;
 
 import edu.wpi.first.math.geometry.Translation3d;
-import edu.wpi.first.wpilibj.DriverStation;
-import edu.wpi.first.wpilibj.DriverStation.Alliance;
+import edu.wpi.first.net.PortForwarder;
 
 public class LimeLightPositioner implements Positioner {
     boolean useMegatagTwo = true;
@@ -14,6 +13,12 @@ public class LimeLightPositioner implements Positioner {
     public void Initialize() {
         // set IMU mode to 2 which fusions the provided orientation with the calculated positions
         LimelightHelpers.SetIMUMode("", 2);
+
+        // Make sure you only configure port forwarding once in your robot code.
+        // Do not place these function calls in any periodic functions
+        for (int port = 5800; port <= 5809; port++) {
+            PortForwarder.add(port, "limelight.local", port);
+        };
     }
 
     public Translation3d GetPosition() {

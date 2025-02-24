@@ -6,8 +6,7 @@ import edu.wpi.first.math.geometry.Pose3d;
 import edu.wpi.first.math.geometry.Rotation3d;
 import edu.wpi.first.math.geometry.Translation3d;
 import edu.wpi.first.wpilibj.motorcontrol.MotorController;
-import frc.robot.action.Action;
-import frc.robot.action.ActionPose;
+import frc.robot.action.*;
 import frc.robot.encoder.Encoder;
 import frc.robot.switches.Switch;
 
@@ -60,20 +59,44 @@ public class SingleMotorModule implements RobotModule {
     }
 
     public void AddActionPose(ActionPose newAction) {
-        if (GetActionPose(newAction.action, newAction.primary, newAction.secondary) == null) {
+        if (GetActionPose(newAction) == null) {
             actionPoses.add(newAction);
         }
     }
 
-    public ActionPose GetActionPose(Action action, int primary, int secondary) {
+    public ActionPose GetActionPose(ActionPose newAction) {
+        return GetActionPose(newAction.group, newAction.location, newAction.locationIndex, newAction.position, newAction.action);
+    }
+
+    public ActionPose GetActionPose(Group group, Location location, int locationIndex, Position position, Action action) {
         for (ActionPose pose : actionPoses) {
-            if (pose.action == action && pose.primary == primary && pose.secondary == secondary) {
+            if (
+                (pose.group == group || pose.group == Group.Any)
+                && (pose.locationIndex == locationIndex || pose.locationIndex == -1)
+                && (pose.location == location || pose.location == Location.Any)
+                && (pose.position == position || pose.position == Position.Any)
+                && (pose.action == action || pose.action == Action.Any)
+            ) {
                 return pose;
             }
         }
 
         return null;      
     }
+
+    public void SetTargetActionPose(ActionPose actionPose) {
+        SetTargetActionPose(actionPose.group, actionPose.location, actionPose.locationIndex, actionPose.position, actionPose.action);
+    }    
+
+    public void SetTargetActionPose(Group group, Location location, int locationIndex, Position position, Action action) {
+        var targetPose = GetActionPose(group, location, locationIndex, position, action);
+        if (targetPose != null) {
+            if (debug) {
+                System.out.printf("%s: Setting Pose %s %s %d %s %s\n", moduleID, group, location, locationIndex, position, action);
+            }
+            target = targetPose.pose;
+        }
+    }    
 
     double getEncValAdj() {
         var encVal = enc.getDistance();
@@ -207,7 +230,7 @@ public class SingleMotorModule implements RobotModule {
 
     public void SetScoringPoseOneOne(boolean isPressed) {
         if (isPressed) {
-            SetTargetActionPose(Action.Score, 1, 1);
+            SetTargetActionPose(Group.Score, Location.Any, -1, Position.Upper, Action.Any);
         }
     }
 
@@ -218,15 +241,6 @@ public class SingleMotorModule implements RobotModule {
         }
     }
 
-    public void SetTargetActionPose(Action action, int primary, int secondary) {
-        var targetPose = GetActionPose(action, primary, secondary);
-        if (targetPose != null) {
-            if (debug) {
-                System.out.printf("%s: Setting Pose %s %d-%d\n", moduleID, action, primary, secondary);
-            }
-            target = targetPose.position;
-        }
-    }
 
     public void AbandonTarget() {
         if (debug) {

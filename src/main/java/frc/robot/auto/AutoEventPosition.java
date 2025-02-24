@@ -56,7 +56,7 @@ public class AutoEventPosition implements AutoEvent {
                 break;
             case Adaptive:
                 if (targetModule != null && target != null)
-                    targetModule.SetTargetActionPose(target.action, target.primary, target.secondary);
+                    targetModule.SetTargetActionPose(target);
                 break;
         }
         complete = true;

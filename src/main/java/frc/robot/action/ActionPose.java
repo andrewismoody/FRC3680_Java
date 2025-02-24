@@ -3,21 +3,19 @@ package frc.robot.action;
 import edu.wpi.first.math.geometry.Pose3d;
 
 public class ActionPose {
+    public Group group;
+    public Location location;
+    public int locationIndex;
+    public Position position;
     public Action action;
-    public int primary;
-    public int secondary;
-    public Pose3d position;
+    public Pose3d pose;
 
-    public ActionPose(Action Action, int Primary, int Secondary, Pose3d Position) {
-        action = Action;
-        primary = Primary;
-        secondary = Secondary;
+    public ActionPose(Group Group, Location Location, int LocationIndex, Position Position, Action Action, Pose3d Pose) {
+        group = Group;
+        location = Location;
+        locationIndex = LocationIndex;
         position = Position;
-    }
-
-    public ActionPose(Action Action, int Primary, int Secondary) {
         action = Action;
-        primary = Primary;
-        secondary = Secondary;
+        pose = Pose;
     }
 }

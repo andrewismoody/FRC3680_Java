@@ -1,8 +1,7 @@
 package frc.robot;
 
 import edu.wpi.first.math.geometry.Pose3d;
-import frc.robot.action.Action;
-import frc.robot.action.ActionPose;
+import frc.robot.action.*;
 
 public interface RobotModule {
     public void Initialize();
@@ -11,8 +10,9 @@ public interface RobotModule {
     public void ApplyInverse(boolean value);
     public void SetController(ModuleController controller);
     public String GetModuleID();
-    public void SetTargetActionPose(Action action, int primary, int secondary);
+    public void SetTargetActionPose(Group Group, Location Location, int LocationIndex, Position Position, Action Action);
+    public void SetTargetActionPose(ActionPose ActionPose);
     public Pose3d GetPosition();
     public void AddActionPose(ActionPose NewPose);
-    public ActionPose GetActionPose(Action action, int Primary, int Secondary);
+    public ActionPose GetActionPose(Group Group, Location Location, int LocationIndex, Position Position, Action Action);
 }
