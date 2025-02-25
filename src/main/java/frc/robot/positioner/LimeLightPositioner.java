@@ -11,8 +11,8 @@ public class LimeLightPositioner implements Positioner {
     }
 
     public void Initialize() {
-        // set IMU mode to 2 which fusions the provided orientation with the calculated positions
-        LimelightHelpers.SetIMUMode("", 2);
+        // // set IMU mode to 2 which fusions the provided orientation with the calculated positions
+        // LimelightHelpers.SetIMUMode("", 2);
 
         // Make sure you only configure port forwarding once in your robot code.
         // Do not place these function calls in any periodic functions

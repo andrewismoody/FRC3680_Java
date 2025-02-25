@@ -134,7 +134,8 @@ public class SwerveDriveModule implements DriveModule {
         var startupAngle = useFakeGyro ? currentAngle
         : gyro.getAngle();
         System.out.printf("%s actualAngle: %f\n", moduleID, startupAngle);
-        angleOffset = startupAngle + 180;
+        // TODO: probably don't this - check and see if 180 is needed when we are blue-origin oriented.
+        // angleOffset = startupAngle + 180;
 
         var startupPosition = positioner.GetPosition();
         System.out.printf("%s startupPosition: {%f, %f, %f}", moduleID, startupPosition.getX(), startupPosition.getY(), startupPosition.getZ());
