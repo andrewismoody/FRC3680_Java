@@ -63,9 +63,9 @@ public class Robot extends TimedRobot {
   final PWMSparkMax pwm_drive_lr = new PWMSparkMax(0);
   final PWMVictorSPX pwm_steer_lr = new PWMVictorSPX(4);
 
-  final PWMSparkMax pwm_elev = new PWMSparkMax(8);
-
-  final SparkMax can_grabber = new SparkMax(1, MotorType.kBrushless);
+  final SparkMax can_elev = new SparkMax(2, MotorType.kBrushless);
+  final SparkMax can_lift = new SparkMax(4, MotorType.kBrushless);
+  final SparkMax can_grab = new SparkMax(3, MotorType.kBrushless);
 
   // JE motor is 44.4 pulses per rotation, and it reports in degrees, so there are
   // 8.108 degress per pulse.
@@ -82,9 +82,9 @@ public class Robot extends TimedRobot {
 
   final Gyro m_gyro = new AHRSGyro();
 
-  final Encoder enc_elev = new AnalogAbsoluteEncoder(4);
-
-  final Encoder enc_grabber = new REVEncoder(can_grabber.getEncoder());
+  final Encoder enc_elev = new REVEncoder(can_elev.getEncoder());
+  final Encoder enc_lift = new REVEncoder(can_lift.getEncoder());
+  final Encoder enc_grabber = new REVEncoder(can_grab.getEncoder());
 
   final Positioner m_positioner = new LimeLightPositioner(true);
 
@@ -96,6 +96,8 @@ public class Robot extends TimedRobot {
 
   final double m_floatTolerance = 0.08; // 0.2;
   final double m_elevatorSpeed = 0.6;
+  final double m_liftSpeed = 0.6;
+  final double m_grabSpeed = 0.6;
   // 24 teeth on driver, 42 teeth on driven = 24/42 = 0.5714
   final double m_encoderMultiplier = 1.0; // 0.5714;
 
@@ -128,8 +130,9 @@ public class Robot extends TimedRobot {
   double m_rotationSpeed = 35.168; // 17.584; // 21.98; //32.40 / m_speedMod; // should be actual radians per
                                    // second that is achievable by the rotation motor
 
-  SingleMotorModule elevator = new SingleMotorModule("elevator", pwm_elev, m_elevatorSpeed, true, null, null, enc_elev);
-  SingleMotorModule grabber = new SingleMotorModule("grabber", can_grabber, m_elevatorSpeed, false, null, null, enc_grabber);
+  SingleMotorModule elevator = new SingleMotorModule("elevator", can_elev, m_elevatorSpeed, false, null, null, enc_elev);
+  SingleMotorModule lifter = new SingleMotorModule("lifter", can_lift, m_liftSpeed, true, null, null, enc_lift);
+  SingleMotorModule grabber = new SingleMotorModule("grabber", can_grab, m_grabSpeed, false, null, null, enc_grabber);
 
   // total length of robot is 32.375", centerline is 16.1875" from edge.  Drive axle center is 4" from edge - 12.1875" from center which is 309.56mm or 0.30956 meters
   SwerveMotorModule leftFrontMM = new SwerveMotorModule("leftFront", new Translation2d(-0.30956, -0.30956), pwm_drive_lf, pwm_steer_lf, enc_lf, m_encoderMultiplier, m_floatTolerance, true, false);
@@ -264,6 +267,8 @@ public class Robot extends TimedRobot {
 
     elevator.AddActionPose(new ActionPose(Group.Score, Location.Any, -1, Position.Upper, Action.Any, new Pose3d(new Translation3d(1.5, 0, 0), new Rotation3d())));
     modules.AddModule(elevator);
+    modules.AddModule(lifter);
+    modules.AddModule(grabber);
 
     modules.enableDrive = true;
     
@@ -281,8 +286,14 @@ public class Robot extends TimedRobot {
     // m_controller.RegisterBinaryButtonConsumer(ButtonName.TopButton, intake::ApplyValue);
     // m_controller.RegisterBinaryButtonConsumer(ButtonName.TopButton, feeder::ApplyValue);
 
-    m_controller.RegisterBinaryButtonConsumer(ButtonName.BottomButton, elevator::SetNoPose);
-    m_controller.RegisterBinaryButtonConsumer(ButtonName.TopButton, elevator::SetScoringPoseOneOne);
+    m_controller.RegisterBinaryButtonConsumer(ButtonName.BottomButton, elevator::ApplyInverse);
+    m_controller.RegisterBinaryButtonConsumer(ButtonName.TopButton, elevator::ApplyValue);
+
+    m_controller.RegisterBinaryButtonConsumer(ButtonName.POVDown, lifter::ApplyInverse);
+    m_controller.RegisterBinaryButtonConsumer(ButtonName.POVUp, lifter::ApplyValue);
+
+    m_controller.RegisterBinaryButtonConsumer(ButtonName.POVLeft, grabber::ApplyInverse);
+    m_controller.RegisterBinaryButtonConsumer(ButtonName.POVRight, grabber::ApplyValue);
 
     m_controller.RegisterBinaryButtonConsumer(ButtonName.LeftButton, swerveDriveModule::LockPosition);
     m_controller.RegisterBinaryButtonConsumer(ButtonName.RightButton, swerveDriveModule::ReturnToZero);

@@ -34,7 +34,11 @@ public class GameController {
         RightThumbstickX,
         LeftThumbstickY,
         LeftThumbstickX,
-        POV,
+        POVAngle,
+        POVUp,
+        POVDown,
+        POVLeft,
+        POVRight,
         Start,
         Select,
         Logo,
@@ -157,6 +161,10 @@ public class GameController {
         RegisterBinaryButtonSupplier(ButtonName.Start, this::getStartButton);
         RegisterBinaryButtonSupplier(ButtonName.Select, this::getSelectButton);
         RegisterBinaryButtonSupplier(ButtonName.Logo, this::getLogoButton);
+        RegisterBinaryButtonSupplier(ButtonName.POVUp, this::getPOVUp);
+        RegisterBinaryButtonSupplier(ButtonName.POVDown, this::getPOVDown);
+        RegisterBinaryButtonSupplier(ButtonName.POVLeft, this::getPOVLeft);
+        RegisterBinaryButtonSupplier(ButtonName.POVRight, this::getPOVRight);
 
         RegisterValueButtonSupplier(ButtonName.LeftTrigger, this::getLeftTriggerValue);
         RegisterValueButtonSupplier(ButtonName.RightTrigger, this::getRightTriggerValue);
@@ -165,7 +173,7 @@ public class GameController {
         RegisterValueButtonSupplier(ButtonName.RightThumbstickX, this::getRightX);
         RegisterValueButtonSupplier(ButtonName.RightThumbstickY, this::getRightY);
 
-        RegisterPOVButtonSupplier(ButtonName.POV, this::getPOV);
+        RegisterPOVButtonSupplier(ButtonName.POVAngle, this::getPOV);
     }
 
     boolean getLeftButton() {
@@ -352,7 +360,43 @@ public class GameController {
 
         return 0;
     }
+
+    boolean getPOVUp() {
+        int angle = getPOV();
+        if (angle > -1) { // -1 means not pressed
+            if (angle < 90 || angle > 270) {
+                return true;
+            }
+        }
+        return false;
+    }
  
+    boolean getPOVDown() {
+        int angle = getPOV();
+        if (angle > -1) {  // -1 means not pressed
+            if (angle > 90 && angle < 270) {
+                return true;
+            }
+        }
+        return false;
+    }
+ 
+    boolean getPOVRight() {
+        int angle = getPOV();
+        if (angle > -1 && angle < 180) {  // -1 means not pressed
+            return true;
+        }
+        return false;
+    }
+ 
+    boolean getPOVLeft() {
+        int angle = getPOV();
+        if (angle > 180) {  // -1 means not pressed
+            return true;
+        }
+        return false;
+    }
+
     boolean getStartButton() {
         switch (Type) {
             case Xbox:

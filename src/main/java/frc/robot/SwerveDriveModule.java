@@ -138,7 +138,7 @@ public class SwerveDriveModule implements DriveModule {
         // angleOffset = startupAngle + 180;
 
         var startupPosition = positioner.GetPosition();
-        System.out.printf("%s startupPosition: {%f, %f, %f}", moduleID, startupPosition.getX(), startupPosition.getY(), startupPosition.getZ());
+        System.out.printf("%s startupPosition: {%f, %f, %f}\n", moduleID, startupPosition.getX(), startupPosition.getY(), startupPosition.getZ());
 
         positioner.Initialize();
 
