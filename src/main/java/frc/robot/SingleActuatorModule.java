@@ -33,16 +33,16 @@ public class SingleActuatorModule implements RobotModule {
 
     @Override
     public void ProcessState(boolean isAuto) {
-        currentValue = Value.kOff;
+        relay.set(currentValue);
     }
 
     @Override
     public void ApplyValue(boolean value) {
         if (value) {
             if (invert) {
-                currentValue = Value.kReverse;
+                currentValue = Value.kOff;
             } else {
-                currentValue = Value.kForward;
+                currentValue = Value.kOn;
             }
         }
     }
@@ -51,9 +51,9 @@ public class SingleActuatorModule implements RobotModule {
     public void ApplyInverse(boolean value) {
         if (value) {
             if (invert) {
-                currentValue = Value.kForward;
+                currentValue = Value.kOn;
             } else {
-                currentValue = Value.kReverse;
+                currentValue = Value.kOff;
             }
         }
     }
