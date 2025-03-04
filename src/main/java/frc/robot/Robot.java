@@ -13,6 +13,7 @@ import edu.wpi.first.math.geometry.Translation3d;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.GenericHID;
 import edu.wpi.first.wpilibj.Preferences;
+import edu.wpi.first.wpilibj.Relay;
 import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj.motorcontrol.PWMSparkMax;
@@ -66,6 +67,8 @@ public class Robot extends TimedRobot {
   final SparkMax can_elev = new SparkMax(2, MotorType.kBrushless);
   final SparkMax can_lift = new SparkMax(4, MotorType.kBrushless);
   final SparkMax can_grab = new SparkMax(3, MotorType.kBrushless);
+
+  final Relay pwm_slide = new Relay(9);
 
   // JE motor is 44.4 pulses per rotation, and it reports in degrees, so there are
   // 8.108 degress per pulse.
@@ -139,6 +142,8 @@ public class Robot extends TimedRobot {
   SwerveMotorModule rightFrontMM = new SwerveMotorModule("rightFront", new Translation2d(0.30956, -0.24765), pwm_drive_rf, pwm_steer_rf, enc_rf, m_encoderMultiplier, m_floatTolerance, true, false);
   SwerveMotorModule leftRearMM = new SwerveMotorModule("leftRear", new Translation2d(-0.30956, 0.24765), pwm_drive_lr, pwm_steer_lr, enc_lr, m_encoderMultiplier, m_floatTolerance, true, false);
   SwerveMotorModule rightRearMM = new SwerveMotorModule("rightRear", new Translation2d(0.30956, 0.24765), pwm_drive_rr, pwm_steer_rr, enc_rr, m_encoderMultiplier, m_floatTolerance, true, false);
+
+  SingleActuatorModule slide = new SingleActuatorModule("slide", pwm_slide, false);
 
   SwerveDriveModule swerveDriveModule = new SwerveDriveModule("swerveDrive", m_gyro, m_positioner, m_driveSpeed, m_rotationSpeed, isFieldOriented, m_floatTolerance
     , leftFrontMM
@@ -269,6 +274,7 @@ public class Robot extends TimedRobot {
     modules.AddModule(elevator);
     modules.AddModule(lifter);
     modules.AddModule(grabber);
+    modules.AddModule(slide);
 
     modules.enableDrive = true;
     
