@@ -363,27 +363,23 @@ public class GameController {
 
     boolean getPOVUp() {
         int angle = getPOV();
-        if (angle > -1) { // -1 means not pressed
-            if (angle < 90 || angle > 270) {
-                return true;
-            }
+        if (angle == 0) { // -1 means not pressed
+            return true;
         }
         return false;
     }
  
     boolean getPOVDown() {
         int angle = getPOV();
-        if (angle > -1) {  // -1 means not pressed
-            if (angle > 90 && angle < 270) {
-                return true;
-            }
+        if (angle == 180) {  // -1 means not pressed
+            return true;
         }
         return false;
     }
  
     boolean getPOVRight() {
         int angle = getPOV();
-        if (angle > -1 && angle < 180) {  // -1 means not pressed
+        if (angle == 90) {  // -1 means not pressed
             return true;
         }
         return false;
@@ -391,7 +387,7 @@ public class GameController {
  
     boolean getPOVLeft() {
         int angle = getPOV();
-        if (angle > 180) {  // -1 means not pressed
+        if (angle == 270) {  // -1 means not pressed
             return true;
         }
         return false;
