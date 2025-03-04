@@ -137,13 +137,13 @@ public class Robot extends TimedRobot {
   SingleMotorModule lifter = new SingleMotorModule("lifter", can_lift, m_liftSpeed, true, null, null, enc_lift);
   SingleMotorModule grabber = new SingleMotorModule("grabber", can_grab, m_grabSpeed, false, null, null, enc_grabber);
 
+  SingleActuatorModule slide = new SingleActuatorModule("slide", pwm_slide, false);
+  
   // total length of robot is 32.375", width is 27.5", centerline is 16.1875" from edge.  Drive axle center is 4" from edge - 12.1875" from center which is 309.56mm or 0.30956 meters
   SwerveMotorModule leftFrontMM = new SwerveMotorModule("leftFront", new Translation2d(-0.30956, -0.24765), pwm_drive_lf, pwm_steer_lf, enc_lf, m_encoderMultiplier, m_floatTolerance, true, false);
   SwerveMotorModule rightFrontMM = new SwerveMotorModule("rightFront", new Translation2d(0.30956, -0.24765), pwm_drive_rf, pwm_steer_rf, enc_rf, m_encoderMultiplier, m_floatTolerance, true, false);
   SwerveMotorModule leftRearMM = new SwerveMotorModule("leftRear", new Translation2d(-0.30956, 0.24765), pwm_drive_lr, pwm_steer_lr, enc_lr, m_encoderMultiplier, m_floatTolerance, true, false);
   SwerveMotorModule rightRearMM = new SwerveMotorModule("rightRear", new Translation2d(0.30956, 0.24765), pwm_drive_rr, pwm_steer_rr, enc_rr, m_encoderMultiplier, m_floatTolerance, true, false);
-
-  SingleActuatorModule slide = new SingleActuatorModule("slide", pwm_slide, false);
 
   SwerveDriveModule swerveDriveModule = new SwerveDriveModule("swerveDrive", m_gyro, m_positioner, m_driveSpeed, m_rotationSpeed, isFieldOriented, m_floatTolerance
     , leftFrontMM
@@ -291,6 +291,8 @@ public class Robot extends TimedRobot {
     // map both of these actions to the same button
     // m_controller.RegisterBinaryButtonConsumer(ButtonName.TopButton, intake::ApplyValue);
     // m_controller.RegisterBinaryButtonConsumer(ButtonName.TopButton, feeder::ApplyValue);
+    
+    m_controller.RegisterBinaryButtonConsumer(ButtonName.LeftShoulderButton, slide::ApplyValue);
 
     m_controller.RegisterBinaryButtonConsumer(ButtonName.BottomButton, elevator::ApplyInverse);
     m_controller.RegisterBinaryButtonConsumer(ButtonName.TopButton, elevator::ApplyValue);
