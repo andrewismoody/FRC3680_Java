@@ -68,7 +68,7 @@ public class Robot extends TimedRobot {
   final SparkMax can_lift = new SparkMax(4, MotorType.kBrushless);
   final SparkMax can_grab = new SparkMax(3, MotorType.kBrushless);
 
-  final Relay pwm_slide = new Relay(9);
+  final Relay pwm_slide = new Relay(0);
 
   // JE motor is 44.4 pulses per rotation, and it reports in degrees, so there are
   // 8.108 degress per pulse.
@@ -273,7 +273,7 @@ public class Robot extends TimedRobot {
     elevator.AddActionPose(new ActionPose(Group.Score, Location.Any, -1, Position.Upper, Action.Any, new Pose3d(new Translation3d(1.5, 0, 0), new Rotation3d())));
     modules.AddModule(elevator);
     modules.AddModule(lifter);
-    modules.AddModule(grabber);
+  //   modules.AddModule(grabber);
     modules.AddModule(slide);
 
     modules.enableDrive = true;
@@ -293,6 +293,7 @@ public class Robot extends TimedRobot {
     // m_controller.RegisterBinaryButtonConsumer(ButtonName.TopButton, feeder::ApplyValue);
     
     m_controller.RegisterBinaryButtonConsumer(ButtonName.LeftShoulderButton, slide::ApplyValue);
+    m_controller.RegisterBinaryButtonConsumer(ButtonName.RightShoulderButton, slide::ApplyInverse);
 
     m_controller.RegisterBinaryButtonConsumer(ButtonName.BottomButton, elevator::ApplyInverse);
     m_controller.RegisterBinaryButtonConsumer(ButtonName.TopButton, elevator::ApplyValue);
@@ -300,13 +301,13 @@ public class Robot extends TimedRobot {
     m_controller.RegisterBinaryButtonConsumer(ButtonName.POVDown, lifter::ApplyInverse);
     m_controller.RegisterBinaryButtonConsumer(ButtonName.POVUp, lifter::ApplyValue);
 
-    m_controller.RegisterBinaryButtonConsumer(ButtonName.POVLeft, grabber::ApplyInverse);
-    m_controller.RegisterBinaryButtonConsumer(ButtonName.POVRight, grabber::ApplyValue);
+    // m_controller.RegisterBinaryButtonConsumer(ButtonName.POVLeft, grabber::ApplyInverse);
+    // m_controller.RegisterBinaryButtonConsumer(ButtonName.POVRight, grabber::ApplyValue);
 
     m_controller.RegisterBinaryButtonConsumer(ButtonName.LeftButton, swerveDriveModule::LockPosition);
     m_controller.RegisterBinaryButtonConsumer(ButtonName.RightButton, swerveDriveModule::ReturnToZero);
 
-    m_controller.RegisterBinaryButtonConsumer(ButtonName.RightShoulderButton, modules::ProcessInverse);
+    // m_controller.RegisterBinaryButtonConsumer(ButtonName.RightShoulderButton, modules::ProcessInverse);
 
     m_controller.RegisterValueButtonConsumer(ButtonName.LeftTrigger, modules::ProcessDivider1);
 
