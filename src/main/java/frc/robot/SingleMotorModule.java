@@ -165,16 +165,19 @@ public class SingleMotorModule implements RobotModule {
                 rotationCount = enc.getDistance();
         }
 
+        double angleTolerance = 0.00001; // 0.00001;
+
         if (target != null && currentDriveSpeed == 0.0) {
             // we have a target and we're not manually applying a value, try to get to it.
             var targetRotation = target.getX();
             var targetDistance = Math.abs(targetRotation - rotationCount);
-            if (debug && Math.abs(previousTargetDistance - targetDistance) > 0.001) {
-                System.out.printf("%s: targetDistance %f\n", moduleID, targetDistance);
-                previousTargetDistance = targetDistance;
+            if (Math.abs(previousTargetDistance - targetDistance) > angleTolerance) {
+                if (debug)
+                    System.out.printf("%s: targetDistance %f\n", moduleID, targetDistance);
             }
+            previousTargetDistance = targetDistance;
 
-            var shouldMove = (Math.abs(targetDistance) > 0.001);
+            var shouldMove = (Math.abs(targetDistance) > angleTolerance);
             if (targetRotation > rotationCount) {
                 if (shouldMove) {
                     currentDriveSpeed += controller.ApplyModifiers(invert ? -driveSpeed : driveSpeed);
@@ -201,10 +204,11 @@ public class SingleMotorModule implements RobotModule {
         }
 
 
-        if (debug && Math.abs(previousDriveSpeed - currentDriveSpeed) > m_floatTolerance) {
-            System.out.printf("%s: currentDriveSpeed %f\n", moduleID, currentDriveSpeed);
-            previousDriveSpeed = currentDriveSpeed;
+        if (Math.abs(previousDriveSpeed - currentDriveSpeed) > angleTolerance) {
+            if (debug)
+                System.out.printf("%s: currentDriveSpeed %f\n", moduleID, currentDriveSpeed);
         }
+        previousDriveSpeed = currentDriveSpeed;
 
         if ((currentDriveSpeed > 0 && (upperLimit == null || !upperLimit.GetState())) ||
             (currentDriveSpeed < 0 && (lowerLimit == null || !lowerLimit.GetState()))) {
@@ -216,10 +220,11 @@ public class SingleMotorModule implements RobotModule {
             driveMotor.set(0);
         }
 
-        if (Math.abs(rotationCount - previousRotationCount) > 0.001 && debug) {
-            System.out.printf("%s: rotationCount: %f\n", moduleID, rotationCount);
-            previousRotationCount = rotationCount;
+        if (Math.abs(rotationCount - previousRotationCount) > angleTolerance) {
+            if (debug)
+                System.out.printf("%s: rotationCount: %f\n", moduleID, rotationCount);
         }
+        previousRotationCount = rotationCount;
 
         currentDriveSpeed = 0.0;
     }
