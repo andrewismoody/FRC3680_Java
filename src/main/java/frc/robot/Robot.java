@@ -6,6 +6,7 @@ package frc.robot;
 
 import java.util.Hashtable;
 
+import edu.wpi.first.cameraserver.CameraServer;
 import edu.wpi.first.math.geometry.Pose3d;
 import edu.wpi.first.math.geometry.Rotation3d;
 import edu.wpi.first.math.geometry.Translation2d;
@@ -46,6 +47,9 @@ import frc.robot.encoder.REVEncoder;
  * directory.
  */
 public class Robot extends TimedRobot {
+
+  double elapsedTime;
+
   final String codeBuildVersion = "2025.02.15-PreSeason";
 
   // RR
@@ -65,8 +69,8 @@ public class Robot extends TimedRobot {
   final PWMVictorSPX pwm_steer_lr = new PWMVictorSPX(4);
 
   final SparkMax can_elev = new SparkMax(2, MotorType.kBrushless);
-  final SparkMax can_lift = new SparkMax(4, MotorType.kBrushless);
-  final SparkMax can_grab = new SparkMax(3, MotorType.kBrushless);
+  // final SparkMax can_lift = new SparkMax(4, MotorType.kBrushless);
+  // final SparkMax can_grab = new SparkMax(3, MotorType.kBrushless);
 
   final Relay pwm_slide = new Relay(0);
 
@@ -86,8 +90,8 @@ public class Robot extends TimedRobot {
   final Gyro m_gyro = new AHRSGyro();
 
   final Encoder enc_elev = new REVEncoder(can_elev.getEncoder());
-  final Encoder enc_lift = new REVEncoder(can_lift.getEncoder());
-  final Encoder enc_grabber = new REVEncoder(can_grab.getEncoder());
+  // final Encoder enc_lift = new REVEncoder(can_lift.getEncoder());
+  // final Encoder enc_grabber = new REVEncoder(can_grab.getEncoder());
 
   final Positioner m_positioner = new LimeLightPositioner(true);
 
@@ -134,8 +138,8 @@ public class Robot extends TimedRobot {
                                    // second that is achievable by the rotation motor
 
   SingleMotorModule elevator = new SingleMotorModule("elevator", can_elev, m_elevatorSpeed, false, null, null, enc_elev);
-  SingleMotorModule lifter = new SingleMotorModule("lifter", can_lift, m_liftSpeed, true, null, null, enc_lift);
-  SingleMotorModule grabber = new SingleMotorModule("grabber", can_grab, m_grabSpeed, false, null, null, enc_grabber);
+  // SingleMotorModule lifter = new SingleMotorModule("lifter", can_lift, m_liftSpeed, true, null, null, enc_lift);
+  // SingleMotorModule grabber = new SingleMotorModule("grabber", can_grab, m_grabSpeed, false, null, null, enc_grabber);
 
   SingleActuatorModule slide = new SingleActuatorModule("slide", pwm_slide, false);
   
@@ -163,11 +167,14 @@ public class Robot extends TimedRobot {
   public static final String DriveSelectionSwerve = "Swerve";
   public static final String DriveSelectionDifferential = "Differential";
 
+
+
   public Robot() {
     // SendableRegistry.addChild(m_robotDrive, m_leftDrive);
     // SendableRegistry.addChild(m_robotDrive, m_rightDrive);
+    
+        CameraServer.startAutomaticCapture();
   }
-
   /**
    * This function is run when the robot is first started up and should be used
    * for any
@@ -270,9 +277,11 @@ public class Robot extends TimedRobot {
         break;
     }
 
-    elevator.AddActionPose(new ActionPose(Group.Score, Location.Any, -1, Position.Upper, Action.Any, new Pose3d(new Translation3d(1.5, 0, 0), new Rotation3d())));
+    elevator.AddActionPose(new ActionPose(Group.Score, Location.Any, -1, Position.Lower, Action.Any, new Pose3d(new Translation3d(50.0, 0, 0), new Rotation3d())));
+    elevator.AddActionPose(new ActionPose(Group.Score, Location.Any, -1, Position.Middle, Action.Any, new Pose3d(new Translation3d(130.0, 0, 0), new Rotation3d())));
+    elevator.AddActionPose(new ActionPose(Group.Score, Location.Any, -1, Position.Trough, Action.Any, new Pose3d(new Translation3d(0.0, 0, 0), new Rotation3d())));
     modules.AddModule(elevator);
-    modules.AddModule(lifter);
+  //  modules.AddModule(lifter);
   //   modules.AddModule(grabber);
     modules.AddModule(slide);
 
@@ -295,17 +304,21 @@ public class Robot extends TimedRobot {
     m_controller.RegisterBinaryButtonConsumer(ButtonName.LeftShoulderButton, slide::ApplyValue);
     m_controller.RegisterBinaryButtonConsumer(ButtonName.RightShoulderButton, slide::ApplyInverse);
 
-    m_controller.RegisterBinaryButtonConsumer(ButtonName.BottomButton, elevator::ApplyInverse);
-    m_controller.RegisterBinaryButtonConsumer(ButtonName.TopButton, elevator::ApplyValue);
+    m_controller.RegisterBinaryButtonConsumer(ButtonName.BottomButton, elevator::SetNoPose);
+    m_controller.RegisterBinaryButtonConsumer(ButtonName.TopButton, elevator::SetScoringPoseMiddle);
+    m_controller.RegisterBinaryButtonConsumer(ButtonName.LeftButton, elevator::SetScoringPoseLower);
+    m_controller.RegisterBinaryButtonConsumer(ButtonName.RightButton, elevator::SetScoringPoseTrough);
 
-    m_controller.RegisterBinaryButtonConsumer(ButtonName.POVDown, lifter::ApplyInverse);
-    m_controller.RegisterBinaryButtonConsumer(ButtonName.POVUp, lifter::ApplyValue);
+
+
+    m_controller.RegisterBinaryButtonConsumer(ButtonName.POVDown, elevator::ApplyInverse);
+    m_controller.RegisterBinaryButtonConsumer(ButtonName.POVUp, elevator::ApplyValue);
 
     // m_controller.RegisterBinaryButtonConsumer(ButtonName.POVLeft, grabber::ApplyInverse);
     // m_controller.RegisterBinaryButtonConsumer(ButtonName.POVRight, grabber::ApplyValue);
 
-    m_controller.RegisterBinaryButtonConsumer(ButtonName.LeftButton, swerveDriveModule::LockPosition);
-    m_controller.RegisterBinaryButtonConsumer(ButtonName.RightButton, swerveDriveModule::ReturnToZero);
+    // m_controller.RegisterBinaryButtonConsumer(ButtonName.LeftButton, swerveDriveModule::LockPosition);
+    // m_controller.RegisterBinaryButtonConsumer(ButtonName.RightButton, swerveDriveModule::ReturnToZero);
 
     // m_controller.RegisterBinaryButtonConsumer(ButtonName.RightShoulderButton, modules::ProcessInverse);
 
@@ -333,6 +346,8 @@ public class Robot extends TimedRobot {
     AutoController timedShoot = new AutoController("MoveAndShoot");
     //timedShoot.AddSequence(new SequenceMoveAndShoot(timedShoot.GetLabel(), modules, timedShoot));
     AutoModes.put(timedShoot.GetLabel(), timedShoot);
+    //currentAutoMode = timedShoot;
+
 
     SmartDashboard.putStringArray("Auto List", AutoModes.keySet().toArray(new String[] {}));
   }
@@ -340,8 +355,8 @@ public class Robot extends TimedRobot {
   /** This function is run once each time the robot enters autonomous mode. */
   @Override
   public void autonomousInit() {
-    currentAutoMode = AutoModes.get(SmartDashboard.getString("Auto Selector", AutoModes.keys().nextElement()));
-    currentAutoMode.Initialize();
+    //currentAutoMode = AutoModes.get(SmartDashboard.getString("Auto Selector", AutoModes.keys().nextElement()));
+    //currentAutoMode.Initialize();
 
     m_timer.restart();
   }
@@ -349,7 +364,11 @@ public class Robot extends TimedRobot {
   /** This function is called periodically during autonomous. */
   @Override
   public void autonomousPeriodic() {
-    currentAutoMode.Update();
+   // currentAutoMode.Update();
+   swerveDriveModule.ProcessForwardSpeed(0.5);
+
+    modules.ProcessState(true);
+
   }
 
   /**

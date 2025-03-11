@@ -101,7 +101,9 @@ public class ModuleController {
   }
 
   public void ProcessState(boolean isAuto) {
-    controller.ProcessButtons();
+    if (!isAuto) {
+      controller.ProcessButtons();
+    }
 
     ProcessDrive(isAuto);
 

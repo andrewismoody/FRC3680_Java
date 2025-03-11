@@ -139,6 +139,7 @@ public class SingleMotorModule implements RobotModule {
     @Override
     public void ApplyInverse(boolean isPressed) {
         if (isPressed) {
+            AbandonTarget();
             currentDriveSpeed += controller.ApplyModifiers(invert ? driveSpeed : -driveSpeed);
             // if (debug)
             //     System.out.printf("%s: ApplyInverse; driveSpeed %f; currentDriveSpeed %f\n", moduleID, driveSpeed, currentDriveSpeed);
@@ -149,6 +150,7 @@ public class SingleMotorModule implements RobotModule {
     public void ApplyValue(boolean isPressed) {
         if (isPressed) {
             currentDriveSpeed += controller.ApplyModifiers(invert ? -driveSpeed : driveSpeed);
+            AbandonTarget();
             // if (debug)
             //     System.out.printf("%s: ApplyValue; driveSpeed %f; currentDriveSpeed %f\n", moduleID, driveSpeed, currentDriveSpeed);
         }
@@ -163,23 +165,26 @@ public class SingleMotorModule implements RobotModule {
                 rotationCount = enc.getDistance();
         }
 
+        double angleTolerance = 0.00001; // 0.00001;
+
         if (target != null && currentDriveSpeed == 0.0) {
             // we have a target and we're not manually applying a value, try to get to it.
             var targetRotation = target.getX();
             var targetDistance = Math.abs(targetRotation - rotationCount);
-            if (debug && Math.abs(previousTargetDistance - targetDistance) > 0.001) {
-                System.out.printf("%s: targetDistance %f\n", moduleID, targetDistance);
-                previousTargetDistance = targetDistance;
+            if (Math.abs(previousTargetDistance - targetDistance) > angleTolerance) {
+                if (debug)
+                    System.out.printf("%s: targetDistance %f\n", moduleID, targetDistance);
             }
+            previousTargetDistance = targetDistance;
 
-            var shouldMove = (Math.abs(targetDistance) > 0.001);
+            var shouldMove = (Math.abs(targetDistance) > angleTolerance);
             if (targetRotation > rotationCount) {
                 if (shouldMove) {
-                    ApplyValue(true);
+                    currentDriveSpeed += controller.ApplyModifiers(invert ? -driveSpeed : driveSpeed);
                 }
             } else if (targetRotation < rotationCount) {
                 if (shouldMove) {
-                    ApplyInverse(true);
+                    currentDriveSpeed += controller.ApplyModifiers(invert ? driveSpeed : -driveSpeed);
                 }
             }
 
@@ -199,10 +204,11 @@ public class SingleMotorModule implements RobotModule {
         }
 
 
-        if (debug && Math.abs(previousDriveSpeed - currentDriveSpeed) > m_floatTolerance) {
-            System.out.printf("%s: currentDriveSpeed %f\n", moduleID, currentDriveSpeed);
-            previousDriveSpeed = currentDriveSpeed;
+        if (Math.abs(previousDriveSpeed - currentDriveSpeed) > angleTolerance) {
+            if (debug)
+                System.out.printf("%s: currentDriveSpeed %f\n", moduleID, currentDriveSpeed);
         }
+        previousDriveSpeed = currentDriveSpeed;
 
         if ((currentDriveSpeed > 0 && (upperLimit == null || !upperLimit.GetState())) ||
             (currentDriveSpeed < 0 && (lowerLimit == null || !lowerLimit.GetState()))) {
@@ -214,10 +220,11 @@ public class SingleMotorModule implements RobotModule {
             driveMotor.set(0);
         }
 
-        if (Math.abs(rotationCount - previousRotationCount) > 0.001 && debug) {
-            System.out.printf("%s: rotationCount: %f\n", moduleID, rotationCount);
-            previousRotationCount = rotationCount;
+        if (Math.abs(rotationCount - previousRotationCount) > angleTolerance) {
+            if (debug)
+                System.out.printf("%s: rotationCount: %f\n", moduleID, rotationCount);
         }
+        previousRotationCount = rotationCount;
 
         currentDriveSpeed = 0.0;
     }
@@ -230,9 +237,19 @@ public class SingleMotorModule implements RobotModule {
         return moduleID;
     }
 
-    public void SetScoringPoseOneOne(boolean isPressed) {
+    public void SetScoringPoseMiddle(boolean isPressed) {
         if (isPressed) {
-            SetTargetActionPose(Group.Score, Location.Any, -1, Position.Upper, Action.Any);
+            SetTargetActionPose(Group.Score, Location.Any, -1, Position.Middle, Action.Any);
+        }
+    }
+    public void SetScoringPoseLower(boolean isPressed) {
+        if (isPressed) {
+            SetTargetActionPose(Group.Score, Location.Any, -1, Position.Lower, Action.Any);
+        }
+    }
+    public void SetScoringPoseTrough(boolean isPressed) {
+        if (isPressed) {
+            SetTargetActionPose(Group.Score, Location.Any, -1, Position.Trough, Action.Any);
         }
     }
 
