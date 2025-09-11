@@ -53,20 +53,20 @@ public class Robot extends TimedRobot {
   final String codeBuildVersion = "2025.02.15-PreSeason";
 
   // RR
-  final PWMSparkMax pwm_drive_rr = new PWMSparkMax(1);
-  final PWMVictorSPX pwm_steer_rr = new PWMVictorSPX(5);
+  final SparkMax can_drive_rr = new SparkMax(1, MotorType.kBrushless);
+  final SparkMax can_steer_rr = new SparkMax(3, MotorType.kBrushless);
 
   // LF
-  final PWMSparkMax pwm_drive_lf = new PWMSparkMax(3);
-  final PWMVictorSPX pwm_steer_lf = new PWMVictorSPX(6);
+  final SparkMax can_drive_lf = new SparkMax(4, MotorType.kBrushless);
+  final SparkMax can_steer_lf = new SparkMax(5,MotorType.kBrushless);
 
   // RF
-  final PWMSparkMax pwm_drive_rf = new PWMSparkMax(2);
-  final PWMVictorSPX pwm_steer_rf = new PWMVictorSPX(7);
+  final SparkMax can_drive_rf = new SparkMax(6, MotorType.kBrushless);
+  final SparkMax can_steer_rf = new SparkMax(7, MotorType.kBrushless);
 
   // LR
-  final PWMSparkMax pwm_drive_lr = new PWMSparkMax(0);
-  final PWMVictorSPX pwm_steer_lr = new PWMVictorSPX(4);
+  final SparkMax can_drive_lr = new SparkMax(8, MotorType.kBrushless);
+  final SparkMax can_steer_lr = new SparkMax(9, MotorType.kBrushless);
 
   final SparkMax can_elev = new SparkMax(2, MotorType.kBrushless);
   // final SparkMax can_lift = new SparkMax(4, MotorType.kBrushless);
@@ -79,13 +79,13 @@ public class Robot extends TimedRobot {
   // not used for absolute encoders
   // final Encoder m_enc1 = new QuadEncoder(0, 1, 8.108);
   // rf
-  final Encoder enc_rf = new AnalogAbsoluteEncoder(2);
+  final Encoder enc_rf = new REVEncoder(can_steer_rf.getEncoder());
   // lf
-  final Encoder enc_lf = new AnalogAbsoluteEncoder(0);
+  final Encoder enc_lf = new REVEncoder(can_steer_lf.getEncoder());
   // rr
-  final Encoder enc_rr = new AnalogAbsoluteEncoder(3);
+  final Encoder enc_rr = new REVEncoder(can_steer_rr.getEncoder());
   // lr
-  final Encoder enc_lr = new AnalogAbsoluteEncoder(1);
+  final Encoder enc_lr = new REVEncoder(can_steer_lr.getEncoder());
 
   final Gyro m_gyro = new AHRSGyro();
 
@@ -144,10 +144,10 @@ public class Robot extends TimedRobot {
   SingleActuatorModule slide = new SingleActuatorModule("slide", pwm_slide, false);
   
   // total length of robot is 32.375", width is 27.5", centerline is 16.1875" from edge.  Drive axle center is 4" from edge - 12.1875" from center which is 309.56mm or 0.30956 meters
-  SwerveMotorModule leftFrontMM = new SwerveMotorModule("leftFront", new Translation2d(-0.30956, -0.24765), pwm_drive_lf, pwm_steer_lf, enc_lf, m_encoderMultiplier, m_floatTolerance, true, false);
-  SwerveMotorModule rightFrontMM = new SwerveMotorModule("rightFront", new Translation2d(0.30956, -0.24765), pwm_drive_rf, pwm_steer_rf, enc_rf, m_encoderMultiplier, m_floatTolerance, true, false);
-  SwerveMotorModule leftRearMM = new SwerveMotorModule("leftRear", new Translation2d(-0.30956, 0.24765), pwm_drive_lr, pwm_steer_lr, enc_lr, m_encoderMultiplier, m_floatTolerance, true, false);
-  SwerveMotorModule rightRearMM = new SwerveMotorModule("rightRear", new Translation2d(0.30956, 0.24765), pwm_drive_rr, pwm_steer_rr, enc_rr, m_encoderMultiplier, m_floatTolerance, true, false);
+  SwerveMotorModule leftFrontMM = new SwerveMotorModule("leftFront", new Translation2d(-0.30956, -0.24765), can_drive_lf, can_steer_lf, enc_lf, m_encoderMultiplier, m_floatTolerance, true, false);
+  SwerveMotorModule rightFrontMM = new SwerveMotorModule("rightFront", new Translation2d(0.30956, -0.24765), can_drive_rf, can_steer_rf, enc_rf, m_encoderMultiplier, m_floatTolerance, true, false);
+  SwerveMotorModule leftRearMM = new SwerveMotorModule("leftRear", new Translation2d(-0.30956, 0.24765), can_drive_lr, can_steer_lr, enc_lr, m_encoderMultiplier, m_floatTolerance, true, false);
+  SwerveMotorModule rightRearMM = new SwerveMotorModule("rightRear", new Translation2d(0.30956, 0.24765), can_drive_rr, can_steer_rr, enc_rr, m_encoderMultiplier, m_floatTolerance, true, false);
 
   SwerveDriveModule swerveDriveModule = new SwerveDriveModule("swerveDrive", m_gyro, m_positioner, m_driveSpeed, m_rotationSpeed, isFieldOriented, m_floatTolerance
     , leftFrontMM
@@ -156,7 +156,7 @@ public class Robot extends TimedRobot {
     , rightRearMM
   );
 
-  DifferentialDriveModule diffDriveModule = new DifferentialDriveModule("differentialDrive", pwm_steer_rr, pwm_drive_lf);
+  DifferentialDriveModule diffDriveModule = new DifferentialDriveModule("differentialDrive", can_steer_rr, can_drive_lf);
 
   ModuleController modules;
 
