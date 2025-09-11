@@ -52,9 +52,4 @@ public class QuadEncoder implements Encoder {
         
         return internalEncoder.getDistance();
     }
-
-    @Override
-    public boolean isAbsolute() {
-        return false;
-    }
 }
