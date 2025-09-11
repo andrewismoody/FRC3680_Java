@@ -279,6 +279,7 @@ public class Robot extends TimedRobot {
 
     elevator.AddActionPose(new ActionPose(Group.Score, Location.Any, -1, Position.Lower, Action.Any, new Pose3d(new Translation3d(45.0, 0, 0), new Rotation3d())));
     elevator.AddActionPose(new ActionPose(Group.Score, Location.Any, -1, Position.Middle, Action.Any, new Pose3d(new Translation3d(110.0, 0, 0), new Rotation3d())));
+
     elevator.AddActionPose(new ActionPose(Group.Score, Location.Any, -1, Position.Trough, Action.Any, new Pose3d(new Translation3d(0.0, 0, 0), new Rotation3d())));
     modules.AddModule(elevator);
   //  modules.AddModule(lifter);
