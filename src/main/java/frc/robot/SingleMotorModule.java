@@ -139,6 +139,7 @@ public class SingleMotorModule implements RobotModule {
     @Override
     public void ApplyInverse(boolean isPressed) {
         if (isPressed) {
+            AbandonTarget();
             currentDriveSpeed += controller.ApplyModifiers(invert ? driveSpeed : -driveSpeed);
             // if (debug)
             //     System.out.printf("%s: ApplyInverse; driveSpeed %f; currentDriveSpeed %f\n", moduleID, driveSpeed, currentDriveSpeed);
@@ -149,6 +150,7 @@ public class SingleMotorModule implements RobotModule {
     public void ApplyValue(boolean isPressed) {
         if (isPressed) {
             currentDriveSpeed += controller.ApplyModifiers(invert ? -driveSpeed : driveSpeed);
+            AbandonTarget();
             // if (debug)
             //     System.out.printf("%s: ApplyValue; driveSpeed %f; currentDriveSpeed %f\n", moduleID, driveSpeed, currentDriveSpeed);
         }
@@ -175,11 +177,11 @@ public class SingleMotorModule implements RobotModule {
             var shouldMove = (Math.abs(targetDistance) > 0.001);
             if (targetRotation > rotationCount) {
                 if (shouldMove) {
-                    ApplyValue(true);
+                    currentDriveSpeed += controller.ApplyModifiers(invert ? -driveSpeed : driveSpeed);
                 }
             } else if (targetRotation < rotationCount) {
                 if (shouldMove) {
-                    ApplyInverse(true);
+                    currentDriveSpeed += controller.ApplyModifiers(invert ? driveSpeed : -driveSpeed);
                 }
             }
 
@@ -230,9 +232,19 @@ public class SingleMotorModule implements RobotModule {
         return moduleID;
     }
 
-    public void SetScoringPoseOneOne(boolean isPressed) {
+    public void SetScoringPoseMiddle(boolean isPressed) {
         if (isPressed) {
-            SetTargetActionPose(Group.Score, Location.Any, -1, Position.Upper, Action.Any);
+            SetTargetActionPose(Group.Score, Location.Any, -1, Position.Middle, Action.Any);
+        }
+    }
+    public void SetScoringPoseLower(boolean isPressed) {
+        if (isPressed) {
+            SetTargetActionPose(Group.Score, Location.Any, -1, Position.Lower, Action.Any);
+        }
+    }
+    public void SetScoringPoseTrough(boolean isPressed) {
+        if (isPressed) {
+            SetTargetActionPose(Group.Score, Location.Any, -1, Position.Trough, Action.Any);
         }
     }
 
