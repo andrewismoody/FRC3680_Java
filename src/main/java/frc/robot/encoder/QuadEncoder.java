@@ -5,8 +5,6 @@ public class QuadEncoder implements Encoder {
     edu.wpi.first.wpilibj.Encoder internalEncoder;
     double angleOffsetRad = 0.0; // angle to subtract from actual angle to zero the encoder
 
-    
-
     public QuadEncoder(int pinA, int pinB) {
         internalEncoder = new edu.wpi.first.wpilibj.Encoder(pinA, pinB);
 
@@ -23,6 +21,10 @@ public class QuadEncoder implements Encoder {
         this(pinA, pinB, DistancePerPulse);
         
         setReverseDirection(reverse);
+    }
+
+    public boolean isAbsolute() {
+        return false;
     }
 
     public void setAngleOffsetDeg(double value) {
