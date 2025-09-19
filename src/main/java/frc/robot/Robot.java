@@ -76,14 +76,16 @@ public class Robot extends TimedRobot {
   // 8.108 degress per pulse.
   // not used for absolute encoders
   // final Encoder m_enc1 = new QuadEncoder(0, 1, 8.108);
+
+  final double DistancePerPulse = 8.57;
   // rf
-  final Encoder enc_rf = new REVEncoder(can_steer_rf.getEncoder());
+  final Encoder enc_rf = new REVEncoder(can_steer_rf.getEncoder(),DistancePerPulse);
   // lf
-  final Encoder enc_lf = new REVEncoder(can_steer_lf.getEncoder());
+  final Encoder enc_lf = new REVEncoder(can_steer_lf.getEncoder(),DistancePerPulse);
   // rr
-  final Encoder enc_rr = new REVEncoder(can_steer_rr.getEncoder());
+  final Encoder enc_rr = new REVEncoder(can_steer_rr.getEncoder(),DistancePerPulse);
   // lr
-  final Encoder enc_lr = new REVEncoder(can_steer_lr.getEncoder());
+  final Encoder enc_lr = new REVEncoder(can_steer_lr.getEncoder(),DistancePerPulse);
 
   final Gyro m_gyro = new AHRSGyro();
 
@@ -132,7 +134,7 @@ public class Robot extends TimedRobot {
   // 775/redline motors run at 21,000 rpms, with a 125:1 gearbox, 168 rpm, divided
   // by 60 is 2.8 rotations per second, multiplied by 6.28 radians is 17.584
   // radians per second
-  double m_rotationSpeed = 35.168; // 17.584; // 21.98; //32.40 / m_speedMod; // should be actual radians per
+  double m_rotationSpeed = 35; // 17.584; // 21.98; //32.40 / m_speedMod; // should be actual radians per
                                    // second that is achievable by the rotation motor
 
   SingleMotorModule elevator = new SingleMotorModule("elevator", can_elev, m_elevatorSpeed, false, null, null, enc_elev);

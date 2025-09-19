@@ -21,7 +21,7 @@ public class SingleMotorModule implements RobotModule {
     Switch upperLimit;
     Switch lowerLimit;
 
-    double fullRotation = 360;
+    double fullRotation = 1.0; // Redefine 1 rotation as 1.0
     double previousEncValue = 0.0;
     double rotationCount = 0.0;
     double previousRotationCount = 0.0;
@@ -101,7 +101,7 @@ public class SingleMotorModule implements RobotModule {
     double getEncValAdj() {
         var encVal = enc.getDistance();
         encVal = encVal < 0 ? fullRotation + encVal : encVal;
-        // encVal = encVal % fullRotation;
+        // encVal = encVal % fullRotation; // No longer needed as fullRotation is 1.0
         return encVal;        
     }
 
@@ -127,7 +127,7 @@ public class SingleMotorModule implements RobotModule {
 
             // filter noisy responses
             if (Math.abs(delta) < fullRotation * 0.5) {
-                rotationCount += (invert ? -delta : delta) / fullRotation;
+                rotationCount += (invert ? -delta : delta);
             }
             else
                 System.out.printf("%s: throwing away errant value %f\n", moduleID, delta);
