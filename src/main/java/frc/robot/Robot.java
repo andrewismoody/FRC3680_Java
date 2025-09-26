@@ -134,7 +134,7 @@ public class Robot extends TimedRobot {
   // 775/redline motors run at 21,000 rpms, with a 125:1 gearbox, 168 rpm, divided
   // by 60 is 2.8 rotations per second, multiplied by 6.28 radians is 17.584
   // radians per second
-  double m_rotationSpeed = 35; // 17.584; // 21.98; //32.40 / m_speedMod; // should be actual radians per
+  double m_rotationSpeed = 594; // 17.584; // 21.98; //32.40 / m_speedMod; // should be actual radians per
                                    // second that is achievable by the rotation motor
 
   SingleMotorModule elevator = new SingleMotorModule("elevator", can_elev, m_elevatorSpeed, false, null, null, enc_elev);
