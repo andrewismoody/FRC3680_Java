@@ -11,6 +11,8 @@ import edu.wpi.first.math.kinematics.SwerveDriveKinematics;
 import edu.wpi.first.math.kinematics.SwerveDriveOdometry;
 import edu.wpi.first.math.kinematics.SwerveModulePosition;
 import edu.wpi.first.math.kinematics.SwerveModuleState;
+import edu.wpi.first.networktables.NetworkTable;
+import edu.wpi.first.networktables.NetworkTableInstance;
 import edu.wpi.first.math.geometry.Pose3d;
 import edu.wpi.first.wpilibj.RobotBase;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
@@ -57,6 +59,8 @@ public class SwerveDriveModule implements DriveModule {
 
     ArrayList<ActionPose> actionPoses = new ArrayList<ActionPose>();
 
+    NetworkTable myTable;
+
     public SwerveDriveModule(String ModuleID, Gyro Gyro, Positioner Positioner, double DriveSpeed, double RotationSpeed,
             boolean IsFieldOriented, double FloatTolerance, SwerveMotorModule ... modules) {
         moduleID = ModuleID;
@@ -65,6 +69,8 @@ public class SwerveDriveModule implements DriveModule {
         var positions = new SwerveModulePosition[modules.length];
         var i = 0;
 
+        myTable = NetworkTableInstance.getDefault().getTable(moduleID);
+        
         for (SwerveMotorModule module : modules) {
             module.setDriveModule(this);
             driveModules.add(module);
@@ -133,12 +139,13 @@ public class SwerveDriveModule implements DriveModule {
     public void Initialize() {
         var startupAngle = useFakeGyro ? currentAngle
         : gyro.getAngle();
-        System.out.printf("%s actualAngle: %f\n", moduleID, startupAngle);
+        myTable.getEntry("startupAngle").setDouble(startupAngle);
+
         // TODO: probably don't this - check and see if 180 is needed when we are blue-origin oriented.
         // angleOffset = startupAngle + 180;
 
         var startupPosition = positioner.GetPosition();
-        System.out.printf("%s startupPosition: {%f, %f, %f}\n", moduleID, startupPosition.getX(), startupPosition.getY(), startupPosition.getZ());
+        myTable.getEntry("startupPosition").setString(startupPosition.toString());
 
         positioner.Initialize();
 
@@ -160,6 +167,7 @@ public class SwerveDriveModule implements DriveModule {
 
     public void ProcessForwardSpeed(double value) {
         forwardSpeed = value;
+        myTable.getEntry("forwardSpeed").setDouble(forwardSpeed);
 
         if (debug && forwardSpeed != previousForwardSpeed)
             System.out.printf("%s forwardSpeed: %f\n", moduleID, forwardSpeed);
@@ -169,6 +177,7 @@ public class SwerveDriveModule implements DriveModule {
 
     public void ProcessLateralSpeed(double value) {
         lateralSpeed = value;
+        myTable.getEntry("lateralSpeed").setDouble(lateralSpeed);
 
         if (debug && lateralSpeed != previousLateralSpeed)
             System.out.printf("%s lateralSpeed: %f\n", moduleID, lateralSpeed);
@@ -178,6 +187,7 @@ public class SwerveDriveModule implements DriveModule {
 
     public void ProcessRotationAngle(double value) {
         rotationAngle = value * rotationMultiplier;
+        myTable.getEntry("rotationAngle").setDouble(rotationAngle);
 
         if (debug && rotationAngle != previousRotationAngle)
             System.out.printf("%s rotationAngle: %f\n", moduleID, rotationAngle);
@@ -187,6 +197,7 @@ public class SwerveDriveModule implements DriveModule {
 
     public void StopRotation() {
         rotationAngle = getGyroAngle();
+        myTable.getEntry("rotationAngle").setDouble(rotationAngle);
 
         if (debug && rotationAngle != previousRotationAngle)
             System.out.printf("%s rotationAngle: %f\n", moduleID, rotationAngle);
@@ -236,6 +247,8 @@ public class SwerveDriveModule implements DriveModule {
     public void SetTargetActionPose(Group group, Location location, int locationIndex, Position position, Action action) {
         Pose3d actionPose = GetActionPose(group, location, locationIndex, position, action).pose;
         if (actionPose != null) {
+            myTable.getEntry("targetActionPose").setString(String.format("%s %s %d %s %s", group, location, locationIndex, position, action));
+
             if (debug) {
                 System.out.printf("%s: Setting Pose %s %s %d %s %s\n", moduleID, group, location, locationIndex, position, action);
             }
@@ -255,6 +268,7 @@ public class SwerveDriveModule implements DriveModule {
         // https://docs.wpilib.org/en/stable/docs/software/hardware-apis/sensors/gyros-software.html
         // https://www.chiefdelphi.com/t/set-motor-position-with-encoder/152088/3
         double newAngle = getGyroAngle();
+        myTable.getEntry("actualAngle").setDouble(newAngle);
 
         if (debug && Math.abs(previousActualAngle - newAngle) > floatTolerance) {
             System.out.printf("%s actualAngle: %f\n", moduleID, newAngle);
@@ -303,6 +317,7 @@ public class SwerveDriveModule implements DriveModule {
             // var centerOffset = new Translation2d(Math.cos(getGyroAngle()) * primaryModule.modulePosition.getX(),
             //         Math.sin(getGyroAngle()) * primaryModule.modulePosition.getY());
             currentPosition = GetPosition().getTranslation(); //primaryModule.currentPosition.minus(centerOffset);
+            myTable.getEntry("currentPosition").setString(currentPosition.toString());
             if ((Math.abs(previousPosition.minus(currentPosition).getX()) > floatTolerance
                     || Math.abs(previousPosition.minus(currentPosition).getY()) > floatTolerance)
                     && Math.abs(previousPosition.minus(currentPosition).getNorm()) < deltaLimit) {
@@ -316,6 +331,7 @@ public class SwerveDriveModule implements DriveModule {
 
         // update fake gyro angle
         currentAngle += thisRotationSpeed * fakeGyroRate;
+        myTable.getEntry("currentAngle").setDouble(currentAngle);
         if (debug && Math.abs(previousAngle - currentAngle) > floatTolerance) {
             System.out.printf("currentAngle: %f; previousAngle: %f\n", currentAngle, previousAngle);
             previousAngle = currentAngle;

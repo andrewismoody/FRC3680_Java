@@ -66,39 +66,44 @@ public class SwerveMotorModule {
 
   SwerveDriveModule driveModule;
 
-  NetworkTable myTable = NetworkTableInstance.getDefault().getTable("SwerveMotorModule").getSubTable(moduleID);
+  NetworkTable myTable;
 
-  public SwerveMotorModule(String ID, Translation2d Position, MotorController DriveMotor, MotorController RotationMotor, Encoder AngleEncoder, double EncoderMultipier, double FloatTolerance, boolean InvertRotation, boolean InvertDrive) {
+  public SwerveMotorModule(String ID, Translation2d Position, MotorController DriveMotor, MotorController RotationMotor, Encoder AngleEncoder, double EncoderMultiplier, double FloatTolerance, boolean InvertRotation, boolean InvertDrive) {
     moduleID = ID;
+
     modulePosition = Position;
     driveMotor = DriveMotor;
     rotatorMotor = RotationMotor;
     angleEncoder = AngleEncoder;
     floatTolerance = FloatTolerance;
-    myTable.getEntry("FloatTolerance").setDouble(FloatTolerance);
     invertDrive = InvertDrive;
-    myTable.getEntry("InvertDrive").setBoolean(InvertDrive);
-    encoderMultiplier = EncoderMultipier;
-    myTable.getEntry("EncoderMultipier").setDouble(EncoderMultipier);
+    encoderMultiplier = EncoderMultiplier;
     // decelFactor = driveModule.rotationSpeed / 1.5;
 
     // not used for absolute encoders
     AngleEncoder.setReverseDirection(InvertRotation);
-    myTable.getEntry("InvertRotation").setBoolean(InvertRotation);
   }
 
   public void Initialize() {
-    myTable.getEntry("EncoderOffset").setDouble(angleEncoder.getRawValue());
     angleEncoder.setAngleOffsetRad(angleEncoder.getRawValue());
+
+    myTable.getEntry("encoderOffset").setDouble(angleEncoder.getRawValue());
+    myTable.getEntry("floatTolerance").setDouble(floatTolerance);
+    myTable.getEntry("invertDrive").setBoolean(invertDrive);
+    myTable.getEntry("encoderMultiplier").setDouble(encoderMultiplier);
+    myTable.getEntry("invertRotation").setBoolean(invertRotation);
   }
 
   public SwerveModulePosition getPosition() {
     return new SwerveModulePosition(currentDistance, currentAngle);
   }
 
+  // setDriveModule happens before Initialize
   public void setDriveModule(SwerveDriveModule DriveModule) {
     driveModule = DriveModule;
     encoderSimRate = driveModule.rotationSpeed;
+
+    myTable = NetworkTableInstance.getDefault().getTable(driveModule.moduleID).getSubTable(moduleID);
   }
 
   public void updateModuleValues(SwerveModuleState moduleState, boolean optimize) {

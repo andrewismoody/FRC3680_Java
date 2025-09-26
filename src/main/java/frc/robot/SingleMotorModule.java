@@ -5,6 +5,8 @@ import java.util.ArrayList;
 import edu.wpi.first.math.geometry.Pose3d;
 import edu.wpi.first.math.geometry.Rotation3d;
 import edu.wpi.first.math.geometry.Translation3d;
+import edu.wpi.first.networktables.NetworkTable;
+import edu.wpi.first.networktables.NetworkTableInstance;
 import edu.wpi.first.wpilibj.motorcontrol.MotorController;
 import frc.robot.action.*;
 import frc.robot.encoder.Encoder;
@@ -40,6 +42,8 @@ public class SingleMotorModule implements RobotModule {
 
     ArrayList<ActionPose> actionPoses = new ArrayList<ActionPose>();
 
+    NetworkTable myTable;
+
     public SingleMotorModule(String ModuleID, MotorController DriveMotor, double DriveSpeed, boolean Invert, Switch UpperLimit, Switch LowerLimit, Encoder Enc) {
         moduleID = ModuleID;
         driveMotor = DriveMotor;
@@ -55,7 +59,9 @@ public class SingleMotorModule implements RobotModule {
     }
 
     public void Initialize() {
+        myTable = NetworkTableInstance.getDefault().getTable(moduleID);
 
+        myTable.getEntry("invert").setBoolean(invert);
     }
 
     public void AddActionPose(ActionPose newAction) {
@@ -91,6 +97,8 @@ public class SingleMotorModule implements RobotModule {
     public void SetTargetActionPose(Group group, Location location, int locationIndex, Position position, Action action) {
         var targetPose = GetActionPose(group, location, locationIndex, position, action);
         if (targetPose != null) {
+            myTable.getEntry("targetPose").setString(String.format("%s %s %d %s %s", group, location, locationIndex, position, action));
+
             if (debug) {
                 System.out.printf("%s: Setting Pose %s %s %d %s %s\n", moduleID, group, location, locationIndex, position, action);
             }
@@ -114,6 +122,8 @@ public class SingleMotorModule implements RobotModule {
         // }
 
         if (lowerLimit != null && lowerLimit.GetState()) {
+            myTable.getEntry("lowerLimit").setString("hit");
+
             System.out.printf("%s: limit hit, resetting rotationCount\n", moduleID);
             rotationCount = 0.0;
         }
@@ -171,6 +181,7 @@ public class SingleMotorModule implements RobotModule {
             // we have a target and we're not manually applying a value, try to get to it.
             var targetRotation = target.getX();
             var targetDistance = Math.abs(targetRotation - rotationCount);
+            myTable.getEntry("targetDistance").setDouble(targetDistance);
             if (Math.abs(previousTargetDistance - targetDistance) > angleTolerance) {
                 if (debug)
                     System.out.printf("%s: targetDistance %f\n", moduleID, targetDistance);
@@ -189,6 +200,7 @@ public class SingleMotorModule implements RobotModule {
             }
 
             var driveDistance = Math.abs(rotationCount - previousRotationCount);
+            myTable.getEntry("driveDistance").setDouble(driveDistance);
             if (driveDistance > maxDistance && sampleCount < sampleMin) {
                 System.out.printf("%s: driveDistance %f; maxDistance: %f\n", moduleID, driveDistance, maxDistance);
                 maxDistance = driveDistance;
@@ -204,6 +216,7 @@ public class SingleMotorModule implements RobotModule {
         }
 
 
+        myTable.getEntry("currentDriveSpeed").setDouble(currentDriveSpeed);
         if (Math.abs(previousDriveSpeed - currentDriveSpeed) > angleTolerance) {
             if (debug)
                 System.out.printf("%s: currentDriveSpeed %f\n", moduleID, currentDriveSpeed);
@@ -220,6 +233,7 @@ public class SingleMotorModule implements RobotModule {
             driveMotor.set(0);
         }
 
+        myTable.getEntry("rotationCount").setDouble(rotationCount);
         if (Math.abs(rotationCount - previousRotationCount) > angleTolerance) {
             if (debug)
                 System.out.printf("%s: rotationCount: %f\n", moduleID, rotationCount);

@@ -51,7 +51,7 @@ public class Robot extends TimedRobot {
   final String codeBuildVersion = "2025.02.15-PreSeason";
 
   // RR
-  final SparkMax can_drive_rr = new SparkMax(1, MotorType.kBrushless);
+  final SparkMax can_drive_rr = new SparkMax(10, MotorType.kBrushless);
   final SparkMax can_steer_rr = new SparkMax(3, MotorType.kBrushless);
 
   // LF
