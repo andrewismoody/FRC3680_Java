@@ -10,6 +10,15 @@ public class AnalogAbsoluteEncoder implements Encoder {
     double value = 0;
     int mypin = -1;
     double angleOffsetRad = 0.0; // angle to subtract from actual angle to zero the encoder
+    double multiplier = 1.0;
+
+    public void setMultiplier(double value) {
+        multiplier = value;
+    }
+
+    public double getMultiplier() {
+        return multiplier;
+    }
 
     public AnalogAbsoluteEncoder(int pin) {
         input = new AnalogInput(pin);
@@ -44,7 +53,7 @@ public class AnalogAbsoluteEncoder implements Encoder {
             
         //System.out.printf("pin %d, encoder value: %f\n", mypin, returnValue);
 
-        return returnValue;
+        return returnValue * multiplier;
     }
 
     public double getDistance() {

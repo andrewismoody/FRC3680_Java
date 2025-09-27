@@ -2,12 +2,19 @@ package frc.robot.encoder;
 
 import com.revrobotics.RelativeEncoder;
 
-import edu.wpi.first.math.geometry.Rotation2d;
-
 public class REVEncoder implements Encoder {
     
     RelativeEncoder internalEncoder;
     double angleOffsetRad = 0.0; // angle to subtract from actual angle to zero the encoder
+    double multiplier = 1.0;
+
+    public void setMultiplier(double value) {
+        multiplier = value;
+    }
+
+    public double getMultiplier() {
+        return multiplier;
+    }
 
     public REVEncoder(RelativeEncoder WrappedEncoder) {
         internalEncoder = WrappedEncoder;
@@ -49,7 +56,7 @@ public class REVEncoder implements Encoder {
     }
 
     public double getRawValue() {
-        return internalEncoder.getPosition();
+        return internalEncoder.getPosition() * multiplier;
     }
 
     public double getDistanceDeg() {

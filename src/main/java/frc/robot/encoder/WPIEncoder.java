@@ -4,6 +4,15 @@ public class WPIEncoder implements Encoder {
     
     edu.wpi.first.wpilibj.Encoder internalEncoder;
     double angleOffsetRad = 0.0; // angle to subtract from actual angle to zero the encoder
+    double multiplier = 1.0;
+
+    public void setMultiplier(double value) {
+        multiplier = value;
+    }
+
+    public double getMultiplier() {
+        return multiplier;
+    }
 
     public WPIEncoder(edu.wpi.first.wpilibj.Encoder WrappedEncoder) {
         internalEncoder = WrappedEncoder;
@@ -49,7 +58,7 @@ public class WPIEncoder implements Encoder {
     }
 
     public double getRawValue() {
-        return internalEncoder.getRaw();
+        return internalEncoder.getRaw() * multiplier;
     }
 
     public double getDistance() {

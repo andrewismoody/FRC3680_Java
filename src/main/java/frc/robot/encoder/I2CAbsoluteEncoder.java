@@ -6,6 +6,15 @@ import edu.wpi.first.wpilibj.I2C.Port;
 public class I2CAbsoluteEncoder implements Encoder {
     private I2C myI2c;
     double angleOffsetRad = 0.0; // angle to subtract from actual angle to zero the encoder
+    double multiplier = 1.0;
+
+    public void setMultiplier(double value) {
+        multiplier = value;
+    }
+
+    public double getMultiplier() {
+        return multiplier;
+    }
 
     public I2CAbsoluteEncoder() {
         this(Port.kOnboard, 0x36);
@@ -42,7 +51,7 @@ public class I2CAbsoluteEncoder implements Encoder {
     }
 
     public double getRawValue() {
-        return readRegister(0x0C);                        // combine bytes to get 12-bit value 11:0
+        return readRegister(0x0C) * multiplier;                        // combine bytes to get 12-bit value 11:0
     }
 
     public double getDistance() {

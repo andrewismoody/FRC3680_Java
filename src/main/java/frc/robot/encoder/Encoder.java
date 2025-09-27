@@ -10,4 +10,6 @@ public interface Encoder {
     public boolean isAbsolute();
     public void setZeroPosition();
     public double getAngleOffsetRad();
+    public void setMultiplier(double value);
+    public double getMultiplier();
 }

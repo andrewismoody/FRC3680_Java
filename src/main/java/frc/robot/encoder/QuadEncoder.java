@@ -4,6 +4,15 @@ public class QuadEncoder implements Encoder {
     
     edu.wpi.first.wpilibj.Encoder internalEncoder;
     double angleOffsetRad = 0.0; // angle to subtract from actual angle to zero the encoder
+    double multiplier = 1.0;
+
+    public void setMultiplier(double value) {
+        multiplier = value;
+    }
+
+    public double getMultiplier() {
+        return multiplier;
+    }
 
     public QuadEncoder(int pinA, int pinB) {
         internalEncoder = new edu.wpi.first.wpilibj.Encoder(pinA, pinB);
@@ -44,7 +53,7 @@ public class QuadEncoder implements Encoder {
     }
 
     public double getRawValue() {
-        return internalEncoder.getRaw();
+        return internalEncoder.getRaw() * multiplier;
     }
 
     public double getDistance() {

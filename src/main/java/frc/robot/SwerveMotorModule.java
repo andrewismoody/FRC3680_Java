@@ -80,8 +80,8 @@ public class SwerveMotorModule {
     floatTolerance = FloatTolerance;
     invertDrive = InvertDrive;
 
-    // this should probably be moved to the encoder class so it can compensate for rotations. if we just multiply the current position, it may not account for zero-boundary issues.
     encoderMultiplier = EncoderMultiplier;
+    angleEncoder.setMultiplier(EncoderMultiplier);
 
     // decelFactor = driveModule.rotationSpeed / 1.5;
 
@@ -120,8 +120,7 @@ public class SwerveMotorModule {
     double distance = useFakeEncoder ?
       currentAngle.getDegrees()
       :
-      // encoderMultiplier adjusts the encoder value to account for gearing ratios between driver and driven axles
-      angleEncoder.getDistance() * encoderMultiplier
+      angleEncoder.getDistance()
     ;
 
     currentAngle = Rotation2d.fromDegrees(distance);
