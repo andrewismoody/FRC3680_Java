@@ -145,10 +145,10 @@ public class Robot extends TimedRobot {
   SingleActuatorModule slide = new SingleActuatorModule("slide", pwm_slide, false);
   
   // total length of robot is 32.375", width is 27.5", centerline is 16.1875" from edge.  Drive axle center is 4" from edge - 12.1875" from center which is 309.56mm or 0.30956 meters
-  SwerveMotorModule leftFrontMM = new SwerveMotorModule("leftFront", new Translation2d(-0.30956, -0.24765), can_drive_lf, can_steer_lf, enc_lf, m_encoderMultiplier, m_floatTolerance, false, true);
-  SwerveMotorModule rightFrontMM = new SwerveMotorModule("rightFront", new Translation2d(0.30956, -0.24765), can_drive_rf, can_steer_rf, enc_rf, m_encoderMultiplier, m_floatTolerance, false, false);
-  SwerveMotorModule leftRearMM = new SwerveMotorModule("leftRear", new Translation2d(-0.30956, 0.24765), can_drive_lr, can_steer_lr, enc_lr, m_encoderMultiplier, m_floatTolerance, false, false);
-  SwerveMotorModule rightRearMM = new SwerveMotorModule("rightRear", new Translation2d(0.30956, 0.24765), can_drive_rr, can_steer_rr, enc_rr, m_encoderMultiplier, m_floatTolerance, false, false);
+  SwerveMotorModule leftFrontMM = new SwerveMotorModule("leftFront", new Translation2d(0.276225, 0.238125), can_drive_lf, can_steer_lf, enc_lf, m_encoderMultiplier, m_floatTolerance, false, true);
+  SwerveMotorModule rightFrontMM = new SwerveMotorModule("rightFront", new Translation2d(0.276225, -0.238125), can_drive_rf, can_steer_rf, enc_rf, m_encoderMultiplier, m_floatTolerance, false, false);
+  SwerveMotorModule leftRearMM = new SwerveMotorModule("leftRear", new Translation2d(-0.276225, 0.238125), can_drive_lr, can_steer_lr, enc_lr, m_encoderMultiplier, m_floatTolerance, false, false);
+  SwerveMotorModule rightRearMM = new SwerveMotorModule("rightRear", new Translation2d(-0.276225, -0.238125), can_drive_rr, can_steer_rr, enc_rr, m_encoderMultiplier, m_floatTolerance, false, false);
 
   SwerveDriveModule swerveDriveModule = new SwerveDriveModule("swerveDrive", m_gyro, m_positioner, m_driveSpeed, m_rotationSpeed, isFieldOriented, m_floatTolerance
     , leftFrontMM
