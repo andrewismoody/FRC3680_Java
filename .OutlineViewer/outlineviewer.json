@@ -13,12 +13,6 @@
     "open": true
   },
   "transitory": {
-    "CameraPublisher": {
-      "open": true
-    },
-    "Preferences": {
-      "open": true
-    },
     "SmartDashboard": {
       "SendableChooser[0]": {
         "string[]##v_/SmartDashboard/SendableChooser[0]/options": {
@@ -27,10 +21,12 @@
       },
       "double[]##v_/SmartDashboard/RobotDrive Motors": {
         "open": true
-      },
-      "open": true
+      }
     },
     "swerveDrive": {
+      "leftRear": {
+        "open": true
+      },
       "open": true,
       "rightRear": {
         "open": true

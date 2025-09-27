@@ -24,6 +24,15 @@ public class I2CAbsoluteEncoder implements Encoder {
         myI2c = new I2C(myPort, myAddr);
     }
 
+    public double getAngleOffsetRad() {
+        return angleOffsetRad;
+    }
+
+    public void setZeroPosition() {
+        // TODO: check if raw value should be rad or deg
+        setAngleOffsetRad(-getRawValue());
+    }
+
     public void setAngleOffsetDeg(double value) {
         setAngleOffsetRad(value * 0.0174532);
     }

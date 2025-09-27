@@ -31,6 +31,15 @@ public class WPIEncoder implements Encoder {
         angleOffsetRad = value;
     }
 
+    public double getAngleOffsetRad() {
+        return angleOffsetRad;
+    }
+
+    public void setZeroPosition() {
+        // TODO: check if raw value should be rad or deg
+        setAngleOffsetRad(-getRawValue());
+    }
+
     public void setDistancePerPulse(double dpp) {
         internalEncoder.setDistancePerPulse(dpp);
     }

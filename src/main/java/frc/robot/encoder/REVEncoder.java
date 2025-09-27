@@ -2,6 +2,8 @@ package frc.robot.encoder;
 
 import com.revrobotics.RelativeEncoder;
 
+import edu.wpi.first.math.geometry.Rotation2d;
+
 public class REVEncoder implements Encoder {
     
     RelativeEncoder internalEncoder;
@@ -42,12 +44,37 @@ public class REVEncoder implements Encoder {
         // internalEncoder.setReverseDirection(reverse);
     }
 
+    public double getAngleOffsetRad() {
+        return angleOffsetRad;
+    }
+
     public double getRawValue() {
-        return getDistance();
+        return internalEncoder.getPosition();
+    }
+
+    public double getDistanceDeg() {
+        return getRawValue() * 360.0 % 360;
+    }
+
+    public void setZeroPosition() {
+        var result = internalEncoder.setPosition(0.0);
+        System.out.println("Set REV Encoder Zero Position Result: " + result);
+        while (internalEncoder.getPosition() != 0.0) {
+            try {
+                Thread.sleep(10);
+            } catch (Exception e) {
+
+            }
+        }
+        System.out.println("Rev Encoder position set");
+        //setAngleOffsetDeg(-getDistanceDeg());
     }
 
     public double getDistance() {
-        return internalEncoder.getPosition() * 360.0 % 360;
+        // Rotation2d distance = Rotation2d.fromDegrees(getDistanceDeg());
+        // Rotation2d offset = Rotation2d.fromRadians(angleOffsetRad);
+        // return distance.plus(offset).getDegrees();
+        return getDistanceDeg();
     }
 
     public boolean isAbsolute() {

@@ -16,6 +16,15 @@ public class AnalogAbsoluteEncoder implements Encoder {
         mypin = pin;
     }
 
+    public double getAngleOffsetRad() {
+        return angleOffsetRad;
+    }
+
+    public void setZeroPosition() {
+        // TODO: check if raw value should be rad or deg
+        setAngleOffsetRad(-getRawValue());
+    }
+
     public void setAngleOffsetDeg(double value) {
         setAngleOffsetRad(value * 0.0174532);
     }

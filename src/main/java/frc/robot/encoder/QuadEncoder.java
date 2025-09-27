@@ -52,4 +52,13 @@ public class QuadEncoder implements Encoder {
         
         return internalEncoder.getDistance();
     }
+
+    public double getAngleOffsetRad() {
+        return angleOffsetRad;
+    }
+
+    public void setZeroPosition() {
+        // TODO: check if raw value should be rad or deg
+        setAngleOffsetRad(-getRawValue());
+    }
 }

@@ -8,4 +8,6 @@ public interface Encoder {
     public void setAngleOffsetDeg(double value);
     public void setAngleOffsetRad(double value);
     public boolean isAbsolute();
+    public void setZeroPosition();
+    public double getAngleOffsetRad();
 }

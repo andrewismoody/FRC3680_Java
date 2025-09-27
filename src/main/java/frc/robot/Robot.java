@@ -11,6 +11,7 @@ import edu.wpi.first.math.geometry.Pose3d;
 import edu.wpi.first.math.geometry.Rotation3d;
 import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.geometry.Translation3d;
+import edu.wpi.first.wpilibj.DataLogManager;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.GenericHID;
 import edu.wpi.first.wpilibj.Preferences;
@@ -144,10 +145,10 @@ public class Robot extends TimedRobot {
   SingleActuatorModule slide = new SingleActuatorModule("slide", pwm_slide, false);
   
   // total length of robot is 32.375", width is 27.5", centerline is 16.1875" from edge.  Drive axle center is 4" from edge - 12.1875" from center which is 309.56mm or 0.30956 meters
-  SwerveMotorModule leftFrontMM = new SwerveMotorModule("leftFront", new Translation2d(-0.30956, -0.24765), can_drive_lf, can_steer_lf, enc_lf, m_encoderMultiplier, m_floatTolerance, true, false);
-  SwerveMotorModule rightFrontMM = new SwerveMotorModule("rightFront", new Translation2d(0.30956, -0.24765), can_drive_rf, can_steer_rf, enc_rf, m_encoderMultiplier, m_floatTolerance, true, false);
-  SwerveMotorModule leftRearMM = new SwerveMotorModule("leftRear", new Translation2d(-0.30956, 0.24765), can_drive_lr, can_steer_lr, enc_lr, m_encoderMultiplier, m_floatTolerance, true, false);
-  SwerveMotorModule rightRearMM = new SwerveMotorModule("rightRear", new Translation2d(0.30956, 0.24765), can_drive_rr, can_steer_rr, enc_rr, m_encoderMultiplier, m_floatTolerance, true, false);
+  SwerveMotorModule leftFrontMM = new SwerveMotorModule("leftFront", new Translation2d(-0.30956, -0.24765), can_drive_lf, can_steer_lf, enc_lf, m_encoderMultiplier, m_floatTolerance, false, true);
+  SwerveMotorModule rightFrontMM = new SwerveMotorModule("rightFront", new Translation2d(0.30956, -0.24765), can_drive_rf, can_steer_rf, enc_rf, m_encoderMultiplier, m_floatTolerance, false, false);
+  SwerveMotorModule leftRearMM = new SwerveMotorModule("leftRear", new Translation2d(-0.30956, 0.24765), can_drive_lr, can_steer_lr, enc_lr, m_encoderMultiplier, m_floatTolerance, false, false);
+  SwerveMotorModule rightRearMM = new SwerveMotorModule("rightRear", new Translation2d(0.30956, 0.24765), can_drive_rr, can_steer_rr, enc_rr, m_encoderMultiplier, m_floatTolerance, false, false);
 
   SwerveDriveModule swerveDriveModule = new SwerveDriveModule("swerveDrive", m_gyro, m_positioner, m_driveSpeed, m_rotationSpeed, isFieldOriented, m_floatTolerance
     , leftFrontMM
@@ -219,21 +220,10 @@ public class Robot extends TimedRobot {
     SmartDashboard.putData(ActionChooser);
 
     swerveDriveModule.debug = false;
-    leftRearMM.debugAngle = true;
+    leftRearMM.debugAngle = false;
     leftFrontMM.debugSpeed = false;
 
     elevator.debug = true;
-
-    
-
-    // // lf
-    // m_enc2.setAngleOffsetDeg(149);
-    // // rf
-    // m_enc1.setAngleOffsetDeg(114);
-    // // lr
-    // m_enc4.setAngleOffsetDeg(134);
-    // // rr
-    // m_enc3.setAngleOffsetDeg(103);
 
     JoystickIndexLoop: for (int j = 0; j < 6; j++) {
       System.out.printf("Checking for joystick on port %d\n", j);
@@ -271,6 +261,7 @@ public class Robot extends TimedRobot {
     switch (DriveSelection) {
       case DriveSelectionDifferential:
         modules = new ModuleController(diffDriveModule, m_divider, m_controller);
+        break;
       case DriveSelectionSwerve:
       default:
         modules = new ModuleController(swerveDriveModule, m_divider, m_controller);
@@ -286,7 +277,7 @@ public class Robot extends TimedRobot {
   //   modules.AddModule(grabber);
     modules.AddModule(slide);
 
-    modules.enableDrive = false;
+    modules.enableDrive = true;
     modules.enableSteer = true;
     modules.enableDriveTrain = true;
     

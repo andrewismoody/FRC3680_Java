@@ -67,8 +67,8 @@ public class SwerveMotorModule {
 
   NetworkTable myTable;
 
-  boolean enableDecelComp = true;
-  boolean enableGiveUp = true;
+  boolean enableDecelComp = false;
+  boolean enableGiveUp = false;
 
   public SwerveMotorModule(String ID, Translation2d Position, MotorController DriveMotor, MotorController RotationMotor, Encoder AngleEncoder, double EncoderMultiplier, double FloatTolerance, boolean InvertRotation, boolean InvertDrive) {
     moduleID = ID;
@@ -79,7 +79,10 @@ public class SwerveMotorModule {
     angleEncoder = AngleEncoder;
     floatTolerance = FloatTolerance;
     invertDrive = InvertDrive;
+
+    // this should probably be moved to the encoder class so it can compensate for rotations. if we just multiply the current position, it may not account for zero-boundary issues.
     encoderMultiplier = EncoderMultiplier;
+
     // decelFactor = driveModule.rotationSpeed / 1.5;
 
     // not used for absolute encoders
@@ -87,13 +90,18 @@ public class SwerveMotorModule {
   }
 
   public void Initialize() {
-    angleEncoder.setAngleOffsetRad(angleEncoder.getRawValue());
+    myTable.getEntry("startupAngle").setDouble(angleEncoder.getDistance());
+    angleEncoder.setZeroPosition();
+    myTable.getEntry("zeroedAngle").setDouble(angleEncoder.getDistance());
+    //angleEncoder.setAngleOffsetRad(angleEncoder.getRawValue());
 
-    myTable.getEntry("encoderOffset").setDouble(angleEncoder.getRawValue());
+    myTable.getEntry("encoderOffset").setDouble(angleEncoder.getAngleOffsetRad());
     myTable.getEntry("floatTolerance").setDouble(floatTolerance);
     myTable.getEntry("invertDrive").setBoolean(invertDrive);
     myTable.getEntry("encoderMultiplier").setDouble(encoderMultiplier);
     myTable.getEntry("invertRotation").setBoolean(invertRotation);
+    myTable.getEntry("enableDecelComp").setBoolean(enableDecelComp);
+    myTable.getEntry("enableGiveUp").setBoolean(enableGiveUp);
   }
 
   public SwerveModulePosition getPosition() {
