@@ -107,7 +107,7 @@ public class Robot extends TimedRobot {
   final double m_liftSpeed = 0.6;
   final double m_grabSpeed = 0.6;
   // 24 teeth on driver, 42 teeth on driven = 24/42 = 0.5714
-  final double m_encoderMultiplier = 24.0 / 1.0; // 0.5714;
+  final double m_encoderMultiplier = 1.0 / 20.0; // 0.5714;
 
   double m_divider = 0.5;
   double m_speedMod = 1.0;
@@ -135,7 +135,7 @@ public class Robot extends TimedRobot {
   // 775/redline motors run at 21,000 rpms, with a 125:1 gearbox, 168 rpm, divided
   // by 60 is 2.8 rotations per second, multiplied by 6.28 radians is 17.584
   // radians per second
-  double m_rotationSpeed = 594; // 17.584; // 21.98; //32.40 / m_speedMod; // should be actual radians per
+  double m_rotationSpeed = 29.7; // 17.584; // 21.98; //32.40 / m_speedMod; // should be actual radians per
                                    // second that is achievable by the rotation motor
 
   SingleMotorModule elevator = new SingleMotorModule("elevator", can_elev, m_elevatorSpeed, false, null, null, enc_elev);

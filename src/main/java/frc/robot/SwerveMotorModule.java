@@ -183,7 +183,7 @@ public class SwerveMotorModule {
     // get volts conversion - need to do real-world measurements to understand/identify this conversion
     // can't use this in conjunction with PID controller - not sure this is true?
     motorSpeed = // usePID ? motorSpeed :
-      motorSpeed / (driveModule.rotationSpeed * (elapsedTime / 1000));
+      motorSpeed * (driveModule.rotationSpeed * (elapsedTime / 1000));
 
     if (enableDecelComp)
       motorSpeed *= getAdjustmentFactor(delAngle);
