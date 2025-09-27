@@ -1,0 +1,40 @@
+{
+  "Clients": {
+    "open": true
+  },
+  "Connections": {
+    "open": true
+  },
+  "NetworkTables Settings": {
+    "mode": "Client (NT3)",
+    "serverTeam": "3680"
+  },
+  "Server": {
+    "open": true
+  },
+  "transitory": {
+    "CameraPublisher": {
+      "open": true
+    },
+    "Preferences": {
+      "open": true
+    },
+    "SmartDashboard": {
+      "SendableChooser[0]": {
+        "string[]##v_/SmartDashboard/SendableChooser[0]/options": {
+          "open": true
+        }
+      },
+      "double[]##v_/SmartDashboard/RobotDrive Motors": {
+        "open": true
+      },
+      "open": true
+    },
+    "swerveDrive": {
+      "open": true,
+      "rightRear": {
+        "open": true
+      }
+    }
+  }
+}

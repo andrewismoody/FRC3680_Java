@@ -18,6 +18,8 @@ public class ModuleController {
   private double speedDilation = 0.0;
 
   boolean enableDrive = true;
+  boolean enableSteer = true;
+  boolean enableDriveTrain = true;
   double speedDilationLimit = 0.75; //0.9;
 
   public ModuleController(DriveModule DriveModule, double Divider, GameController Controller) {

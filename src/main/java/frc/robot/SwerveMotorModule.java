@@ -27,7 +27,7 @@ public class SwerveMotorModule {
 
   double previousTime;
   double elapsedTime;
-  double now;
+  long now;
 
   double previousRotationSpeed;
   double previousDriveSpeed;
@@ -115,9 +115,9 @@ public class SwerveMotorModule {
       // encoderMultiplier adjusts the encoder value to account for gearing ratios between driver and driven axles
       angleEncoder.getDistance() * encoderMultiplier
     ;
-    myTable.getEntry("currentAngle").setDouble(distance);
 
     currentAngle = Rotation2d.fromDegrees(distance);
+    myTable.getEntry("currentAngle").setDouble(currentAngle.getRadians());
 
     if (optimize) {
       moduleState.optimize(currentAngle);
@@ -126,7 +126,7 @@ public class SwerveMotorModule {
     // slow down if we aren't aiming the right direction yet
     moduleState.speedMetersPerSecond *= moduleState.angle.minus(currentAngle).getCos();
 
-    if (driveModule.controller.enableDrive) {
+    if (driveModule.controller.enableDriveTrain) {
       now = System.currentTimeMillis();
 
       if (previousTime == 0) {
@@ -138,8 +138,10 @@ public class SwerveMotorModule {
       
       myTable.getEntry("elapsedTime").setDouble(elapsedTime);
 
-      setAngle(moduleState);
-      setSpeed(moduleState);
+      if (driveModule.controller.enableSteer)
+        setAngle(moduleState);
+      if (driveModule.controller.enableDrive)
+        setSpeed(moduleState);
     }
   }
 

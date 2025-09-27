@@ -47,7 +47,7 @@ public class REVEncoder implements Encoder {
     }
 
     public double getDistance() {
-        return internalEncoder.getPosition() * 360.0;
+        return internalEncoder.getPosition() * 360.0 % 360;
     }
 
     public boolean isAbsolute() {

@@ -286,7 +286,9 @@ public class Robot extends TimedRobot {
   //   modules.AddModule(grabber);
     modules.AddModule(slide);
 
-    modules.enableDrive = true;
+    modules.enableDrive = false;
+    modules.enableSteer = true;
+    modules.enableDriveTrain = true;
     
     modules.Initialize();
 
