@@ -18,7 +18,6 @@ public class REVEncoder implements Encoder {
 
     public REVEncoder(RelativeEncoder WrappedEncoder) {
         internalEncoder = WrappedEncoder;
-
     }
 
     public REVEncoder(RelativeEncoder WrappedEncoder, double DistancePerPulse) {

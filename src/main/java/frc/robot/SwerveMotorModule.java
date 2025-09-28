@@ -182,8 +182,11 @@ public class SwerveMotorModule {
     // start rotating wheel to the new optimized angle
     // get volts conversion - need to do real-world measurements to understand/identify this conversion
     // can't use this in conjunction with PID controller - not sure this is true?
+    // this caclulation must be division - originally was multiplication.  This was masked by the fact that the
+    // values 'look' correct for any RPS under 50, but in reality, RPS values under 50 were getting reduced and
+    // RPS values over 50 were inflated.  Division makes the values accurate.
     motorSpeed = // usePID ? motorSpeed :
-      motorSpeed * (driveModule.rotationSpeed * (elapsedTime / 1000));
+      motorSpeed / (driveModule.rotationSpeed * (elapsedTime / 1000));
 
     if (enableDecelComp)
       motorSpeed *= getAdjustmentFactor(delAngle);

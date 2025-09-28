@@ -172,7 +172,7 @@ public class SingleMotorModule implements RobotModule {
             if (enc.isAbsolute())
                 setRotationFromAbsolute();
             else
-                rotationCount = enc.getDistance();
+                rotationCount = enc.getRawValue();
         }
 
         double angleTolerance = 0.00001; // 0.00001;
