@@ -37,6 +37,8 @@ public class SingleMotorModule implements RobotModule {
     int sampleMin = 20;
     double maxDistance = 0.0;
     double previousTargetDistance = 0.0;
+    double encoderMultiplier = 1.0;
+    double reverseMultiplier = 1.0;
 
     Pose3d target;
 
@@ -44,7 +46,7 @@ public class SingleMotorModule implements RobotModule {
 
     NetworkTable myTable;
 
-    public SingleMotorModule(String ModuleID, MotorController DriveMotor, double DriveSpeed, boolean Invert, Switch UpperLimit, Switch LowerLimit, Encoder Enc) {
+    public SingleMotorModule(String ModuleID, MotorController DriveMotor, double DriveSpeed, boolean Invert, Switch UpperLimit, Switch LowerLimit, Encoder Enc, double EncoderMultiplier, double ReverseMultiplier) {
         moduleID = ModuleID;
         driveMotor = DriveMotor;
         driveSpeed = DriveSpeed;
@@ -53,6 +55,8 @@ public class SingleMotorModule implements RobotModule {
         upperLimit = UpperLimit;
         lowerLimit = LowerLimit;
         enc = Enc;
+        encoderMultiplier = EncoderMultiplier;
+        reverseMultiplier = ReverseMultiplier;
 
         if (enc != null && enc.isAbsolute())
             previousEncValue = getEncValAdj();
@@ -62,6 +66,12 @@ public class SingleMotorModule implements RobotModule {
         myTable = NetworkTableInstance.getDefault().getTable(moduleID);
 
         myTable.getEntry("invert").setBoolean(invert);
+        myTable.getEntry("encoderMultiplier").setDouble(encoderMultiplier);
+
+        if (enc != null) {
+            enc.setMultiplier(encoderMultiplier);
+            enc.setZeroPosition();
+        }
     }
 
     public void AddActionPose(ActionPose newAction) {
@@ -99,9 +109,6 @@ public class SingleMotorModule implements RobotModule {
         if (targetPose != null) {
             myTable.getEntry("targetPose").setString(String.format("%s %s %d %s %s", group, location, locationIndex, position, action));
 
-            if (debug) {
-                System.out.printf("%s: Setting Pose %s %s %d %s %s\n", moduleID, group, location, locationIndex, position, action);
-            }
             target = targetPose.pose;
         }
     }    
@@ -115,11 +122,7 @@ public class SingleMotorModule implements RobotModule {
 
     void setRotationFromAbsolute() {
         var encVal = getEncValAdj();
-
         var delta = encVal - previousEncValue;
-        // if (Math.abs(delta) > m_floatTolerance && debug) {
-        //     System.out.printf("%s: encValue %f; previousEncValue: %f delta: %f\n", moduleID, encVal, previousEncValue, delta);
-        // }
 
         if (lowerLimit != null && lowerLimit.GetState()) {
             myTable.getEntry("lowerLimit").setString("hit");
@@ -150,9 +153,7 @@ public class SingleMotorModule implements RobotModule {
     public void ApplyInverse(boolean isPressed) {
         if (isPressed) {
             AbandonTarget();
-            currentDriveSpeed += controller.ApplyModifiers(invert ? driveSpeed : -driveSpeed);
-            // if (debug)
-            //     System.out.printf("%s: ApplyInverse; driveSpeed %f; currentDriveSpeed %f\n", moduleID, driveSpeed, currentDriveSpeed);
+            currentDriveSpeed += controller.ApplyModifiers(invert ? driveSpeed : -driveSpeed) * reverseMultiplier;
         }
     }
 
@@ -161,8 +162,6 @@ public class SingleMotorModule implements RobotModule {
         if (isPressed) {
             currentDriveSpeed += controller.ApplyModifiers(invert ? -driveSpeed : driveSpeed);
             AbandonTarget();
-            // if (debug)
-            //     System.out.printf("%s: ApplyValue; driveSpeed %f; currentDriveSpeed %f\n", moduleID, driveSpeed, currentDriveSpeed);
         }
     }
     
@@ -182,10 +181,6 @@ public class SingleMotorModule implements RobotModule {
             var targetRotation = target.getX();
             var targetDistance = Math.abs(targetRotation - rotationCount);
             myTable.getEntry("targetDistance").setDouble(targetDistance);
-            if (Math.abs(previousTargetDistance - targetDistance) > angleTolerance) {
-                if (debug)
-                    System.out.printf("%s: targetDistance %f\n", moduleID, targetDistance);
-            }
             previousTargetDistance = targetDistance;
 
             var shouldMove = (Math.abs(targetDistance) > angleTolerance);
@@ -201,10 +196,6 @@ public class SingleMotorModule implements RobotModule {
 
             var driveDistance = Math.abs(rotationCount - previousRotationCount);
             myTable.getEntry("driveDistance").setDouble(driveDistance);
-            if (driveDistance > maxDistance && sampleCount < sampleMin) {
-                System.out.printf("%s: driveDistance %f; maxDistance: %f\n", moduleID, driveDistance, maxDistance);
-                maxDistance = driveDistance;
-            }
             
             if (sampleCount >= sampleMin && targetDistance < maxDistance) {
                 var adjustmentFactor = (targetDistance / maxDistance);
@@ -217,10 +208,6 @@ public class SingleMotorModule implements RobotModule {
 
 
         myTable.getEntry("currentDriveSpeed").setDouble(currentDriveSpeed);
-        if (Math.abs(previousDriveSpeed - currentDriveSpeed) > angleTolerance) {
-            if (debug)
-                System.out.printf("%s: currentDriveSpeed %f\n", moduleID, currentDriveSpeed);
-        }
         previousDriveSpeed = currentDriveSpeed;
 
         if ((currentDriveSpeed > 0 && (upperLimit == null || !upperLimit.GetState())) ||
@@ -234,10 +221,6 @@ public class SingleMotorModule implements RobotModule {
         }
 
         myTable.getEntry("rotationCount").setDouble(rotationCount);
-        if (Math.abs(rotationCount - previousRotationCount) > angleTolerance) {
-            if (debug)
-                System.out.printf("%s: rotationCount: %f\n", moduleID, rotationCount);
-        }
         previousRotationCount = rotationCount;
 
         currentDriveSpeed = 0.0;

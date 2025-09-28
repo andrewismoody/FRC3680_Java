@@ -135,10 +135,10 @@ public class Robot extends TimedRobot {
   // 775/redline motors run at 21,000 rpms, with a 125:1 gearbox, 168 rpm, divided
   // by 60 is 2.8 rotations per second, multiplied by 6.28 radians is 17.584
   // radians per second
-  double m_rotationSpeed = 29.7; // 17.584; // 21.98; //32.40 / m_speedMod; // should be actual radians per
+  double m_rotationSpeed = 59.4; //29.7; // 17.584; // 21.98; //32.40 / m_speedMod; // should be actual radians per
                                    // second that is achievable by the rotation motor
 
-  SingleMotorModule elevator = new SingleMotorModule("elevator", can_elev, m_elevatorSpeed, false, null, null, enc_elev);
+  SingleMotorModule elevator = new SingleMotorModule("elevator", can_elev, m_elevatorSpeed, false, null, null, enc_elev, 1.0 / 100.0, 0.0);
   // SingleMotorModule lifter = new SingleMotorModule("lifter", can_lift, m_liftSpeed, true, null, null, enc_lift);
   // SingleMotorModule grabber = new SingleMotorModule("grabber", can_grab, m_grabSpeed, false, null, null, enc_grabber);
 
@@ -223,7 +223,7 @@ public class Robot extends TimedRobot {
     leftRearMM.debugAngle = false;
     leftFrontMM.debugSpeed = false;
 
-    elevator.debug = true;
+    elevator.debug = false;
 
     JoystickIndexLoop: for (int j = 0; j < 6; j++) {
       System.out.printf("Checking for joystick on port %d\n", j);
@@ -268,8 +268,8 @@ public class Robot extends TimedRobot {
         break;
     }
 
-    elevator.AddActionPose(new ActionPose(Group.Score, Location.Any, -1, Position.Lower, Action.Any, new Pose3d(new Translation3d(45.0, 0, 0), new Rotation3d())));
-    elevator.AddActionPose(new ActionPose(Group.Score, Location.Any, -1, Position.Middle, Action.Any, new Pose3d(new Translation3d(110.0, 0, 0), new Rotation3d())));
+    elevator.AddActionPose(new ActionPose(Group.Score, Location.Any, -1, Position.Lower, Action.Any, new Pose3d(new Translation3d(0.28, 0, 0), new Rotation3d())));
+    elevator.AddActionPose(new ActionPose(Group.Score, Location.Any, -1, Position.Middle, Action.Any, new Pose3d(new Translation3d(1.14, 0, 0), new Rotation3d())));
 
     elevator.AddActionPose(new ActionPose(Group.Score, Location.Any, -1, Position.Trough, Action.Any, new Pose3d(new Translation3d(0.0, 0, 0), new Rotation3d())));
     modules.AddModule(elevator);
