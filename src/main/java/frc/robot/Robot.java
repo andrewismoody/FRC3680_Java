@@ -78,15 +78,14 @@ public class Robot extends TimedRobot {
   // not used for absolute encoders
   // final Encoder m_enc1 = new QuadEncoder(0, 1, 8.108);
 
-  final double DistancePerPulse = 8.57;
   // rf
-  final Encoder enc_rf = new REVEncoder(can_steer_rf.getEncoder(),DistancePerPulse);
+  final Encoder enc_rf = new REVEncoder(can_steer_rf.getEncoder());
   // lf
-  final Encoder enc_lf = new REVEncoder(can_steer_lf.getEncoder(),DistancePerPulse);
+  final Encoder enc_lf = new REVEncoder(can_steer_lf.getEncoder());
   // rr
-  final Encoder enc_rr = new REVEncoder(can_steer_rr.getEncoder(),DistancePerPulse);
+  final Encoder enc_rr = new REVEncoder(can_steer_rr.getEncoder());
   // lr
-  final Encoder enc_lr = new REVEncoder(can_steer_lr.getEncoder(),DistancePerPulse);
+  final Encoder enc_lr = new REVEncoder(can_steer_lr.getEncoder());
 
   final Gyro m_gyro = new AHRSGyro();
 

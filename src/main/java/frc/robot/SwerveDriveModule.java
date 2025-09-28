@@ -40,10 +40,6 @@ public class SwerveDriveModule implements DriveModule {
     double forwardSpeed = 0.0;
     double lateralSpeed = 0.0;
     double rotationAngle = 0.0;
-    double previousForwardSpeed = 0.0;
-    double previousLateralSpeed = 0.0;
-    double previousRotationAngle = 0.0;
-    double previousActualAngle = 0.0;
     double angleOffset = 0.0;
     double floatTolerance;
     double deltaLimit = 0.5;
@@ -70,7 +66,7 @@ public class SwerveDriveModule implements DriveModule {
         var i = 0;
 
         myTable = NetworkTableInstance.getDefault().getTable(moduleID);
-        
+
         for (SwerveMotorModule module : modules) {
             module.setDriveModule(this);
             driveModules.add(module);
@@ -168,41 +164,21 @@ public class SwerveDriveModule implements DriveModule {
     public void ProcessForwardSpeed(double value) {
         forwardSpeed = value;
         myTable.getEntry("forwardSpeed").setDouble(forwardSpeed);
-
-        if (debug && forwardSpeed != previousForwardSpeed)
-            System.out.printf("%s forwardSpeed: %f\n", moduleID, forwardSpeed);
-
-        previousForwardSpeed = forwardSpeed;
     }
 
     public void ProcessLateralSpeed(double value) {
         lateralSpeed = value;
         myTable.getEntry("lateralSpeed").setDouble(lateralSpeed);
-
-        if (debug && lateralSpeed != previousLateralSpeed)
-            System.out.printf("%s lateralSpeed: %f\n", moduleID, lateralSpeed);
-
-        previousLateralSpeed = lateralSpeed;
     }
 
     public void ProcessRotationAngle(double value) {
         rotationAngle = value * rotationMultiplier;
         myTable.getEntry("rotationAngle").setDouble(rotationAngle);
-
-        if (debug && rotationAngle != previousRotationAngle)
-            System.out.printf("%s rotationAngle: %f\n", moduleID, rotationAngle);
-
-        previousRotationAngle = rotationAngle;
     }
 
     public void StopRotation() {
         rotationAngle = getGyroAngle();
         myTable.getEntry("rotationAngle").setDouble(rotationAngle);
-
-        if (debug && rotationAngle != previousRotationAngle)
-            System.out.printf("%s rotationAngle: %f\n", moduleID, rotationAngle);
-
-        previousRotationAngle = rotationAngle;
     }
 
     public void ApplyInverse(boolean isAuto) {
@@ -249,10 +225,6 @@ public class SwerveDriveModule implements DriveModule {
         if (actionPose != null) {
             myTable.getEntry("targetActionPose").setString(String.format("%s %s %d %s %s", group, location, locationIndex, position, action));
 
-            if (debug) {
-                System.out.printf("%s: Setting Pose %s %s %d %s %s\n", moduleID, group, location, locationIndex, position, action);
-            }
-
             Translation3d TargetPosition = actionPose.getTranslation();
             double TargetYaw = actionPose.getRotation().getZ();
             Translation3d Heading = currentPosition.minus(TargetPosition);
@@ -270,17 +242,11 @@ public class SwerveDriveModule implements DriveModule {
         double newAngle = getGyroAngle();
         myTable.getEntry("actualAngle").setDouble(newAngle);
 
-        if (debug && Math.abs(previousActualAngle - newAngle) > floatTolerance) {
-            System.out.printf("%s actualAngle: %f\n", moduleID, newAngle);
-            previousActualAngle = newAngle;
-        }
-
         // set the chassis speed object according to current controller values
         double forwardSpeed = this.forwardSpeed * controller.ApplyModifiers(driveSpeed);
         double lateralSpeed = this.lateralSpeed * controller.ApplyModifiers(driveSpeed);
         double thisRotationSpeed = controller.ApplyModifiers(rotationAngle); //rotationAngle; // * controller.ApplyModifiers(this.rotationSpeed);
-        // if (debug)
-        //     System.out.printf("%s; thisRotationSpeed: %s\n", moduleID, thisRotationSpeed);
+        myTable.getEntry("rotationSpeed").setDouble(thisRotationSpeed);
 
         ChassisSpeeds speeds = isFieldOriented ?
             ChassisSpeeds.fromFieldRelativeSpeeds(lateralSpeed, forwardSpeed, thisRotationSpeed, Rotation2d.fromDegrees(newAngle))
@@ -321,21 +287,14 @@ public class SwerveDriveModule implements DriveModule {
             if ((Math.abs(previousPosition.minus(currentPosition).getX()) > floatTolerance
                     || Math.abs(previousPosition.minus(currentPosition).getY()) > floatTolerance)
                     && Math.abs(previousPosition.minus(currentPosition).getNorm()) < deltaLimit) {
-                if (debug) {
-                    System.out.printf("%s ProcessState: currentPosition: %s\n", moduleID, currentPosition);
-                }
-
                 previousPosition = currentPosition;
             }
         }
 
         // update fake gyro angle
         currentAngle += thisRotationSpeed * fakeGyroRate;
-        myTable.getEntry("currentAngle").setDouble(currentAngle);
-        if (debug && Math.abs(previousAngle - currentAngle) > floatTolerance) {
-            System.out.printf("currentAngle: %f; previousAngle: %f\n", currentAngle, previousAngle);
-            previousAngle = currentAngle;
-        }
+        myTable.getEntry("fakeAngle").setDouble(currentAngle);
+        previousAngle = currentAngle;
 
         // update dashboard
         SmartDashboard.putNumberArray("RobotDrive Motors", new double[] {driveModules.get(0).getSpeed(), driveModules.get(1).getSpeed(), 0.0, 0.0});
