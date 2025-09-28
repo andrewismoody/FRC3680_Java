@@ -173,7 +173,8 @@ public class Robot extends TimedRobot {
     // SendableRegistry.addChild(m_robotDrive, m_leftDrive);
     // SendableRegistry.addChild(m_robotDrive, m_rightDrive);
     
-        CameraServer.startAutomaticCapture();
+    // TODO: Re-enable this.
+    // CameraServer.startAutomaticCapture();
   }
   /**
    * This function is run when the robot is first started up and should be used
@@ -352,14 +353,17 @@ public class Robot extends TimedRobot {
     //currentAutoMode.Initialize();
 
     m_timer.restart();
+
+    ActionPose newPose = new ActionPose(Group.Score, Location.Any, -1, Position.Lower, Action.Any, new Pose3d(new Translation3d(), new Rotation3d(0,0,90)));
+    swerveDriveModule.AddActionPose(newPose);
+    swerveDriveModule.SetTargetActionPose(newPose);
   }
 
   /** This function is called periodically during autonomous. */
   @Override
   public void autonomousPeriodic() {
-   // currentAutoMode.Update();
-   swerveDriveModule.ProcessForwardSpeed(0.5);
-
+    // currentAutoMode.Update();
+    // swerveDriveModule.ProcessForwardSpeed(0.5);
     modules.ProcessState(true);
 
   }

@@ -41,7 +41,8 @@ public class DifferentialDriveModule implements DriveModule {
         // We need to invert one side of the drivetrain so that positive voltages
         // result in both sides moving forward. Depending on how your robot's
         // gearbox is constructed, you might have to invert the left side instead.
-        rightMotor.setInverted(true);
+        // TODO: Re-enable this as  needed with config
+        // rightMotor.setInverted(true);
 
         driveController = new DifferentialDrive(leftMotor::set, rightMotor::set);
         driveController.setSafetyEnabled(false);

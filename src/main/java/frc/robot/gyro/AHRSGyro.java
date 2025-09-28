@@ -5,7 +5,7 @@ import com.studica.frc.AHRS.NavXComType;
 
 public class AHRSGyro implements Gyro {
 
-    AHRS ahrs = new AHRS(NavXComType.kMXP_SPI);
+    AHRS ahrs = new AHRS(NavXComType.kUSB1);
     
     @Override
     public void calibrate() {
