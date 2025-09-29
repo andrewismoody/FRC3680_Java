@@ -13,6 +13,7 @@ import edu.wpi.first.math.kinematics.SwerveModulePosition;
 import edu.wpi.first.math.kinematics.SwerveModuleState;
 import edu.wpi.first.networktables.NetworkTable;
 import edu.wpi.first.networktables.NetworkTableInstance;
+import edu.wpi.first.math.controller.PIDController;
 import edu.wpi.first.math.geometry.Pose3d;
 import edu.wpi.first.wpilibj.RobotBase;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
@@ -55,6 +56,10 @@ public class SwerveDriveModule implements DriveModule {
 
     ArrayList<ActionPose> actionPoses = new ArrayList<ActionPose>();
     ActionPose targetPose;
+
+    PIDController lateralPidController = new PIDController(0.15, 0.0005, 0); // p=0.2
+    PIDController forwardPidController = new PIDController(0.15, 0.0005, 0); // p=0.2
+    PIDController rotationPidController = new PIDController(0.15, 0.0005, 0); // p=0.2
 
     NetworkTable myTable;
 
@@ -227,22 +232,10 @@ public class SwerveDriveModule implements DriveModule {
         ActionPose actionPose = GetActionPose(group, location, locationIndex, position, action);
         if (actionPose != null) {
             targetPose = actionPose;
-            Pose3d myPose = actionPose.pose;
             myTable.getEntry("targetActionPose").setString(String.format("%s %s %d %s %s", group, location, locationIndex, position, action));
             myTable.getEntry("lateralReached").setBoolean(false);
             myTable.getEntry("forwardReached").setBoolean(false);
             myTable.getEntry("rotationReached").setBoolean(false);
-
-            Translation3d TargetPosition = myPose.getTranslation();
-            // navx is opposite of steer direction?
-            // TODO: verify if gyro rotation direction matches steer direction or not.
-            // this will just tell it to move in a particular direction at full speed.
-            double TargetYaw = myPose.getRotation().getZ() == 0.0 ? 0.0 : myPose.getRotation().getZ() > 0.0 ? 1.0 : -1.0;
-            Translation3d Heading = currentPosition.minus(TargetPosition);
-
-            ProcessForwardSpeed(Heading.getY() / this.driveSpeed);
-            ProcessLateralSpeed(Heading.getX() / this.driveSpeed);
-            ProcessRotationAngle(TargetYaw);
         }
     }
 
@@ -262,34 +255,47 @@ public class SwerveDriveModule implements DriveModule {
             var forwardReached = false;
             var rotationReached = false;
 
-            if (Math.abs(positionDelta.getX()) < floatTolerance) {
+            var lateralSpeed = lateralPidController.calculate(currentPosition.getX(), position.getX());
+            if (Math.abs(lateralSpeed) < floatTolerance) {
                 lateralReached = true;
                 myTable.getEntry("lateralReached").setBoolean(lateralReached);
                 ProcessLateralSpeed(0.0);
+            } else {
+                ProcessLateralSpeed(lateralSpeed);
             }
 
-            if (Math.abs(positionDelta.getY()) < floatTolerance) {
+            var forwardSpeed = forwardPidController.calculate(currentPosition.getY(), position.getY());
+            if (Math.abs(forwardSpeed) < floatTolerance) {
                 forwardReached = true;
                 myTable.getEntry("forwardReached").setBoolean(forwardReached);
                 ProcessForwardSpeed(0.0);
+            } else {
+                ProcessForwardSpeed(forwardSpeed);
             }
 
-            if (Math.abs(rotationDelta) < floatTolerance) {
+            var rotationSpeed = rotationPidController.calculate(newAngle, rotation.getZ());
+            if (Math.abs(rotationSpeed) < floatTolerance) {
                 rotationReached = true;
                 myTable.getEntry("rotationReached").setBoolean(rotationReached);
                 ProcessRotationAngle(0.0);
+            } else {
+                ProcessRotationAngle(rotationSpeed);
             }
 
             if (lateralReached && forwardReached && rotationReached) {
-                targetPose = null;
-                myTable.getEntry("targetActionPose").setString("none");
-                myTable.getEntry("lateralReached").unpublish();
-                myTable.getEntry("forwardReached").unpublish();
-                myTable.getEntry("rotationReached").unpublish();
-                myTable.getEntry("targetDelta").unpublish();
-                myTable.getEntry("rotationDelta").unpublish();
-                }
+                AbandonTarget();
+            }
         }
+    }
+
+    public void AbandonTarget() {
+        targetPose = null;
+        myTable.getEntry("targetActionPose").setString("none");
+        myTable.getEntry("lateralReached").unpublish();
+        myTable.getEntry("forwardReached").unpublish();
+        myTable.getEntry("rotationReached").unpublish();
+        myTable.getEntry("targetDelta").unpublish();
+        myTable.getEntry("rotationDelta").unpublish();
     }
 
     public void ProcessState(boolean isAuto) {
