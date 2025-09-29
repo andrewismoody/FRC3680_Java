@@ -27,11 +27,11 @@ import frc.robot.GameController.ButtonName;
 import frc.robot.GameController.ControllerType;
 import frc.robot.action.*;
 import frc.robot.auto.AutoController;
+import frc.robot.auto.SequenceRotateWaitReturn;
 import frc.robot.gyro.AHRSGyro;
 import frc.robot.gyro.Gyro;
 import frc.robot.positioner.LimeLightPositioner;
 import frc.robot.positioner.Positioner;
-import frc.robot.encoder.AnalogAbsoluteEncoder;
 import frc.robot.encoder.Encoder;
 import frc.robot.encoder.REVEncoder;
 
@@ -336,10 +336,10 @@ public class Robot extends TimedRobot {
     // modules::ProcessSpeedDilation);
 
     // TODO: need to move this definition to preferences and initialize in automodes rather than hard coding
-    AutoController timedShoot = new AutoController("MoveAndShoot");
-    //timedShoot.AddSequence(new SequenceMoveAndShoot(timedShoot.GetLabel(), modules, timedShoot));
-    AutoModes.put(timedShoot.GetLabel(), timedShoot);
-    //currentAutoMode = timedShoot;
+    AutoController rotateWait = new AutoController("RotateWait");
+    rotateWait.AddSequence(new SequenceRotateWaitReturn(rotateWait.GetLabel(), modules, rotateWait));
+    AutoModes.put(rotateWait.GetLabel(), rotateWait);
+    currentAutoMode = rotateWait;
 
 
     SmartDashboard.putStringArray("Auto List", AutoModes.keySet().toArray(new String[] {}));
@@ -348,23 +348,24 @@ public class Robot extends TimedRobot {
   /** This function is run once each time the robot enters autonomous mode. */
   @Override
   public void autonomousInit() {
-    //currentAutoMode = AutoModes.get(SmartDashboard.getString("Auto Selector", AutoModes.keys().nextElement()));
-    //currentAutoMode.Initialize();
+    currentAutoMode = AutoModes.get(SmartDashboard.getString("Auto Selector", AutoModes.keys().nextElement()));
+    currentAutoMode.Initialize();
 
     m_timer.restart();
 
-    ActionPose newPose = new ActionPose(Group.Score, Location.Any, -1, Position.Lower, Action.Any, new Pose3d(new Translation3d(), new Rotation3d(0,0,90)));
-    swerveDriveModule.AddActionPose(newPose);
-    swerveDriveModule.SetTargetActionPose(newPose);
+    // ActionPose newPose = new ActionPose(Group.Score, Location.Any, -1, Position.Lower, Action.Any, new Pose3d(new Translation3d(), new Rotation3d(0,0,90)));
+    // swerveDriveModule.AddActionPose(newPose);
+    // swerveDriveModule.SetTargetActionPose(newPose);
   }
 
   /** This function is called periodically during autonomous. */
   @Override
   public void autonomousPeriodic() {
-    // currentAutoMode.Update();
-    // swerveDriveModule.ProcessForwardSpeed(0.5);
-    modules.ProcessState(true);
+    currentAutoMode.Update();
 
+    // swerveDriveModule.ProcessForwardSpeed(0.5);
+    
+    modules.ProcessState(true);
   }
 
   /**
