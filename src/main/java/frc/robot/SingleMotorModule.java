@@ -40,9 +40,8 @@ public class SingleMotorModule implements RobotModule {
     double encoderMultiplier = 1.0;
     double reverseMultiplier = 1.0;
 
-    Pose3d target;
-
     ArrayList<ActionPose> actionPoses = new ArrayList<ActionPose>();
+    ActionPose targetPose;
 
     NetworkTable myTable;
 
@@ -109,9 +108,13 @@ public class SingleMotorModule implements RobotModule {
         if (targetPose != null) {
             myTable.getEntry("targetPose").setString(String.format("%s %s %d %s %s", group, location, locationIndex, position, action));
 
-            target = targetPose.pose;
+            this.targetPose = targetPose;
         }
-    }    
+    }
+    
+    public ActionPose GetTarget() {
+        return targetPose;
+    }
 
     double getEncValAdj() {
         var encVal = enc.getDistance();
@@ -176,7 +179,8 @@ public class SingleMotorModule implements RobotModule {
 
         double angleTolerance = 0.00001; // 0.00001;
 
-        if (target != null && currentDriveSpeed == 0.0) {
+        if (targetPose != null && currentDriveSpeed == 0.0) {
+            var target = targetPose.pose;
             // we have a target and we're not manually applying a value, try to get to it.
             var targetRotation = target.getX();
             var targetDistance = Math.abs(targetRotation - rotationCount);
@@ -184,13 +188,17 @@ public class SingleMotorModule implements RobotModule {
             previousTargetDistance = targetDistance;
 
             var shouldMove = (Math.abs(targetDistance) > angleTolerance);
-            if (targetRotation > rotationCount) {
-                if (shouldMove) {
-                    currentDriveSpeed += controller.ApplyModifiers(invert ? -driveSpeed : driveSpeed);
-                }
-            } else if (targetRotation < rotationCount) {
-                if (shouldMove) {
-                    currentDriveSpeed += controller.ApplyModifiers(invert ? driveSpeed : -driveSpeed);
+            if (!shouldMove) {
+                AbandonTarget();
+            } else {
+                if (targetRotation > rotationCount) {
+                    if (shouldMove) {
+                        currentDriveSpeed += controller.ApplyModifiers(invert ? -driveSpeed : driveSpeed);
+                    }
+                } else if (targetRotation < rotationCount) {
+                    if (shouldMove) {
+                        currentDriveSpeed += controller.ApplyModifiers(invert ? driveSpeed : -driveSpeed);
+                    }
                 }
             }
 
@@ -218,6 +226,9 @@ public class SingleMotorModule implements RobotModule {
                 System.out.printf("%s: limit reached, not driving motor\n", moduleID);
             }
             driveMotor.set(0);
+
+            // prevent AwaitTarget deadlock if motion is blocked by limits
+            AbandonTarget();
         }
 
         myTable.getEntry("rotationCount").setDouble(rotationCount);
@@ -235,16 +246,19 @@ public class SingleMotorModule implements RobotModule {
     }
 
     public void SetScoringPoseMiddle(boolean isPressed) {
+        // TODO: Check whether Event needs to be set here
         if (isPressed) {
             SetTargetActionPose(Group.Score, Location.Any, -1, Position.Middle, Action.Any);
         }
     }
     public void SetScoringPoseLower(boolean isPressed) {
+        // TODO: Check whether Event needs to be set here
         if (isPressed) {
             SetTargetActionPose(Group.Score, Location.Any, -1, Position.Lower, Action.Any);
         }
     }
     public void SetScoringPoseTrough(boolean isPressed) {
+        // TODO: Check whether Event needs to be set here
         if (isPressed) {
             SetTargetActionPose(Group.Score, Location.Any, -1, Position.Trough, Action.Any);
         }
@@ -262,7 +276,7 @@ public class SingleMotorModule implements RobotModule {
         if (debug) {
             System.out.printf("%s: Setting No Pose\n", moduleID);
         }
-        target = null;
+        targetPose = null;
     }
 
     public Pose3d GetPosition() {

@@ -11,6 +11,7 @@ import edu.wpi.first.math.kinematics.SwerveDriveKinematics;
 import edu.wpi.first.math.kinematics.SwerveDriveOdometry;
 import edu.wpi.first.math.kinematics.SwerveModulePosition;
 import edu.wpi.first.math.kinematics.SwerveModuleState;
+import edu.wpi.first.math.util.Units;
 import edu.wpi.first.networktables.NetworkTable;
 import edu.wpi.first.networktables.NetworkTableInstance;
 import edu.wpi.first.math.controller.PIDController;
@@ -62,7 +63,7 @@ public class SwerveDriveModule implements DriveModule {
     PIDController rotationPidController = new PIDController(0.15, 0.0005, 0); // p=0.2
 
     NetworkTable myTable;
-
+    
     public SwerveDriveModule(String ModuleID, Gyro Gyro, Positioner Positioner, double DriveSpeed, double RotationSpeed,
             boolean IsFieldOriented, double FloatTolerance, SwerveMotorModule ... modules) {
         moduleID = ModuleID;
@@ -224,12 +225,17 @@ public class SwerveDriveModule implements DriveModule {
         return null;      
     }
 
+    public ActionPose GetTarget() {
+        return targetPose;
+    }
+
     public void SetTargetActionPose(ActionPose actionPose) {
         SetTargetActionPose(actionPose.group, actionPose.location, actionPose.locationIndex, actionPose.position, actionPose.action);
     }      
-
+    
     public void SetTargetActionPose(Group group, Location location, int locationIndex, Position position, Action action) {
         ActionPose actionPose = GetActionPose(group, location, locationIndex, position, action);
+
         if (actionPose != null) {
             targetPose = actionPose;
             myTable.getEntry("targetActionPose").setString(String.format("%s %s %d %s %s", group, location, locationIndex, position, action));
@@ -241,12 +247,13 @@ public class SwerveDriveModule implements DriveModule {
 
     public void EvaluateTargetPose(double newAngle) {
         if (targetPose != null) {
+            double newAngleRad = Units.degreesToRadians(newAngle);
             var pose = targetPose.pose;
             var position = pose.getTranslation();
             var rotation = pose.getRotation();
 
             var positionDelta = currentPosition.minus(position);
-            var rotationDelta = newAngle - rotation.getZ();
+            var rotationDelta = newAngleRad - rotation.getZ();
 
             myTable.getEntry("targetDelta").setString(positionDelta.toString());
             myTable.getEntry("rotationDelta").setDouble(rotationDelta);
@@ -273,7 +280,7 @@ public class SwerveDriveModule implements DriveModule {
                 ProcessForwardSpeed(forwardSpeed);
             }
 
-            var rotationSpeed = rotationPidController.calculate(newAngle, rotation.getZ());
+            var rotationSpeed = rotationPidController.calculate(rotation.getZ(), newAngleRad);
             if (Math.abs(rotationSpeed) < floatTolerance) {
                 rotationReached = true;
                 myTable.getEntry("rotationReached").setBoolean(rotationReached);

@@ -36,6 +36,7 @@ public class DualMotorModule implements RobotModule {
     double previousRightEncValue = 0.0;
 
     ArrayList<ActionPose> actionPoses = new ArrayList<ActionPose>();
+    ActionPose targetPose;
 
     public DualMotorModule(String ModuleID, MotorController LeftDriveMotor, MotorController RightDriveMotor, double DriveSpeed, boolean InvertLeft, boolean InvertRight, Switch UpperLimit, Switch LowerLimit, Encoder RightEnc, Encoder LeftEnc) {
         moduleID = ModuleID;
@@ -75,6 +76,10 @@ public class DualMotorModule implements RobotModule {
         }
 
         return null;      
+    }
+
+    public ActionPose GetTarget() {
+        return targetPose;
     }
 
     @Override
@@ -148,7 +153,7 @@ public class DualMotorModule implements RobotModule {
     }    
 
     public void SetTargetActionPose(ActionPose actionPose) {
-        // TODO: Implement this.
+        SetTargetActionPose(actionPose.group, actionPose.location, actionPose.locationIndex, actionPose.position, actionPose.action);
     }   
 
     public Pose3d GetPosition() {

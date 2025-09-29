@@ -68,7 +68,13 @@ public class AutoSequence {
                         break;
                     case Position:
                         AutoEventPosition positionEvent = (AutoEventPosition) event;
-                        if (isNearby(controller.GetPosition(), positionEvent.target.pose, 0.5, 1.0)) {
+                        // AwaitTarget should only complete when the target is null - which occurs inside the Run function
+                        if (positionEvent.GetEventType() == AutoEvent.EventType.AwaitTarget) {
+                            positionEvent.Run();
+                            if (positionEvent.IsComplete())
+                                startTime = System.currentTimeMillis();
+                        } else if ((positionEvent.GetEventType() == AutoEvent.EventType.SetTarget
+                          || isNearby(controller.GetPosition(), positionEvent.target.pose, 0.5, 1.0))) {
                             System.out.printf("Auto Event %s triggered at %s", event.GetLabel(), positionEvent.target);
 
                             positionEvent.Run();
@@ -77,6 +83,7 @@ public class AutoSequence {
                         break;
                     case Auto:
                         AutoEventAuto autoEvent = (AutoEventAuto) event;
+                        // this is an infinite loop - isFinished pingpongs between this class and AutoEventAuto
                         if (autoEvent.IsFinished()) {
                             autoEvent.Run();
                             startTime = System.currentTimeMillis();
@@ -94,6 +101,7 @@ public class AutoSequence {
         controller.ProcessDrive(true);
     }
 
+    // this is deprecated and should be removed in favor of awaittarget
     boolean isNearby(Pose3d Position, Pose3d Target, double PositionTolerance, double AngleTolerance) {
         if (Math.abs(Position.getX() - Target.getX()) > PositionTolerance)
             return false;

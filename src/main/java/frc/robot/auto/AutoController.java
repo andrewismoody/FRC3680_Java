@@ -3,6 +3,7 @@ package frc.robot.auto;
 import java.util.ArrayList;
 import java.util.HashMap;
 
+// AutoController manages all AutoSequences, allowing for their addition, removal, initialization, updating, and shutdown.
 public class AutoController {
     HashMap<String, AutoSequence> sequences = new HashMap<String, AutoSequence>();
 

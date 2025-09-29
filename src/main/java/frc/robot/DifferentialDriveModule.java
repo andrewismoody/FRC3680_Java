@@ -32,6 +32,7 @@ public class DifferentialDriveModule implements DriveModule {
     Translation3d currentPosition = new Translation3d();
 
     ArrayList<ActionPose> actionPoses = new ArrayList<ActionPose>();
+    ActionPose targetPose;
 
     public DifferentialDriveModule(String ModuleID, MotorController LeftMotor, MotorController RightMotor) {
         moduleID = ModuleID;
@@ -134,8 +135,12 @@ public class DifferentialDriveModule implements DriveModule {
         return null;      
     }
 
+    public ActionPose GetTarget() {
+        return targetPose;
+    }
+
     public void SetTargetActionPose(ActionPose actionPose) {
-        // TODO: Implement this.
+        SetTargetActionPose(actionPose.group, actionPose.location, actionPose.locationIndex, actionPose.position, actionPose.action);
     }    
 
     public void SetTargetActionPose(Group group, Location location, int locationIndex, Position position, Action action) {

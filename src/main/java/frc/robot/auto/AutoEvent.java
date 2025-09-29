@@ -1,5 +1,6 @@
 package frc.robot.auto;
 
+// AutoEvent is the interface that defines the structure for all autonomous events.
 public interface AutoEvent {
     public enum TriggerType {
         Time,
@@ -12,7 +13,8 @@ public interface AutoEvent {
         Void,
         Boolean,
         Double,
-        Adaptive, // the idea of this event type is to allow the target module to perform its own calculations to meet the target
+        SetTarget, // the idea of this event type is to allow the target module to perform its own calculations to meet the target
+        AwaitTarget,
     }
 
     public enum ModuleType {

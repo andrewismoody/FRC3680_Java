@@ -15,4 +15,5 @@ public interface RobotModule {
     public Pose3d GetPosition();
     public void AddActionPose(ActionPose NewPose);
     public ActionPose GetActionPose(Group Group, Location Location, int LocationIndex, Position Position, Action Action);
+    public ActionPose GetTarget();
 }

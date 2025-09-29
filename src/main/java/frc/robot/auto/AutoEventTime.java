@@ -2,6 +2,7 @@ package frc.robot.auto;
 
 import java.util.function.Consumer;
 
+// AutoEventTime represents an auto event that occurs based on a time trigger.
 public class AutoEventTime implements AutoEvent {
     boolean complete;
     boolean parallel;
@@ -49,7 +50,8 @@ public class AutoEventTime implements AutoEvent {
                 if (autoEvent != null)
                     autoController.AddSequence(autoEvent);
                 break;
-            case Adaptive:
+            case SetTarget:
+            case AwaitTarget:
                 // not implemented for Time Event Type
                 break;
         }

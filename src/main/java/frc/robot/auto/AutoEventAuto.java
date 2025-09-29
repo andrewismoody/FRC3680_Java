@@ -2,6 +2,7 @@ package frc.robot.auto;
 
 import edu.wpi.first.math.geometry.Translation3d;
 
+// AutoEventAuto represents a nested AutoSequence event within an autonomous routine.
 public class AutoEventAuto implements AutoEvent {
     boolean complete;
     boolean parallel;

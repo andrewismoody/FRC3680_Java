@@ -5,6 +5,7 @@ import java.util.function.Consumer;
 import frc.robot.RobotModule;
 import frc.robot.action.ActionPose;
 
+// AutoEventPosition represents an auto event that attempts to achieve a specific position or pose.
 public class AutoEventPosition implements AutoEvent {
     boolean complete;
     boolean parallel;
@@ -41,25 +42,38 @@ public class AutoEventPosition implements AutoEvent {
             case Void:
                 if (voidEvent != null)
                     voidEvent.run();
+                complete = true;
                 break;
             case Boolean:
                 if (boolEvent != null)
                     boolEvent.accept(boolValue);
+                complete = true;
                 break;
             case Double:
                 if (doubleEvent != null)
                     doubleEvent.accept(doubleValue);
+                complete = true;
                 break;
             case Auto:
                 if (autoEvent != null)
                     autoController.AddSequence(autoEvent);
+                complete = true;
                 break;
-            case Adaptive:
+            case SetTarget:
                 if (targetModule != null && target != null)
                     targetModule.SetTargetActionPose(target);
+                complete = true;
+                break;
+            case AwaitTarget:
+                if (targetModule == null) {
+                    complete = true;
+                    break;
+                }
+                if (targetModule.GetTarget() == null) {
+                    complete = true;
+                }
                 break;
         }
-        complete = true;
     }
 
     public TriggerType GetTriggerType() {

@@ -19,6 +19,7 @@ public class SingleActuatorModule implements RobotModule {
     Value currentValue = Value.kOff;
     Boolean invert;
     ModuleController controller;
+    ActionPose targetPose;
 
     public SingleActuatorModule(String ModuleID, Relay Relay, Boolean Invert) {
         moduleID = ModuleID;
@@ -80,6 +81,10 @@ public class SingleActuatorModule implements RobotModule {
     @Override
     public void SetTargetActionPose(ActionPose ActionPose) {
         SetTargetActionPose(ActionPose.group, ActionPose.location, ActionPose.locationIndex, ActionPose.position, ActionPose.action);
+    }
+
+    public ActionPose GetTarget() {
+        return targetPose;
     }
 
     @Override
