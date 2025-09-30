@@ -262,6 +262,8 @@ public class SwerveDriveModule implements DriveModule {
             var forwardReached = false;
             var rotationReached = false;
 
+            // TODO: tune PID values
+            // TODO: determine if we need to adjust speed values
             var lateralSpeed = lateralPidController.calculate(currentPosition.getX(), position.getX());
             if (Math.abs(lateralSpeed) < floatTolerance) {
                 lateralReached = true;
@@ -281,6 +283,7 @@ public class SwerveDriveModule implements DriveModule {
             }
 
             var rotationSpeed = rotationPidController.calculate(rotation.getZ(), newAngleRad);
+            rotationSpeed *= rotationMultiplier;
             if (Math.abs(rotationSpeed) < floatTolerance) {
                 rotationReached = true;
                 myTable.getEntry("rotationReached").setBoolean(rotationReached);

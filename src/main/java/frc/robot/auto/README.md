@@ -1,6 +1,75 @@
-# Autonomous System Documentation
+# Autonomous Framework (FRC3680)
 
-This folder implements autonomous using AutoSequences (ordered lists of AutoEvents). Events are triggered by Time, Position, or Auto, and can run in parallel or sequentially.
+This package provides a small framework to build autonomous routines using:
+- AutoController: holds one or more AutoSequence instances (each a routine).
+- AutoSequence: an ordered list of AutoEvent steps (time/position/auto triggers).
+- AutoEvent: abstract step with trigger and Run() action (see concrete types).
+
+## Selection and life-cycle
+- Registration:
+  - Robot.robotInit() creates AutoController instances and registers them:
+  ```java
+    // ...existing code...
+    AutoController rotateWait = new AutoController("RotateWait");
+    rotateWait.AddSequence(new SequenceRotateWaitReturn(...));
+    AutoModes.put(rotateWait.GetLabel(), rotateWait);
+    SmartDashboard.putStringArray("Auto List", AutoModes.keySet().toArray(new String[] {}));
+    // ...existing code...
+  ```
+- Selection:
+  - SmartDashboard key: "Auto Selector" (string) must match one label from "Auto List".
+  - Robot.autonomousInit() does:
+  ```java
+    // ...existing code...
+    currentAutoMode = AutoModes.get(SmartDashboard.getString("Auto Selector", AutoModes.keys().nextElement()));
+    currentAutoMode.Initialize();
+  ```
+- Periodic:
+  - Robot.autonomousPeriodic() calls:
+  ```java
+    currentAutoMode.Update();
+    modules.ProcessState(true);
+  ```
+
+## Built-in mode
+- RotateWait
+  - Label: "RotateWait"
+  - Behavior: rotate, wait, then return to starting heading (see SequenceRotateWaitReturn).
+
+## AutoSequence semantics
+- Timing base:
+  - Initialize() captures a startTime.
+  - After any event triggers and Run() executes, startTime is reset. Use relative time for subsequent timed events.
+- Triggers (simplified):
+  - Time: fires when elapsedTime > milliseconds.
+  - Position:
+    - AwaitTarget: repeatedly Run() until it marks complete; then time resets.
+    - SetTarget or Nearby: fires immediately for SetTarget or when isNearby(current, target, posTol=0.5m, angTol=1.0rad).
+- Parallel vs sequential:
+  - After processing an event, if it’s not parallel, the loop breaks to run it alone. Parallel events can trigger together.
+- Completion:
+  - finished becomes true when all events are complete. The controller continues calling ProcessDrive(true).
+
+## Adding a new autonomous routine
+1. Implement a sequence:
+   - Create a class extending AutoSequence (or compose events inside a helper) and AddEvent(...) steps in its constructor.
+2. Register it:
+   - In Robot.robotInit():
+   ```java
+     // ...existing code...
+     AutoController myAuto = new AutoController("MyAuto");
+     myAuto.AddSequence(new MySequence(myAuto.GetLabel(), modules, myAuto));
+     AutoModes.put(myAuto.GetLabel(), myAuto);
+     SmartDashboard.putStringArray("Auto List", AutoModes.keySet().toArray(new String[] {}));
+     // ...existing code...
+   ```
+3. Select it on the dashboard:
+   - Set "Auto Selector" to "MyAuto" before enabling autonomous.
+
+## Notes
+- Poses use meters and radians (Pose3d/Translation3d/Rotation3d).
+- Position feedback comes from the Positioner (e.g., LimeLight) and Gyro through ModuleController.
+- isNearby() is deprecated in favor of AwaitTarget but still used to gate some position events.
 
 ---
 
@@ -117,7 +186,7 @@ Option A: SendableChooser (recommended)
 // In Robot.robotInit()
 var chooser = new edu.wpi.first.wpilibj.smartdashboard.SendableChooser<String>();
 AutoController moveShoot = new AutoController("MoveAndShoot");
-// moveShoot.AddSequence(new SequenceMoveAndShoot(moveShoot.GetLabel(), modules, moveShoot));
+moveShoot.AddSequence(new SequenceMoveAndShoot(moveShoot.GetLabel(), modules, moveShoot));
 chooser.setDefaultOption(moveShoot.GetLabel(), moveShoot.GetLabel());
 SmartDashboard.putData("Auto Selector", chooser);
 
@@ -130,7 +199,7 @@ Option B: String array (matches current Robot.java)
 ```java
 // In Robot.robotInit()
 AutoController timedShoot = new AutoController("MoveAndShoot");
-// timedShoot.AddSequence(new SequenceMoveAndShoot(timedShoot.GetLabel(), modules, timedShoot));
+timedShoot.AddSequence(new SequenceMoveAndShoot(timedShoot.GetLabel(), modules, timedShoot));
 AutoModes.put(timedShoot.GetLabel(), timedShoot);
 SmartDashboard.putStringArray("Auto List", AutoModes.keySet().toArray(new String[] {}));
 ```
