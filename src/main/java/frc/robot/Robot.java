@@ -342,6 +342,7 @@ public class Robot extends TimedRobot {
     currentAutoMode = rotateWait;
 
 
+    SmartDashboard.putStringArray("Auto List", new String[] {});
     SmartDashboard.putStringArray("Auto List", AutoModes.keySet().toArray(new String[] {}));
   }
 

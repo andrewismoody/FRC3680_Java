@@ -98,7 +98,8 @@ public class AutoSequence {
 
         finished = !notFinished;
 
-        controller.ProcessDrive(true);
+        // this was being called twice - once in module controller and once here
+        //controller.ProcessDrive(true);
     }
 
     // this is deprecated and should be removed in favor of awaittarget
