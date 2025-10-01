@@ -3,6 +3,11 @@ package frc.robot;
 import java.util.Hashtable;
 
 import edu.wpi.first.math.geometry.Pose3d;
+import frc.robot.action.Action;
+import frc.robot.action.ActionPose;
+import frc.robot.action.Group;
+import frc.robot.action.Location;
+import frc.robot.action.Position;
 
 public class ModuleController {
   Hashtable<String, RobotModule> modules = new Hashtable<String, RobotModule>();
@@ -123,7 +128,32 @@ public class ModuleController {
     inverseValue = newInverse;
   }
 
+  public double getInverseValue() {
+    return inverseValue;
+  }
+
   public Pose3d GetPosition() {
     return driveModule.GetPosition();
+  }
+
+  public void SetTargetActionPose(ActionPose actionPose) {
+    SetTargetActionPose(actionPose.group, actionPose.location, actionPose.locationIndex, actionPose.position, actionPose.action);
+  }    
+
+  public void SetTargetActionPose(Group group, Location location, int locationIndex, Position position, Action action) {
+    for (RobotModule module : modules.values()) {
+      module.SetTargetActionPose(group, location, locationIndex, position, action);
+    }
+  }
+
+  public boolean GetTarget() {
+    boolean hasTarget = false;
+
+    for (RobotModule module : modules.values()) {
+      if (module.GetTarget() != null)
+        hasTarget = true;
+    }
+
+    return hasTarget;
   }
 }

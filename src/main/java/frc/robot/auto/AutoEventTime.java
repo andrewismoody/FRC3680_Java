@@ -23,6 +23,7 @@ public class AutoEventTime implements AutoEvent {
 
     AutoSequence autoEvent;
     
+    // AutoEventTime will trigger an event for the specified number of milliseconds.  If an AutoEvent is supplied, it will be triggered at the end of the time period.
     public AutoEventTime(String Label, boolean Parallel, long Milliseconds, EventType EventType, AutoController AutoController) {
         label = Label;
         parallel = Parallel;
@@ -47,15 +48,12 @@ public class AutoEventTime implements AutoEvent {
                     doubleEvent.accept(doubleValue);
                 break;
             case Auto:
-                if (autoEvent != null)
-                    autoController.AddSequence(autoEvent);
-                break;
+                // only trigger auto event at the end of the time period (setcomplete=true)
             case SetTarget:
             case AwaitTarget:
                 // not implemented for Time Event Type
                 break;
         }
-        complete = true;
     }
 
     public long GetMilliseconds() {
@@ -75,6 +73,10 @@ public class AutoEventTime implements AutoEvent {
     }
 
     public void SetComplete(boolean Complete) {
+        // trigger the next autoevent at the end of the time period
+        if (Complete && autoEvent != null)
+            autoController.AddSequence(autoEvent);
+
         complete = Complete;
     }
 

@@ -146,10 +146,13 @@ public class GameController {
         switch (Type) {
             case Xbox:
                 xboxController = new XboxController(index);
+                break;
             case PS4:
                 ps4Controller = new PS4Controller(index);
+                break;
             case FlightStick:
                 fsController = new Joystick(index);
+                break;
         }
 
         RegisterBinaryButtonSupplier(ButtonName.TopButton, this::getTopButton);

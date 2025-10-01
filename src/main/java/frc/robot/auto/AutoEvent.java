@@ -5,6 +5,7 @@ public interface AutoEvent {
     public enum TriggerType {
         Time,
         Position,
+        Target,
         Auto,
     }
 

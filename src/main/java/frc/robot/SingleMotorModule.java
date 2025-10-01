@@ -167,21 +167,22 @@ public class SingleMotorModule implements RobotModule {
             AbandonTarget();
         }
     }
-    
-    @Override
-    public void ProcessState(boolean isAuto) {
-        if (enc != null) {
-            if (enc.isAbsolute())
-                setRotationFromAbsolute();
-            else
-                rotationCount = enc.getRawValue();
-        }
 
-        double angleTolerance = 0.00001; // 0.00001;
-
+    public void EvaluateTargetPose() {
         if (targetPose != null && currentDriveSpeed == 0.0) {
+            double angleTolerance = 0.00001; // 0.00001;
             var target = targetPose.pose;
+
+            if (enc != null) {
+                if (enc.isAbsolute())
+                    setRotationFromAbsolute();
+                else
+                    rotationCount = enc.getRawValue();
+                myTable.getEntry("rotationCount").setDouble(rotationCount);
+            }
+    
             // we have a target and we're not manually applying a value, try to get to it.
+            // the x axis of the position of the pose is the rotation count (distance along the motor axis)
             var targetRotation = target.getX();
             var targetDistance = Math.abs(targetRotation - rotationCount);
             myTable.getEntry("targetDistance").setDouble(targetDistance);
@@ -213,7 +214,11 @@ public class SingleMotorModule implements RobotModule {
 
             sampleCount++;
         }
-
+    }
+    
+    @Override
+    public void ProcessState(boolean isAuto) {
+        EvaluateTargetPose();
 
         myTable.getEntry("currentDriveSpeed").setDouble(currentDriveSpeed);
         previousDriveSpeed = currentDriveSpeed;
@@ -231,7 +236,6 @@ public class SingleMotorModule implements RobotModule {
             AbandonTarget();
         }
 
-        myTable.getEntry("rotationCount").setDouble(rotationCount);
         previousRotationCount = rotationCount;
 
         currentDriveSpeed = 0.0;
@@ -270,7 +274,6 @@ public class SingleMotorModule implements RobotModule {
             AbandonTarget();
         }
     }
-
 
     public void AbandonTarget() {
         if (debug) {

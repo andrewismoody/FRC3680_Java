@@ -27,8 +27,8 @@ import frc.robot.GameController.ButtonName;
 import frc.robot.GameController.ControllerType;
 import frc.robot.action.*;
 import frc.robot.auto.AutoController;
+import frc.robot.auto.SequenceControllerScoreReloadScore;
 import frc.robot.auto.SequenceRotateScoreReturn;
-import frc.robot.auto.SequenceRotateWaitReturn;
 import frc.robot.gyro.AHRSGyro;
 import frc.robot.gyro.Gyro;
 import frc.robot.positioner.LimeLightPositioner;
@@ -173,8 +173,7 @@ public class Robot extends TimedRobot {
     // SendableRegistry.addChild(m_robotDrive, m_leftDrive);
     // SendableRegistry.addChild(m_robotDrive, m_rightDrive);
     
-    // TODO: Re-enable this.
-    // CameraServer.startAutomaticCapture();
+    CameraServer.startAutomaticCapture();
   }
   /**
    * This function is run when the robot is first started up and should be used
@@ -268,13 +267,19 @@ public class Robot extends TimedRobot {
         break;
     }
 
+    swerveDriveModule.AddActionPose(new ActionPose(Group.Score, Location.Reef, 0, Position.Any, Action.Any, new Pose3d(new Translation3d(5.0, 10.0, 0), new Rotation3d(0, 0, 45))));
+    swerveDriveModule.AddActionPose(new ActionPose(Group.Pickup, Location.Coral, 0, Position.Any, Action.Any, new Pose3d(new Translation3d(2.0, 0.0, 0), new Rotation3d(0, 0, 45))));
+    swerveDriveModule.AddActionPose(new ActionPose(Group.Pickup, Location.Coral, 1, Position.Any, Action.Any, new Pose3d(new Translation3d(2.0, 50.0, 0), new Rotation3d(0, 0, 315))));
+
     elevator.AddActionPose(new ActionPose(Group.Score, Location.Any, -1, Position.Lower, Action.Any, new Pose3d(new Translation3d(0.28, 0, 0), new Rotation3d())));
     elevator.AddActionPose(new ActionPose(Group.Score, Location.Any, -1, Position.Middle, Action.Any, new Pose3d(new Translation3d(1.14, 0, 0), new Rotation3d())));
-
-    elevator.AddActionPose(new ActionPose(Group.Score, Location.Any, -1, Position.Trough, Action.Any, new Pose3d(new Translation3d(0.0, 0, 0), new Rotation3d())));
+    elevator.AddActionPose(new ActionPose(Group.Any, Location.Any, -1, Position.Trough, Action.Any, new Pose3d(new Translation3d(0.0, 0, 0), new Rotation3d())));
     modules.AddModule(elevator);
+
   //  modules.AddModule(lifter);
   //   modules.AddModule(grabber);
+    slide.AddActionPose(new ActionPose(Group.Any, Location.Any, -1, Position.Any, Action.Drop, new Pose3d(new Translation3d(1, 0, 0), new Rotation3d())));
+    slide.AddActionPose(new ActionPose(Group.Any, Location.Any, -1, Position.Any, Action.Pickup, new Pose3d(new Translation3d(-1, 0, 0), new Rotation3d())));
     modules.AddModule(slide);
 
     modules.enableDrive = true;
@@ -284,6 +289,7 @@ public class Robot extends TimedRobot {
     modules.Initialize();
 
 
+    // TODO: Any button push should pause current auto sequence across the autocontroller
     // TODO: need to move button mappings to preferences and initialize in game controller class
 
     // three different modules operate the same component differently
@@ -337,10 +343,19 @@ public class Robot extends TimedRobot {
     // modules::ProcessSpeedDilation);
 
     // TODO: need to move this definition to preferences and initialize in automodes rather than hard coding
-    AutoController rotateWait = new AutoController("RotateWait");
-    rotateWait.AddSequence(new SequenceRotateScoreReturn(rotateWait.GetLabel(), modules, rotateWait));
-    AutoModes.put(rotateWait.GetLabel(), rotateWait);
-    currentAutoMode = rotateWait;
+    AutoController rotateScoreReturn = new AutoController("RotateScoreReturn");
+    rotateScoreReturn.AddSequence(new SequenceRotateScoreReturn(rotateScoreReturn.GetLabel(), modules, rotateScoreReturn));
+    AutoModes.put(rotateScoreReturn.GetLabel(), rotateScoreReturn);
+
+    AutoController rotateWaitReturn = new AutoController("RotateWaitReturn");
+    rotateWaitReturn.AddSequence(new SequenceRotateScoreReturn(rotateWaitReturn.GetLabel(), modules, rotateWaitReturn));
+    AutoModes.put(rotateWaitReturn.GetLabel(), rotateWaitReturn);
+
+    AutoController controllerScoreReloadScore = new AutoController("ControllerScoreReloadScore");
+    controllerScoreReloadScore.AddSequence(new SequenceControllerScoreReloadScore(controllerScoreReloadScore.GetLabel(), modules, controllerScoreReloadScore));
+    AutoModes.put(controllerScoreReloadScore.GetLabel(), controllerScoreReloadScore);
+    
+    currentAutoMode = rotateScoreReturn;
 
 
     SmartDashboard.putStringArray("Auto List", new String[] {});

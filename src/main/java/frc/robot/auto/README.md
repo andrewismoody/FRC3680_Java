@@ -1,243 +1,98 @@
 # Autonomous Framework (FRC3680)
 
-This package provides a small framework to build autonomous routines using:
-- AutoController: holds one or more AutoSequence instances (each a routine).
-- AutoSequence: an ordered list of AutoEvent steps (time/position/auto triggers).
-- AutoEvent: abstract step with trigger and Run() action (see concrete types).
+Overview
+- AutoController: manages one or more AutoSequence instances.
+- AutoSequence: ordered list of AutoEvent steps.
+- AutoEvent: concrete event types (Time, Target, Position, Auto) with Run().
 
-## Selection and life-cycle
-- Registration:
-  - Robot.robotInit() creates AutoController instances and registers them:
+Lifecycle and selection
+- Register:
   ```java
-    // ...existing code...
-    AutoController rotateWait = new AutoController("RotateWait");
-    rotateWait.AddSequence(new SequenceRotateWaitReturn(...));
-    AutoModes.put(rotateWait.GetLabel(), rotateWait);
-    SmartDashboard.putStringArray("Auto List", AutoModes.keySet().toArray(new String[] {}));
-    // ...existing code...
+  // ...existing code...
+  AutoController rotateWait = new AutoController("RotateWait");
+  rotateWait.AddSequence(new SequenceRotateWaitReturn(rotateWait.GetLabel(), modules, rotateWait));
+  AutoModes.put(rotateWait.GetLabel(), rotateWait);
+  SmartDashboard.putStringArray("Auto List", AutoModes.keySet().toArray(new String[] {}));
+  // ...existing code...
   ```
-- Selection:
-  - SmartDashboard key: "Auto Selector" (string) must match one label from "Auto List".
-  - Robot.autonomousInit() does:
+- Initialize and run:
   ```java
-    // ...existing code...
-    currentAutoMode = AutoModes.get(SmartDashboard.getString("Auto Selector", AutoModes.keys().nextElement()));
-    currentAutoMode.Initialize();
-  ```
-- Periodic:
-  - Robot.autonomousPeriodic() calls:
-  ```java
-    currentAutoMode.Update();
-    modules.ProcessState(true);
+  // autonomousInit
+  currentAutoMode = AutoModes.get(SmartDashboard.getString("Auto Selector", AutoModes.keys().nextElement()));
+  currentAutoMode.Initialize();
+
+  // autonomousPeriodic
+  currentAutoMode.Update();
+  modules.ProcessState(true);
   ```
 
-## Built-in mode
-- RotateWait
-  - Label: "RotateWait"
-  - Behavior: rotate, wait, then return to starting heading (see SequenceRotateWaitReturn).
+Recent changes
+- TriggerType.Target with AutoEventTarget
+  - EventType.SetTarget: dispatch an ActionPose to a module (completes immediately).
+  - EventType.AwaitTarget: completes when module clears its target (e.g., AbandonTarget()).
+- Legacy TriggerType.Position still supported for backward compatibility.
+- Time events now “hold until duration”
+  - AutoSequence.Update() calls Run() every loop while elapsedTime < milliseconds, then completes and resets startTime.
+  - 0 ms Time events do not call Run() (complete immediately).
+- SingleActuatorModule supports target-based holds
+  - EvaluateTargetPose applies forward/reverse based on pose X (>0 forward, <0 reverse, 0 off).
+  - Internal holdTime defaults to 2000 ms before AbandonTarget().
 
-## AutoSequence semantics
-- Timing base:
-  - Initialize() captures a startTime.
-  - After any event triggers and Run() executes, startTime is reset. Use relative time for subsequent timed events.
-- Triggers (simplified):
-  - Time: fires when elapsedTime > milliseconds.
-  - Position:
-    - AwaitTarget: repeatedly Run() until it marks complete; then time resets.
-    - SetTarget or Nearby: fires immediately for SetTarget or when isNearby(current, target, posTol=0.5m, angTol=1.0rad).
-- Parallel vs sequential:
-  - After processing an event, if it’s not parallel, the loop breaks to run it alone. Parallel events can trigger together.
-- Completion:
-  - finished becomes true when all events are complete. The controller continues calling ProcessDrive(true).
-
-## Adding a new autonomous routine
-1. Implement a sequence:
-   - Create a class extending AutoSequence (or compose events inside a helper) and AddEvent(...) steps in its constructor.
-2. Register it:
-   - In Robot.robotInit():
-   ```java
-     // ...existing code...
-     AutoController myAuto = new AutoController("MyAuto");
-     myAuto.AddSequence(new MySequence(myAuto.GetLabel(), modules, myAuto));
-     AutoModes.put(myAuto.GetLabel(), myAuto);
-     SmartDashboard.putStringArray("Auto List", AutoModes.keySet().toArray(new String[] {}));
-     // ...existing code...
-   ```
-3. Select it on the dashboard:
-   - Set "Auto Selector" to "MyAuto" before enabling autonomous.
-
-## Notes
-- Poses use meters and radians (Pose3d/Translation3d/Rotation3d).
-- Position feedback comes from the Positioner (e.g., LimeLight) and Gyro through ModuleController.
-- isNearby() is deprecated in favor of AwaitTarget but still used to gate some position events.
-
----
-
-## Event Types
-
+Event types and semantics
 - Time
-  - Use AutoEventTime to trigger Void/Boolean/Double/Auto actions after a delay.
-- Position (Adaptive pattern)
-  - SetTarget: tell a module to pursue a target; event completes immediately.
-  - AwaitTarget: wait until the module reports it has reached/cleared its target; event completes when module clears the target.
+  - Use for Boolean/Double/Void/Auto actions that must be applied across multiple loops for a duration.
+  - Note: use milliseconds > 0 if you need Run() to execute.
+- Target (preferred for setpoint control)
+  - SetTarget: module.SetTargetActionPose(...), completes immediately.
+  - AwaitTarget: waits until module.GetTarget() == null.
+- Position (legacy)
+  - Retained for older flows; prefer Target events for new code.
 - Auto
-  - Queue or monitor nested sequences.
+  - Nest and monitor child sequences.
 
-Note: The “adaptive” behavior is achieved via Position events using SetTarget and AwaitTarget. Modules decide when they are “finished” by clearing their target; events only mark “complete” when appropriate.
+Patterns for modules
 
----
+1) Target-based setpoints (recommended for motion/position)
+- SwerveDriveModule, SingleMotorModule:
+  - AddActionPose(...) during robotInit.
+  - Sequence uses AutoEventTarget(SetTarget) then AutoEventTarget(AwaitTarget).
+- SingleActuatorModule:
+  - AddActionPose with X=1 for forward/open, X=-1 for reverse/close, X=0 for off.
+  - Use Target events to leverage internal holdTime without extra timers.
 
-## Module Feedback Contract
+2) Direct timed commands (simple on/off or open-loop)
+- Time(Boolean, ms) + ApplyValue/ApplyInverse
+  - Use ms > 0 to actually apply each loop.
+  - Example: hold open for 2000 ms by Time(Boolean, 2000) + slide::ApplyValue.
 
-- SwerveDriveModule
-  - SetTargetActionPose(ActionPose)
-  - GetTarget(): ActionPose or null when done
-  - Internally clears target when reached.
-- SingleMotorModule
-  - SetTargetActionPose(...), GetTarget()
-  - Clears target when the goal is reached.
+Example: rotate, score, return (abridged)
+- Drive and elevator via Target events:
+  - SetTarget: rotate90 and elevL2 (parallel).
+  - AwaitTarget: both complete.
+- Latch with time or target:
+  - Time approach: Time(Boolean, 2000) + slide::ApplyValue; then Time(Boolean, small>0) + slide::ApplyInverse.
+  - Target approach: SetTarget to slide pose with X=1 (open); AwaitTarget lets module auto-abandon after holdTime.
 
-AutoEventPosition ties these together:
-- SetTarget: targetModule.SetTargetActionPose(target); event completes now.
-- AwaitTarget: if targetModule.GetTarget() == null then event completes; otherwise keep waiting.
+ModuleController approaches
+- Access:
+  - modules.GetDriveModule() -> active DriveModule (swerve/differential).
+  - modules.GetModule("elevator" | "slide" | ...) -> specific RobotModule.
+- Control styles:
+  1) Target-based: SetTargetActionPose + AwaitTarget (module owns completion).
+  2) Timed direct: AutoEventTime(Boolean/Double) for sustained application across ms.
 
-AutoSequence.Update drives this by calling Run() on events when their trigger condition is met.
+Timing details
+- AutoSequence.Initialize() captures startTime.
+- Any event that completes will reset startTime; following Time events are relative to that reset.
 
----
+Troubleshooting
+- “Latch didn’t open” when using Time(Boolean, 0):
+  - 0 ms does not invoke Run(); use duration > 0 ms or use Target-based slide control to leverage holdTime.
+- AwaitTarget never completes:
+  - Ensure targetModule is set, a valid ActionPose exists (AddActionPose + GetActionPose not null), and the module clears its target.
+- Motion doesn’t start:
+  - Verify module has the ActionPose you dispatch and that SetTarget is used before AwaitTarget.
 
-## Minimal Examples
-
-### Timed Shooter (matches SequenceShoot)
-```java
-public class SequenceShoot extends AutoSequence {
-    public SequenceShoot(String label, ModuleController modules, AutoController ac) {
-        super(label, modules, ac);
-        var ejector = modules.GetModule("ejector");
-        if (ejector != null) {
-            AutoEventTime start = new AutoEventTime("Start Shooter", false, 0, EventType.Boolean, ac);
-            start.boolEvent = ejector::ProcessState;
-            start.boolValue = true;
-            AddEvent(start);
-
-            AutoEventTime stop = new AutoEventTime("Stop Shooter", false, 2000, EventType.Boolean, ac);
-            stop.boolEvent = ejector::ProcessState;
-            stop.boolValue = false;
-            AddEvent(stop);
-        }
-    }
-}
-```
-
-### Drive to Pose (Position: SetTarget + AwaitTarget)
-```java
-// Prepare an ActionPose in your Drive module at init time (example)
-swerveDriveModule.AddActionPose(
-  new ActionPose(Group.Score, Location.Any, -1, Position.Lower,
-                 Action.Any, new Pose3d(/* x,y,z + rot */)));
-
-// In a sequence, first set the target, then await completion
-AutoEventPosition set = new AutoEventPosition(
-  "Set Drive Target", false,
-  swerveDriveModule.GetActionPose(Group.Score, Location.Any, -1, Position.Lower, Action.Any),
-  EventType.SetTarget, autoController);
-set.targetModule = swerveDriveModule;
-AddEvent(set);
-
-AutoEventPosition await = new AutoEventPosition(
-  "Await Drive Target", false, null,
-  EventType.AwaitTarget, autoController);
-await.targetModule = swerveDriveModule;
-AddEvent(await);
-```
-
-Tip:
-- Use SetTarget for any module that supports SetTargetActionPose/GetTarget (e.g., SwerveDriveModule, SingleMotorModule).
-- Always follow SetTarget with AwaitTarget if you need to block until the module finishes.
-
----
-
-## Sequence Examples
-
-### Move and Stop (matches SequenceMoveAndShoot structure)
-```java
-public class SequenceMoveAndStop extends AutoSequence {
-  public SequenceMoveAndStop(String label, ModuleController modules, AutoController ac) {
-    super(label, modules, ac);
-
-    AutoEventTime startDrive = new AutoEventTime("Move Forward", true, 0, EventType.Double, ac);
-    startDrive.doubleEvent = modules.GetDriveModule()::ProcessForwardSpeed;
-    startDrive.doubleValue = 1.0;
-    AddEvent(startDrive);
-
-    AutoEventTime stopDrive = new AutoEventTime("Stop Driving", false, 3000, EventType.Double, ac);
-    stopDrive.doubleEvent = modules.GetDriveModule()::ProcessForwardSpeed;
-    stopDrive.doubleValue = 0.0;
-    AddEvent(stopDrive);
-  }
-}
-```
-
----
-
-## Driver Station Selection
-
-Option A: SendableChooser (recommended)
-```java
-// In Robot.robotInit()
-var chooser = new edu.wpi.first.wpilibj.smartdashboard.SendableChooser<String>();
-AutoController moveShoot = new AutoController("MoveAndShoot");
-moveShoot.AddSequence(new SequenceMoveAndShoot(moveShoot.GetLabel(), modules, moveShoot));
-chooser.setDefaultOption(moveShoot.GetLabel(), moveShoot.GetLabel());
-SmartDashboard.putData("Auto Selector", chooser);
-
-// Keep a map of modes
-java.util.Hashtable<String, AutoController> AutoModes = new java.util.Hashtable<>();
-AutoModes.put(moveShoot.GetLabel(), moveShoot);
-```
-
-Option B: String array (matches current Robot.java)
-```java
-// In Robot.robotInit()
-AutoController timedShoot = new AutoController("MoveAndShoot");
-timedShoot.AddSequence(new SequenceMoveAndShoot(timedShoot.GetLabel(), modules, timedShoot));
-AutoModes.put(timedShoot.GetLabel(), timedShoot);
-SmartDashboard.putStringArray("Auto List", AutoModes.keySet().toArray(new String[] {}));
-```
-
-Selection on autonomousInit (chooser or string key):
-```java
-// Using chooser:
-var data = SmartDashboard.getData("Auto Selector");
-String selected = data instanceof edu.wpi.first.wpilibj.smartdashboard.SendableChooser
-  ? ((edu.wpi.first.wpilibj.smartdashboard.SendableChooser<String>) data).getSelected()
-  : null;
-
-// Using string array:
-String[] list = SmartDashboard.getStringArray("Auto List", new String[] {});
-String fallback = list.length > 0 ? list[0] : null;
-selected = selected != null ? selected : SmartDashboard.getString("Auto Selector", fallback);
-
-// Resolve and start:
-AutoController currentAuto = selected != null ? AutoModes.get(selected) : null;
-if (currentAuto != null) currentAuto.Initialize();
-```
-
----
-
-## Notes
-
-- AutoSequence.Update already handles:
-  - Time trigger: compares elapsed to event.milliseconds.
-  - Position trigger:
-    - SetTarget runs once and completes.
-    - AwaitTarget polls module.GetTarget() until null, then completes.
-  - Auto trigger: use for nested sequences.
-- Deprecated proximity helper isNearby() exists but SetTarget/AwaitTarget is preferred.
-
----
-
-## Troubleshooting
-
-- Event never completes: ensure AwaitTarget has targetModule set and the module clears its target.
-- Module doesn’t move: verify ActionPose exists in the module (AddActionPose) and SetTargetActionPose resolves a non-null pose.
-- DS selection empty: ensure AutoModes is populated and SmartDashboard is updated in robotInit.
+Notes
+- Poses are in meters/radians (Pose3d/Translation3d/Rotation3d).
+- Positioner and Gyro feed GetPosition(); modules should clear targets on completion.

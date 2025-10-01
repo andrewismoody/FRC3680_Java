@@ -32,24 +32,24 @@ public class SequenceRotateWaitReturn extends AutoSequence {
     drive.AddActionPose(rotate0);
 
     // Phase 1: Dispatch both targets in parallel
-    AutoEventPosition setDrive90 = new AutoEventPosition("Set Drive 90deg", false, rotate90, AutoEvent.EventType.SetTarget, ac);
+    AutoEventTarget setDrive90 = new AutoEventTarget("Set Drive 90deg", false, rotate90, AutoEvent.EventType.SetTarget, ac);
     setDrive90.targetModule = drive;
     AddEvent(setDrive90);
 
     // Phase 2: Await completion
-    AutoEventPosition awaitDrive90 = new AutoEventPosition("Await Drive 90deg", false, null, AutoEvent.EventType.AwaitTarget, ac);
+    AutoEventTarget awaitDrive90 = new AutoEventTarget("Await Drive 90deg", false, null, AutoEvent.EventType.AwaitTarget, ac);
     awaitDrive90.targetModule = drive;
     AddEvent(awaitDrive90);
 
     AutoEventTime waitTime = new AutoEventTime("Wait 10 seconds", false, 10000, AutoEvent.EventType.Void, ac);
     AddEvent(waitTime);
 
-    AutoEventPosition setDrive0 = new AutoEventPosition("Set Drive 0deg", false, rotate0, AutoEvent.EventType.SetTarget, ac);
+    AutoEventTarget setDrive0 = new AutoEventTarget("Set Drive 0deg", false, rotate0, AutoEvent.EventType.SetTarget, ac);
     setDrive0.targetModule = drive;
     AddEvent(setDrive0);
 
     // Phase 5: Await completion
-    AutoEventPosition awaitDrive0 = new AutoEventPosition("Await Drive 0deg", false, null, AutoEvent.EventType.AwaitTarget, ac);
+    AutoEventTarget awaitDrive0 = new AutoEventTarget("Await Drive 0deg", false, null, AutoEvent.EventType.AwaitTarget, ac);
     awaitDrive0.targetModule = drive;
     AddEvent(awaitDrive0);
   }

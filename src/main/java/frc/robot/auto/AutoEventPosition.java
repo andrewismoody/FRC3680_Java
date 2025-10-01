@@ -2,17 +2,17 @@ package frc.robot.auto;
 
 import java.util.function.Consumer;
 
-import frc.robot.RobotModule;
-import frc.robot.action.ActionPose;
+import edu.wpi.first.math.geometry.Pose3d;
+import frc.robot.DriveModule;
 
-// AutoEventPosition represents an auto event that attempts to achieve a specific position or pose.
+// AutoEventPosition represents an auto event that is triggered when the drive module reaches a specific pose.
 public class AutoEventPosition implements AutoEvent {
     boolean complete;
     boolean parallel;
     String label;
     AutoController autoController;
 
-    ActionPose target;
+    Pose3d target;
 
     EventType eventType;
 
@@ -26,54 +26,69 @@ public class AutoEventPosition implements AutoEvent {
 
     AutoSequence autoEvent;
 
-    RobotModule targetModule; // for adaptive events
+    boolean isNearby = false;
+    boolean wasNearby = false;
+    double positionTolerance = 0.1; // meters
+    double rotationTolerance = 5.0; // degrees
 
-    public AutoEventPosition(String Label, Boolean Parallel, ActionPose Target, EventType EventType, AutoController AutoController) {
+    DriveModule driveModule;
+
+    public AutoEventPosition(String Label, Boolean Parallel, Pose3d Target, EventType EventType, AutoController AutoController, DriveModule DriveModule) {
         label = Label;
         parallel = Parallel;
         eventType = EventType;
         autoController = AutoController;
+        driveModule = DriveModule;
 
         target = Target;
     }
 
     public void Run() {
-        switch (eventType) {
-            case Void:
-                if (voidEvent != null)
-                    voidEvent.run();
-                complete = true;
-                break;
-            case Boolean:
-                if (boolEvent != null)
-                    boolEvent.accept(boolValue);
-                complete = true;
-                break;
-            case Double:
-                if (doubleEvent != null)
-                    doubleEvent.accept(doubleValue);
-                complete = true;
-                break;
-            case Auto:
-                if (autoEvent != null)
-                    autoController.AddSequence(autoEvent);
-                complete = true;
-                break;
-            case SetTarget:
-                if (targetModule != null && target != null)
-                    targetModule.SetTargetActionPose(target);
-                complete = true;
-                break;
-            case AwaitTarget:
-                if (targetModule == null) {
+        wasNearby = isNearby;
+        isNearby = isNearby(driveModule.GetPosition(), target, positionTolerance, rotationTolerance);
+        
+        if (isNearby) {
+            switch (eventType) {
+                case Void:
+                    if (voidEvent != null)
+                        voidEvent.run();
+                    break;
+                case Boolean:
+                    if (boolEvent != null)
+                        boolEvent.accept(boolValue);
+                    break;
+                case Double:
+                    if (doubleEvent != null)
+                        doubleEvent.accept(doubleValue);
+                    break;
+                case Auto:
+                    if (autoEvent != null)
+                        autoController.AddSequence(autoEvent);
+                    break;
+                default:
+                    // auto-complete if parameters aren't correct
                     complete = true;
                     break;
-                }
-                if (targetModule.GetTarget() == null) {
-                    complete = true;
-                }
-                break;
+            }
         }
+
+        if (!isNearby && wasNearby) {
+            // we were nearby, but now we're not - so reset the event
+            complete = true;
+        }
+    }
+
+    boolean isNearby(Pose3d Position, Pose3d Target, double PositionTolerance, double AngleTolerance) {
+        if (Math.abs(Position.getX() - Target.getX()) > PositionTolerance)
+            return false;
+
+        if (Math.abs(Position.getY() - Target.getY()) > PositionTolerance)
+            return false;
+
+        if (Math.abs(Position.getRotation().getZ() - Target.getRotation().getZ()) > AngleTolerance)
+            return false;
+
+        return true;
     }
 
     public TriggerType GetTriggerType() {
