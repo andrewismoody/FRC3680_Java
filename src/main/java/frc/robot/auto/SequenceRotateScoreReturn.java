@@ -13,6 +13,7 @@ import frc.robot.action.Group;
 import frc.robot.action.Location;
 import frc.robot.action.Position;
 
+// SequenceRotateScoreReturn is an example auto sequence that uses target events mixed with timed events to control multiple modules.
 public class SequenceRotateScoreReturn extends AutoSequence {
   public SequenceRotateScoreReturn(String label, ModuleController modules, AutoController ac) {
     super(label, modules, ac);

@@ -11,6 +11,7 @@ import frc.robot.action.Group;
 import frc.robot.action.Location;
 import frc.robot.action.Position;
 
+// SequenceRotateWaitReturn is a simple example auto sequence that uses target events mixed with timed events to move the robot.
 public class SequenceRotateWaitReturn extends AutoSequence {
   public SequenceRotateWaitReturn(String label, ModuleController modules, AutoController ac) {
     super(label, modules, ac);
