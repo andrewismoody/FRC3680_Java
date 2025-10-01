@@ -168,4 +168,8 @@ public class DualMotorModule implements RobotModule {
 
         return new Pose3d(new Translation3d(leftVal, rightVal, 0), new Rotation3d());
     }
+
+    public void AbandonTarget() {
+        targetPose = null;
+    }
 }

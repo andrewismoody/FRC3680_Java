@@ -343,20 +343,19 @@ public class Robot extends TimedRobot {
     // modules::ProcessSpeedDilation);
 
     // TODO: need to move this definition to preferences and initialize in automodes rather than hard coding
-    AutoController rotateScoreReturn = new AutoController("RotateScoreReturn");
+    AutoController rotateScoreReturn = new AutoController("RotateScoreReturn", m_controller);
     rotateScoreReturn.AddSequence(new SequenceRotateScoreReturn(rotateScoreReturn.GetLabel(), modules, rotateScoreReturn));
     AutoModes.put(rotateScoreReturn.GetLabel(), rotateScoreReturn);
 
-    AutoController rotateWaitReturn = new AutoController("RotateWaitReturn");
+    AutoController rotateWaitReturn = new AutoController("RotateWaitReturn", m_controller);
     rotateWaitReturn.AddSequence(new SequenceRotateScoreReturn(rotateWaitReturn.GetLabel(), modules, rotateWaitReturn));
     AutoModes.put(rotateWaitReturn.GetLabel(), rotateWaitReturn);
 
-    AutoController controllerScoreReloadScore = new AutoController("ControllerScoreReloadScore");
+    AutoController controllerScoreReloadScore = new AutoController("ControllerScoreReloadScore", m_controller);
     controllerScoreReloadScore.AddSequence(new SequenceControllerScoreReloadScore(controllerScoreReloadScore.GetLabel(), modules, controllerScoreReloadScore));
     AutoModes.put(controllerScoreReloadScore.GetLabel(), controllerScoreReloadScore);
     
     currentAutoMode = rotateScoreReturn;
-
 
     SmartDashboard.putStringArray("Auto List", new String[] {});
     SmartDashboard.putStringArray("Auto List", AutoModes.keySet().toArray(new String[] {}));

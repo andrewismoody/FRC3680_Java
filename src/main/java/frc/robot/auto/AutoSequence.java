@@ -16,6 +16,8 @@ public class AutoSequence {
 
     ArrayList<AutoEvent> Events = new ArrayList<AutoEvent>();
 
+    boolean interrupt = false;
+
     public AutoSequence(String Label, ModuleController Controller, AutoController MyController) {
         label = Label;
         controller = Controller;
@@ -43,15 +45,24 @@ public class AutoSequence {
         for (AutoEvent event : Events) {
             event.SetComplete(false);
         }
+        
+        interrupt = false;
+        finished = false;
     }
 
     public void Update() {
+        if (interrupt)
+            return;
+
         elapsedTime = System.currentTimeMillis() - startTime;
 
         boolean notFinished = false;
 
         // process triggers
         eventLoop: for (AutoEvent event : Events) {
+            if (interrupt)
+                return;
+
             if (!event.IsComplete()) {
                 notFinished = true;
                 switch (event.GetTriggerType()) {
@@ -115,6 +126,14 @@ public class AutoSequence {
     }
 
     public void Shutdown() {
+        interrupt = true;
 
+        // stop evaluating and mark complete
+        finished = true;
+
+        // clear any active module targets to unblock AwaitTarget events
+        if (controller != null) {
+            controller.AbandonAllTargets();
+        }
     }
 }

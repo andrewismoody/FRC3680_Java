@@ -156,4 +156,23 @@ public class ModuleController {
 
     return hasTarget;
   }
+
+    // Abort all active module targets (drive/elevator/actuators) safely
+    public void AbandonAllTargets() {
+        for (var module : modules.values()) {
+            try {
+                module.AbandonTarget();
+            } catch (Throwable t) {
+                // ignore and continue
+            }
+        }
+        // also ensure drive open-loop is zeroed if applicable
+        try {
+            GetDriveModule().ProcessForwardSpeed(0.0);
+            GetDriveModule().ProcessLateralSpeed(0.0);
+            GetDriveModule().ProcessRotationAngle(0.0);
+        } catch (Throwable t) {
+            // ignore
+        }
+    }
 }

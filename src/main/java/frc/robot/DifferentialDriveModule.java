@@ -145,5 +145,9 @@ public class DifferentialDriveModule implements DriveModule {
 
     public void SetTargetActionPose(Group group, Location location, int locationIndex, Position position, Action action) {
         // TODO: Implement this.
-    }    
+    }
+    
+    public void AbandonTarget() {
+        targetPose = null;
+    }
 }

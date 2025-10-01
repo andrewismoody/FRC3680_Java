@@ -347,8 +347,9 @@ public class SwerveDriveModule implements DriveModule {
         // https://docs.wpilib.org/en/stable/docs/software/kinematics-and-odometry/swerve-drive-kinematics.htm
         // https://docs.wpilib.org/en/stable/docs/software/hardware-apis/sensors/gyros-software.html
         // https://www.chiefdelphi.com/t/set-motor-position-with-encoder/152088/3
-        // TODO: make the gyro angle more robust - we would probably never ask for a negative angle, so maybe it should only return positive angles?
-        double newAngle = -getGyroAngle();
+        
+        // Invert the Gyro angle because it rotates opposite of the robot steering, then wrap it to a positive value
+        double newAngle = ((-getGyroAngle() % 360.0) + 360.0) % 360.0;
         myTable.getEntry("actualAngle").setDouble(newAngle);
 
         EvaluateTargetPose(newAngle);

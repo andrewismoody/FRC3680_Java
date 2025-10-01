@@ -1,6 +1,7 @@
 package frc.robot;
 
 import java.util.Hashtable;
+import java.util.Map;
 import java.util.ArrayList;
 import java.util.function.Supplier;
 import java.util.function.Consumer;
@@ -42,6 +43,7 @@ public class GameController {
         Start,
         Select,
         Logo,
+        Any,
     }
 
     Hashtable<ButtonName, Supplier<Boolean>> BinaryButtonSuppliers = new Hashtable<GameController.ButtonName,Supplier<Boolean>>();
@@ -177,7 +179,30 @@ public class GameController {
         RegisterValueButtonSupplier(ButtonName.RightThumbstickY, this::getRightY);
 
         RegisterPOVButtonSupplier(ButtonName.POVAngle, this::getPOV);
+        
+        RegisterBinaryButtonSupplier(ButtonName.Any, this::getAnyButton);
     }
+
+   public boolean getAnyButton() {
+       // any binary pressed
+       for (Map.Entry<ButtonName, java.util.function.Supplier<Boolean>> e : BinaryButtonSuppliers.entrySet()) {
+           if (e.getValue().get())
+            return true;
+       }
+       // any axis beyond deadzone
+       for (Map.Entry<ButtonName, java.util.function.Supplier<Double>> e : ValueButtonSuppliers.entrySet()) {
+           double v = e.getValue().get();
+           if (Math.abs(v) > thumbstickDeadZone)
+            return true;
+       }
+       // any POV pressed (angle != -1)
+       for (Map.Entry<ButtonName, java.util.function.Supplier<Integer>> e : POVButtonSuppliers.entrySet()) {
+           if (e.getValue().get() != -1)
+            return true;
+       }
+
+       return false;
+   }
 
     boolean getLeftButton() {
         switch (Type) {

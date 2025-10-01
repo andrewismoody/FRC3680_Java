@@ -3,14 +3,19 @@ package frc.robot.auto;
 import java.util.ArrayList;
 import java.util.HashMap;
 
+import frc.robot.GameController;
+
 // AutoController manages all AutoSequences, allowing for their addition, removal, initialization, updating, and shutdown.
 public class AutoController {
     HashMap<String, AutoSequence> sequences = new HashMap<String, AutoSequence>();
 
     String label = "unset";
+    GameController m_controller;
+    boolean interrupt = false;
 
-    public AutoController(String Label) {
+    public AutoController(String Label, GameController controller) {
         label = Label;
+        m_controller = controller;
     }
 
     public String GetLabel() {
@@ -27,6 +32,15 @@ public class AutoController {
         sequences.remove(sequence.label);
     }
 
+    public void InterruptAll(boolean value) {
+        // value is unused from button mapper
+
+        for (AutoSequence sequence : sequences.values()) {
+            sequence.Shutdown();
+        }
+        sequences.clear();
+    }
+
     public void Initialize() {
         for (AutoSequence sequence : sequences.values()) {
             sequence.Initialize();
@@ -34,6 +48,12 @@ public class AutoController {
     }
 
     public void Update() {
+        interrupt = m_controller.getAnyButton();
+        if (interrupt) {
+            InterruptAll(true);
+            return;
+        }
+
         ArrayList<AutoSequence> Finished = new ArrayList<>();
         for (AutoSequence sequence : sequences.values()) {
             sequence.Update();
