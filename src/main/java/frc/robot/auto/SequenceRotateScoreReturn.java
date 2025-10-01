@@ -25,11 +25,11 @@ public class SequenceRotateScoreReturn extends AutoSequence {
     // Drive poses (rotation only; zero translation)
     var currentTrans = drive.GetPosition().getTranslation();
     ActionPose rotate90 = new ActionPose(
-      Group.Any, Location.Any, -1, Position.Any, Action.Any,
+      Group.Any, Location.Any, 0, Position.Any, Action.Any,
       new Pose3d(currentTrans, new Rotation3d(0, 0, Units.degreesToRadians(90)))
     );
     ActionPose rotate0 = new ActionPose(
-      Group.Any, Location.Any, -1, Position.Any, Action.Any,
+      Group.Any, Location.Any, 1, Position.Any, Action.Any,
       new Pose3d(currentTrans, new Rotation3d(0, 0, Units.degreesToRadians(0)))
     );
     drive.AddActionPose(rotate90);
@@ -40,20 +40,20 @@ public class SequenceRotateScoreReturn extends AutoSequence {
     var elevZero = elevator.GetActionPose(Group.Score, Location.Any, -1, Position.Trough, Action.Any);
 
     // Phase 1: Dispatch both targets in parallel
-    AutoEventPosition setDrive90 = new AutoEventPosition("Set Drive 90deg", true, rotate90, AutoEvent.EventType.SetTarget, ac);
+    AutoEventPosition setDrive90 = new AutoEventPosition("Set Drive 90deg", false, rotate90, AutoEvent.EventType.SetTarget, ac);
     setDrive90.targetModule = drive;
     AddEvent(setDrive90);
 
-    AutoEventPosition setElevL2 = new AutoEventPosition("Set Elevator L2", true, elevL2, AutoEvent.EventType.SetTarget, ac);
-    setElevL2.targetModule = elevator;
-    AddEvent(setElevL2);
-
     // Phase 2: Await both completions in parallel
-    AutoEventPosition awaitDrive90 = new AutoEventPosition("Await Drive 90deg", true, null, AutoEvent.EventType.AwaitTarget, ac);
+    AutoEventPosition awaitDrive90 = new AutoEventPosition("Await Drive 90deg", false, null, AutoEvent.EventType.AwaitTarget, ac);
     awaitDrive90.targetModule = drive;
     AddEvent(awaitDrive90);
 
-    AutoEventPosition awaitElevL2 = new AutoEventPosition("Await Elevator L2", true, null, AutoEvent.EventType.AwaitTarget, ac);
+    AutoEventPosition setElevL2 = new AutoEventPosition("Set Elevator L2", false, elevL2, AutoEvent.EventType.SetTarget, ac);
+    setElevL2.targetModule = elevator;
+    AddEvent(setElevL2);
+
+    AutoEventPosition awaitElevL2 = new AutoEventPosition("Await Elevator L2", false, null, AutoEvent.EventType.AwaitTarget, ac);
     awaitElevL2.targetModule = elevator;
     AddEvent(awaitElevL2);
 
@@ -63,27 +63,27 @@ public class SequenceRotateScoreReturn extends AutoSequence {
     openLatch.boolValue = true;
     AddEvent(openLatch);
 
-    AutoEventTime closeLatchAfter = new AutoEventTime("Close Latch (after 2s)", true, 2000, AutoEvent.EventType.Boolean, ac);
+    AutoEventTime closeLatchAfter = new AutoEventTime("Close Latch (after 2s)", false, 2000, AutoEvent.EventType.Boolean, ac);
     closeLatchAfter.boolEvent = slide::ApplyInverse; // true => reverse/close
     closeLatchAfter.boolValue = true;
     AddEvent(closeLatchAfter);
 
     // Phase 4: Simultaneously dispatch elevator to zero and rotate back to 0deg
-    AutoEventPosition setElevZero = new AutoEventPosition("Set Elevator Zero", true, elevZero, AutoEvent.EventType.SetTarget, ac);
+    AutoEventPosition setElevZero = new AutoEventPosition("Set Elevator Zero", false, elevZero, AutoEvent.EventType.SetTarget, ac);
     setElevZero.targetModule = elevator;
     AddEvent(setElevZero);
 
-    AutoEventPosition setDrive0 = new AutoEventPosition("Set Drive 0deg", true, rotate0, AutoEvent.EventType.SetTarget, ac);
+    AutoEventPosition awaitElevZero = new AutoEventPosition("Await Elevator Zero", false, null, AutoEvent.EventType.AwaitTarget, ac);
+    awaitElevZero.targetModule = elevator;
+    AddEvent(awaitElevZero);
+
+    AutoEventPosition setDrive0 = new AutoEventPosition("Set Drive 0deg", false, rotate0, AutoEvent.EventType.SetTarget, ac);
     setDrive0.targetModule = drive;
     AddEvent(setDrive0);
 
     // Phase 5: Await both completions in parallel
-    AutoEventPosition awaitDrive0 = new AutoEventPosition("Await Drive 0deg", true, null, AutoEvent.EventType.AwaitTarget, ac);
+    AutoEventPosition awaitDrive0 = new AutoEventPosition("Await Drive 0deg", false, null, AutoEvent.EventType.AwaitTarget, ac);
     awaitDrive0.targetModule = drive;
     AddEvent(awaitDrive0);
-
-    AutoEventPosition awaitElevZero = new AutoEventPosition("Await Elevator Zero", true, null, AutoEvent.EventType.AwaitTarget, ac);
-    awaitElevZero.targetModule = elevator;
-    AddEvent(awaitElevZero);
   }
 }

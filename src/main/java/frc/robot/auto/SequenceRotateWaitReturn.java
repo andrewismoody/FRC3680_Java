@@ -21,12 +21,12 @@ public class SequenceRotateWaitReturn extends AutoSequence {
     // Drive poses (rotation only; zero translation)
     var currentTrans = drive.GetPosition().getTranslation();
     ActionPose rotate90 = new ActionPose(
-      Group.Any, Location.Any, -1, Position.Any, Action.Any,
+      Group.Any, Location.Any, 0, Position.Any, Action.Any,
       new Pose3d(currentTrans, new Rotation3d(0, 0, Units.degreesToRadians(90)))
     );
     ActionPose rotate0 = new ActionPose(
-      Group.Any, Location.Any, -1, Position.Any, Action.Any,
-      new Pose3d(currentTrans, new Rotation3d(0, 0, Units.degreesToRadians(0)))
+      Group.Any, Location.Any, 1, Position.Any, Action.Any,
+      new Pose3d(currentTrans, new Rotation3d(0, 0, 0))
     );
     drive.AddActionPose(rotate90);
     drive.AddActionPose(rotate0);
@@ -36,7 +36,7 @@ public class SequenceRotateWaitReturn extends AutoSequence {
     setDrive90.targetModule = drive;
     AddEvent(setDrive90);
 
-    // Phase 2: Await both completions in parallel
+    // Phase 2: Await completion
     AutoEventPosition awaitDrive90 = new AutoEventPosition("Await Drive 90deg", false, null, AutoEvent.EventType.AwaitTarget, ac);
     awaitDrive90.targetModule = drive;
     AddEvent(awaitDrive90);
@@ -48,7 +48,7 @@ public class SequenceRotateWaitReturn extends AutoSequence {
     setDrive0.targetModule = drive;
     AddEvent(setDrive0);
 
-    // Phase 5: Await both completions in parallel
+    // Phase 5: Await completion
     AutoEventPosition awaitDrive0 = new AutoEventPosition("Await Drive 0deg", false, null, AutoEvent.EventType.AwaitTarget, ac);
     awaitDrive0.targetModule = drive;
     AddEvent(awaitDrive0);

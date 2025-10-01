@@ -60,7 +60,7 @@ public class SwerveDriveModule implements DriveModule {
 
     PIDController lateralPidController = new PIDController(0.15, 0.0005, 0); // p=0.2
     PIDController forwardPidController = new PIDController(0.15, 0.0005, 0); // p=0.2
-    PIDController rotationPidController = new PIDController(0.15, 0.0005, 0); // p=0.2
+    PIDController rotationPidController = new PIDController(5, 0.0005, 0); // p=0.2
 
     NetworkTable myTable;
     
@@ -248,12 +248,14 @@ public class SwerveDriveModule implements DriveModule {
     public void EvaluateTargetPose(double newAngle) {
         if (targetPose != null) {
             double newAngleRad = Units.degreesToRadians(newAngle);
+            myTable.getEntry("newAngleRad").setDouble(newAngleRad);
             var pose = targetPose.pose;
             var position = pose.getTranslation();
             var rotation = pose.getRotation();
 
             var positionDelta = currentPosition.minus(position);
             var rotationDelta = newAngleRad - rotation.getZ();
+            myTable.getEntry("targetAngle").setDouble(rotation.getZ());
 
             myTable.getEntry("targetDelta").setString(positionDelta.toString());
             myTable.getEntry("rotationDelta").setDouble(rotationDelta);
@@ -283,7 +285,6 @@ public class SwerveDriveModule implements DriveModule {
             }
 
             var rotationSpeed = rotationPidController.calculate(rotation.getZ(), newAngleRad);
-            rotationSpeed *= rotationMultiplier;
             if (Math.abs(rotationSpeed) < floatTolerance) {
                 rotationReached = true;
                 myTable.getEntry("rotationReached").setBoolean(rotationReached);
@@ -312,7 +313,7 @@ public class SwerveDriveModule implements DriveModule {
         // https://docs.wpilib.org/en/stable/docs/software/kinematics-and-odometry/swerve-drive-kinematics.htm
         // https://docs.wpilib.org/en/stable/docs/software/hardware-apis/sensors/gyros-software.html
         // https://www.chiefdelphi.com/t/set-motor-position-with-encoder/152088/3
-        double newAngle = getGyroAngle();
+        double newAngle = -getGyroAngle();
         myTable.getEntry("actualAngle").setDouble(newAngle);
 
         EvaluateTargetPose(newAngle);
