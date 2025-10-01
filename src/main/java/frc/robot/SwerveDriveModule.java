@@ -63,6 +63,13 @@ public class SwerveDriveModule implements DriveModule {
     PIDController rotationPidController = new PIDController(5, 0.0005, 0); // p=0.2
 
     NetworkTable myTable;
+
+    private boolean positionerHealthy = true;
+    private Translation3d lastHealthPos = new Translation3d();
+    private long lastHealthTsMs = 0L;
+    private final double posJumpLimitMeters = 2.0; // treat larger jumps as invalid
+    private final long posStaleTimeoutMs = 300;    // treat stale samples as invalid
+
     
     public SwerveDriveModule(String ModuleID, Gyro Gyro, Positioner Positioner, double DriveSpeed, double RotationSpeed,
             boolean IsFieldOriented, double FloatTolerance, SwerveMotorModule ... modules) {
@@ -245,6 +252,28 @@ public class SwerveDriveModule implements DriveModule {
         }
     }
 
+    private boolean isPositionerHealthy() {
+        long now = System.currentTimeMillis();
+        Translation3d pos = positioner.GetPosition();
+        boolean bad =
+            Double.isNaN(pos.getX()) || Double.isNaN(pos.getY()) || Double.isNaN(pos.getZ()) ||
+            Double.isInfinite(pos.getX()) || Double.isInfinite(pos.getY()) || Double.isInfinite(pos.getZ());
+
+        if (!bad) {
+            double jump = lastHealthPos.minus(pos).getNorm();
+            if (lastHealthTsMs != 0 && jump > posJumpLimitMeters) bad = true;
+            if (lastHealthTsMs != 0 && (now - lastHealthTsMs) > posStaleTimeoutMs) bad = true;
+        }
+
+        if (!bad) {
+            lastHealthPos = pos;
+            lastHealthTsMs = now;
+        }
+        positionerHealthy = !bad;
+        myTable.getEntry("positionerHealthy").setBoolean(positionerHealthy);
+        return positionerHealthy;
+    }
+
     public void EvaluateTargetPose(double newAngle) {
         if (targetPose != null) {
             double newAngleRad = Units.degreesToRadians(newAngle);
@@ -266,22 +295,27 @@ public class SwerveDriveModule implements DriveModule {
 
             // TODO: tune PID values
             // TODO: determine if we need to adjust speed values
-            var lateralSpeed = lateralPidController.calculate(currentPosition.getX(), position.getX());
-            if (Math.abs(lateralSpeed) < floatTolerance) {
-                lateralReached = true;
-                myTable.getEntry("lateralReached").setBoolean(lateralReached);
-                ProcessLateralSpeed(0.0);
-            } else {
-                ProcessLateralSpeed(lateralSpeed);
-            }
+            if (isPositionerHealthy()) { // don't drive if we've lost position or position is invalid
+                var lateralSpeed = lateralPidController.calculate(currentPosition.getX(), position.getX());
+                if (Math.abs(lateralSpeed) < floatTolerance) {
+                    lateralReached = true;
+                    myTable.getEntry("lateralReached").setBoolean(lateralReached);
+                    ProcessLateralSpeed(0.0);
+                } else {
+                    ProcessLateralSpeed(lateralSpeed);
+                }
 
-            var forwardSpeed = forwardPidController.calculate(currentPosition.getY(), position.getY());
-            if (Math.abs(forwardSpeed) < floatTolerance) {
-                forwardReached = true;
-                myTable.getEntry("forwardReached").setBoolean(forwardReached);
-                ProcessForwardSpeed(0.0);
+                var forwardSpeed = forwardPidController.calculate(currentPosition.getY(), position.getY());
+                if (Math.abs(forwardSpeed) < floatTolerance) {
+                    forwardReached = true;
+                    myTable.getEntry("forwardReached").setBoolean(forwardReached);
+                    ProcessForwardSpeed(0.0);
+                } else {
+                    ProcessForwardSpeed(forwardSpeed);
+                }
             } else {
-                ProcessForwardSpeed(forwardSpeed);
+                ProcessForwardSpeed(0.0);
+                ProcessLateralSpeed(0.0);
             }
 
             var rotationSpeed = rotationPidController.calculate(rotation.getZ(), newAngleRad);
