@@ -2,97 +2,193 @@
 
 Overview
 - AutoController: manages one or more AutoSequence instances.
-- AutoSequence: ordered list of AutoEvent steps.
-- AutoEvent: concrete event types (Time, Target, Position, Auto) with Run().
+- AutoSequence: ordered steps (AutoEvent) with triggers: Target, Time, Position, Auto.
+- Controller-target flow: broadcast a single “global” ActionPose via ModuleController; each module resolves what it should do for that intent.
+- Modules publish their own local ActionPoses keyed by the same categorical fields; the Pose3d payload is module-specific.
 
-Lifecycle and selection
-- Register:
-  ```java
-  // ...existing code...
-  AutoController rotateWait = new AutoController("RotateWait");
-  rotateWait.AddSequence(new SequenceRotateWaitReturn(rotateWait.GetLabel(), modules, rotateWait));
-  AutoModes.put(rotateWait.GetLabel(), rotateWait);
-  SmartDashboard.putStringArray("Auto List", AutoModes.keySet().toArray(new String[] {}));
-  // ...existing code...
-  ```
-- Initialize and run:
-  ```java
-  // autonomousInit
-  currentAutoMode = AutoModes.get(SmartDashboard.getString("Auto Selector", AutoModes.keys().nextElement()));
-  currentAutoMode.Initialize();
+Lifecycle (abridged)
+- Register: create AutoController, add sequences, publish names to SmartDashboard.
+- Autonomous:
+  - autonomousInit: pick from dashboard, Initialize().
+  - autonomousPeriodic: currentAutoMode.Update(); modules.ProcessState(true).
 
-  // autonomousPeriodic
-  currentAutoMode.Update();
-  modules.ProcessState(true);
-  ```
+Controller-target pattern (recommended)
+A single ActionPose expresses the intent for the robot across all subsystems. The ModuleController broadcasts it to every module; each module looks up its own local pose for that same categorical key and drives itself to completion, then clears its target.
 
-Recent changes
-- TriggerType.Target with AutoEventTarget
-  - EventType.SetTarget: dispatch an ActionPose to a module (completes immediately).
-  - EventType.AwaitTarget: completes when module clears its target (e.g., AbandonTarget()).
-- Legacy TriggerType.Position still supported for backward compatibility.
-- Time events now “hold until duration”
-  - AutoSequence.Update() calls Run() every loop while elapsedTime < milliseconds, then completes and resets startTime.
-  - 0 ms Time events do not call Run() (complete immediately).
-- SingleActuatorModule supports target-based holds
-  - EvaluateTargetPose applies forward/reverse based on pose X (>0 forward, <0 reverse, 0 off).
-  - Internal holdTime defaults to 2000 ms before AbandonTarget().
+ActionPose fields
+- group (Group): high-level phase (e.g., Score, Pickup).
+- location (Location): field element (e.g., Reef, Coral).
+- locationIndex (int): which instance (0..N) of that field element.
+- position (Position): sub-position at that element (e.g., Lower/L2/Trough).
+- action (Action): operation being performed (e.g., Drop, Pickup).
+- pose (Pose3d): module-specific payload when defined inside a module’s local library.
+  - SwerveDriveModule: field Translation3d + heading (Rotation3d.z) to drive/rotate to.
+  - SingleMotorModule (elevator): pose.x is the motor-axis target (rotations/units after its encoderMultiplier); y/z ignored.
+  - SingleActuatorModule (relay/slide): pose.x > 0 = forward/open, < 0 = reverse/close, 0 = off; module holds for holdTime then clears.
 
-Event types and semantics
-- Time
-  - Use for Boolean/Double/Void/Auto actions that must be applied across multiple loops for a duration.
-  - Note: use milliseconds > 0 if you need Run() to execute.
-- Target (preferred for setpoint control)
-  - SetTarget: module.SetTargetActionPose(...), completes immediately.
-  - AwaitTarget: waits until module.GetTarget() == null.
-- Position (legacy)
-  - Retained for older flows; prefer Target events for new code.
-- Auto
-  - Nest and monitor child sequences.
+How modules evaluate ActionPoses
+- Each module registers its local library with AddActionPose(...). The library entries use the same categorical keys (group, location, locationIndex, position, action) but carry that module’s Pose3d semantics.
+- When the controller broadcasts SetTargetActionPose(ActionPose), the module resolves a local match with GetActionPose(...) using “exact-or-Any” matching on each categorical field.
+- If found, the module sets an internal target and self-drives until done, then AbandonTarget() to signal completion.
 
-Patterns for modules
+Defining holistic ActionPoses (robotInit)
+Define a consistent set of categorical keys across modules; each module adds its own local Pose3d for the same keys.
 
-1) Target-based setpoints (recommended for motion/position)
-- SwerveDriveModule, SingleMotorModule:
-  - AddActionPose(...) during robotInit.
-  - Sequence uses AutoEventTarget(SetTarget) then AutoEventTarget(AwaitTarget).
-- SingleActuatorModule:
-  - AddActionPose with X=1 for forward/open, X=-1 for reverse/close, X=0 for off.
-  - Use Target events to leverage internal holdTime without extra timers.
+Example: one intent, many modules
+```java
+// Swerve (field pose and heading for that scoring bay)
+swerveDriveModule.AddActionPose(
+  new ActionPose(Group.Score, Location.Reef, 0, Position.Middle, Action.Drop,
+                 new Pose3d(/* field X,Y,Z */, new Rotation3d(0, 0, /* headingRad */))));
 
-2) Direct timed commands (simple on/off or open-loop)
-- Time(Boolean, ms) + ApplyValue/ApplyInverse
-  - Use ms > 0 to actually apply each loop.
-  - Example: hold open for 2000 ms by Time(Boolean, 2000) + slide::ApplyValue.
+// Elevator (height in local motor units via pose.x)
+elevator.AddActionPose(
+  new ActionPose(Group.Score, Location.Reef, 0, Position.Middle, Action.Drop,
+                 new Pose3d(/* rotations on X */ 1.14, 0, 0, new Rotation3d())));
 
-Example: rotate, score, return (abridged)
-- Drive and elevator via Target events:
-  - SetTarget: rotate90 and elevL2 (parallel).
-  - AwaitTarget: both complete.
-- Latch with time or target:
-  - Time approach: Time(Boolean, 2000) + slide::ApplyValue; then Time(Boolean, small>0) + slide::ApplyInverse.
-  - Target approach: SetTarget to slide pose with X=1 (open); AwaitTarget lets module auto-abandon after holdTime.
+// Slide (open during drop; positive X = forward/open)
+slide.AddActionPose(
+  new ActionPose(Group.Score, Location.Reef, 0, Position.Middle, Action.Drop,
+                 new Pose3d(1, 0, 0, new Rotation3d())));
+```
 
-ModuleController approaches
-- Access:
-  - modules.GetDriveModule() -> active DriveModule (swerve/differential).
-  - modules.GetModule("elevator" | "slide" | ...) -> specific RobotModule.
-- Control styles:
-  1) Target-based: SetTargetActionPose + AwaitTarget (module owns completion).
-  2) Timed direct: AutoEventTime(Boolean/Double) for sustained application across ms.
+Sequencing with controller-target
+Use AutoEventTarget with moduleController to broadcast global intents; AwaitTarget waits until all modules clear their targets.
 
-Timing details
-- AutoSequence.Initialize() captures startTime.
-- Any event that completes will reset startTime; following Time events are relative to that reset.
+```java
+public class SeqControllerTargetDemo extends AutoSequence {
+  public SeqControllerTargetDemo(String label, ModuleController modules, AutoController ac) {
+    super(label, modules, ac);
 
-Troubleshooting
-- “Latch didn’t open” when using Time(Boolean, 0):
-  - 0 ms does not invoke Run(); use duration > 0 ms or use Target-based slide control to leverage holdTime.
-- AwaitTarget never completes:
-  - Ensure targetModule is set, a valid ActionPose exists (AddActionPose + GetActionPose not null), and the module clears its target.
-- Motion doesn’t start:
-  - Verify module has the ActionPose you dispatch and that SetTarget is used before AwaitTarget.
+    // One global intent: Score at Reef[0], L2, Drop
+    var scoreL2Drop = new ActionPose(
+      Group.Score, Location.Reef, 0, Position.Middle, Action.Drop, new Pose3d());
+
+    // Broadcast intent (SetTarget); modules resolve their local poses
+    AutoEventTarget setIntent = new AutoEventTarget("Set Score L2 Drop", true, scoreL2Drop, AutoEvent.EventType.SetTarget, ac);
+    setIntent.moduleController = modules;
+    AddEvent(setIntent);
+
+    // Await all modules to finish (each AbandonTarget() when done)
+    AutoEventTarget awaitAll = new AutoEventTarget("Await All", false, null, AutoEvent.EventType.AwaitTarget, ac);
+    awaitAll.moduleController = modules;
+    AddEvent(awaitAll);
+  }
+}
+```
+
+Distinguishing field actions with ActionPose keys
+- Group separates phases (Score vs Pickup).
+- Location and locationIndex select which field element/bay.
+- Position distinguishes sub-levels or L1/L2/L3 equivalent.
+- Action captures the specific operation at that point (Drop vs Pickup).
+- Pose3d is module-local data (units/semantics differ per module) but shares the same categorical keys for alignment.
 
 Notes
-- Poses are in meters/radians (Pose3d/Translation3d/Rotation3d).
-- Positioner and Gyro feed GetPosition(); modules should clear targets on completion.
+- Units: meters/radians in Pose3d; modules may interpret pose.x as motor-units (SingleMotorModule) or direction (SingleActuatorModule).
+- SwerveDriveModule will not drive if positioner health fails (NaN/inf/large jumps/stale); it clears target only when all PID goals are reached.
+- Ensure every module that should act on an intent has a matching AddActionPose entry for those categorical keys; otherwise GetActionPose returns null and the module ignores that intent.
+
+## Module-target approach (per-module targets)
+When you need to direct a specific module (or stagger actions independently), use per-module SetTarget/AwaitTarget. This is also useful for testing modules in isolation.
+
+Key points
+- targetModule points to a specific RobotModule.
+- SetTarget assigns that module’s target and completes immediately.
+- AwaitTarget completes when that module clears its target (GetTarget() == null).
+
+Example
+```java
+public class SeqModuleTargetDemo extends AutoSequence {
+  public SeqModuleTargetDemo(String label, ModuleController modules, AutoController ac) {
+    super(label, modules, ac);
+
+    var drive = (frc.robot.SwerveDriveModule) modules.GetDriveModule();
+    var elevator = (frc.robot.SingleMotorModule) modules.GetModule("elevator");
+
+    // Prepare or fetch module-local poses
+    var rotate90 = /* ActionPose previously added to drive */;
+    var elevL2 = elevator.GetActionPose(
+      frc.robot.action.Group.Score, frc.robot.action.Location.Any, -1,
+      frc.robot.action.Position.Middle, frc.robot.action.Action.Any);
+
+    // Parallel: drive rotate + elevator to L2
+    AutoEventTarget setDrive = new AutoEventTarget("Set Drive 90", true, rotate90, AutoEvent.EventType.SetTarget, ac);
+    setDrive.targetModule = drive;
+    AddEvent(setDrive);
+
+    AutoEventTarget setElev = new AutoEventTarget("Set Elevator L2", true, elevL2, AutoEvent.EventType.SetTarget, ac);
+    setElev.targetModule = elevator;
+    AddEvent(setElev);
+
+    // Await both
+    AutoEventTarget awaitDrive = new AutoEventTarget("Await Drive", false, null, AutoEvent.EventType.AwaitTarget, ac);
+    awaitDrive.targetModule = drive;
+    AddEvent(awaitDrive);
+
+    AutoEventTarget awaitElev = new AutoEventTarget("Await Elevator", false, null, AutoEvent.EventType.AwaitTarget, ac);
+    awaitElev.targetModule = elevator;
+    AddEvent(awaitElev);
+  }
+}
+```
+
+Tips
+- Prefer controller-target for holistic routines. Module-target is great for overrides, debugging, or phased starts/stops per module.
+- Ensure each module has a matching AddActionPose for the requested keys; otherwise GetActionPose(...) returns null and the module will ignore the target.
+
+## Time-based approach (open-loop holds)
+Use timed events when you must apply a raw command for a duration (e.g., relays, open-loop test movement). Time events call Run() every loop while elapsed < milliseconds.
+
+Key points
+- 0 ms does not call Run(); it completes immediately. Use ms > 0 for any effect.
+- Boolean and Double events are applied each loop during the hold window.
+- Combine with short “stop” pulses when needed.
+
+Example
+```java
+public class SeqTimeBasedDemo extends AutoSequence {
+  public SeqTimeBasedDemo(String label, ModuleController modules, AutoController ac) {
+    super(label, modules, ac);
+
+    var drive = modules.GetDriveModule();
+    var slide = (frc.robot.SingleActuatorModule) modules.GetModule("slide");
+
+    // Drive forward for 2 seconds
+    AutoEventTime fwd2s = new AutoEventTime("Drive Fwd 2s", false, 2000, AutoEvent.EventType.Double, ac);
+    fwd2s.doubleEvent = drive::ProcessForwardSpeed;
+    fwd2s.doubleValue = 0.5;
+    AddEvent(fwd2s);
+
+    // Stop (short non-zero duration so Run() executes)
+    AutoEventTime stop = new AutoEventTime("Stop Drive", false, 50, AutoEvent.EventType.Double, ac);
+    stop.doubleEvent = drive::ProcessForwardSpeed;
+    stop.doubleValue = 0.0;
+    AddEvent(stop);
+
+    // Open latch for 2 seconds, then close briefly
+    AutoEventTime open = new AutoEventTime("Open Latch 2s", true, 2000, AutoEvent.EventType.Boolean, ac);
+    open.boolEvent = slide::ApplyValue;
+    open.boolValue = true;
+    AddEvent(open);
+
+    AutoEventTime close = new AutoEventTime("Close Latch", false, 50, AutoEvent.EventType.Boolean, ac);
+    close.boolEvent = slide::ApplyInverse;
+    close.boolValue = true;
+    AddEvent(close);
+  }
+}
+```
+
+When to use
+- Quick subsystem tests or simple autonomous behaviors that don’t require closed-loop completion.
+- Actuators that must be asserted continuously to stay active (Relay-based, etc.).
+- As a complement to controller- or module-target sequences when you need timed interlocks or delays.
+
+Integration notes
+- Time-based holds run concurrently with controller/module targets when events are marked parallel=true.
+- Modules like SingleActuatorModule reset to kOff each ProcessState; time-based holds continuously reapply the requested state while the event is active.
+
+Legacy/time-based patterns
+- Module-target: SetTarget/AwaitTarget on a specific module remains supported but is less holistic.
+- Time-based: AutoEventTime(Boolean/Double) applies outputs each loop while elapsed < ms. Use ms > 0; 0 ms completes without calling Run().
