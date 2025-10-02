@@ -2,6 +2,8 @@ package frc.robot.positioner;
 
 import edu.wpi.first.math.geometry.Translation3d;
 import edu.wpi.first.net.PortForwarder;
+import edu.wpi.first.wpilibj.DriverStation;
+import edu.wpi.first.wpilibj.DriverStation.Alliance;
 
 public class LimeLightPositioner implements Positioner {
     boolean useMegatagTwo = true;
@@ -22,7 +24,10 @@ public class LimeLightPositioner implements Positioner {
     }
 
     public Translation3d GetPosition() {
-        return LimelightHelpers.getBotPose3d("").getTranslation(); 
+        if (DriverStation.getAlliance().get() == Alliance.Red)
+            return LimelightHelpers.getBotPose3d_wpiRed("").getTranslation();
+        else
+            return LimelightHelpers.getBotPose3d_wpiBlue("").getTranslation();
     }
 
     public void SetRobotOrientation(String limelightName, double yaw, double yawRate, 
@@ -36,9 +41,15 @@ public class LimeLightPositioner implements Positioner {
         // https://docs.limelightvision.io/docs/docs-limelight/pipeline-apriltag/apriltag-coordinate-systems
 
         if (useMegatagTwo) {
-            return LimelightHelpers.getBotPoseEstimate_wpiBlue_MegaTag2("").tagCount > 0;
+            if (DriverStation.getAlliance().get() == Alliance.Red)
+                return LimelightHelpers.getBotPoseEstimate_wpiRed_MegaTag2("").tagCount > 0;
+            else 
+                return LimelightHelpers.getBotPoseEstimate_wpiBlue_MegaTag2("").tagCount > 0;
         } else {
-            return LimelightHelpers.getBotPoseEstimate_wpiBlue("").tagCount > 0;
+            if (DriverStation.getAlliance().get() == Alliance.Red)
+            return LimelightHelpers.getBotPoseEstimate_wpiRed("").tagCount > 0;
+            else
+                return LimelightHelpers.getBotPoseEstimate_wpiBlue("").tagCount > 0;
         }
     }
 }

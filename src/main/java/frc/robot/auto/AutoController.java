@@ -3,6 +3,8 @@ package frc.robot.auto;
 import java.util.ArrayList;
 import java.util.HashMap;
 
+import edu.wpi.first.wpilibj.DriverStation;
+import edu.wpi.first.wpilibj.RobotBase;
 import frc.robot.GameController;
 
 // AutoController manages all AutoSequences, allowing for their addition, removal, initialization, updating, and shutdown.
@@ -48,10 +50,12 @@ public class AutoController {
     }
 
     public void Update() {
-        interrupt = m_controller.getAnyButton();
-        if (interrupt) {
-            InterruptAll(true);
-            return;
+        if (!DriverStation.isAutonomous()) {
+            interrupt = m_controller.getAnyButton();
+            if (interrupt) {
+                InterruptAll(true);
+                return;
+            }
         }
 
         ArrayList<AutoSequence> Finished = new ArrayList<>();

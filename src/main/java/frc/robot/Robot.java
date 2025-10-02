@@ -28,6 +28,7 @@ import frc.robot.GameController.ControllerType;
 import frc.robot.action.*;
 import frc.robot.auto.AutoController;
 import frc.robot.auto.SequenceControllerScoreReloadScore;
+import frc.robot.auto.SequenceControllerMoveToReef;
 import frc.robot.auto.SequenceRotateScoreReturn;
 import frc.robot.gyro.AHRSGyro;
 import frc.robot.gyro.Gyro;
@@ -93,7 +94,7 @@ public class Robot extends TimedRobot {
   // final Encoder enc_lift = new REVEncoder(can_lift.getEncoder());
   // final Encoder enc_grabber = new REVEncoder(can_grab.getEncoder());
 
-  final Positioner m_positioner = new LimeLightPositioner(true);
+  final Positioner m_positioner = new LimeLightPositioner(false);
 
   GameController m_controller; // = new Controller(0, ControllerType.Xbox);
 
@@ -137,7 +138,7 @@ public class Robot extends TimedRobot {
   double m_rotationSpeed = 59.4; //29.7; // 17.584; // 21.98; //32.40 / m_speedMod; // should be actual radians per
                                    // second that is achievable by the rotation motor
 
-  SingleMotorModule elevator = new SingleMotorModule("elevator", can_elev, m_elevatorSpeed, false, null, null, enc_elev, 1.0 / 100.0, 0.0);
+  SingleMotorModule elevator = new SingleMotorModule("elevator", can_elev, m_elevatorSpeed, false, null, null, enc_elev, 1.0 / 100.0, 0.5);
   // SingleMotorModule lifter = new SingleMotorModule("lifter", can_lift, m_liftSpeed, true, null, null, enc_lift);
   // SingleMotorModule grabber = new SingleMotorModule("grabber", can_grab, m_grabSpeed, false, null, null, enc_grabber);
 
@@ -267,7 +268,7 @@ public class Robot extends TimedRobot {
         break;
     }
 
-    swerveDriveModule.AddActionPose(new ActionPose(Group.Score, Location.Reef, 0, Position.Any, Action.Any, new Pose3d(new Translation3d(5.0, 10.0, 0), new Rotation3d(0, 0, 45))));
+    swerveDriveModule.AddActionPose(new ActionPose(Group.Score, Location.Reef, 0, Position.Any, Action.Any, new Pose3d(new Translation3d(1.58, 4.44, 0), new Rotation3d(0, 0, 45))));
     swerveDriveModule.AddActionPose(new ActionPose(Group.Pickup, Location.Coral, 0, Position.Any, Action.Any, new Pose3d(new Translation3d(2.0, 0.0, 0), new Rotation3d(0, 0, 45))));
     swerveDriveModule.AddActionPose(new ActionPose(Group.Pickup, Location.Coral, 1, Position.Any, Action.Any, new Pose3d(new Translation3d(2.0, 50.0, 0), new Rotation3d(0, 0, 315))));
 
@@ -354,8 +355,12 @@ public class Robot extends TimedRobot {
     AutoController controllerScoreReloadScore = new AutoController("ControllerScoreReloadScore", m_controller);
     controllerScoreReloadScore.AddSequence(new SequenceControllerScoreReloadScore(controllerScoreReloadScore.GetLabel(), modules, controllerScoreReloadScore));
     AutoModes.put(controllerScoreReloadScore.GetLabel(), controllerScoreReloadScore);
+
+    AutoController controllerMoveToReef = new AutoController("controllerMoveToReef", m_controller);
+    controllerMoveToReef.AddSequence(new SequenceControllerMoveToReef(controllerMoveToReef.GetLabel(), modules, controllerMoveToReef));
+    AutoModes.put(controllerMoveToReef.GetLabel(), controllerMoveToReef);
     
-    currentAutoMode = rotateScoreReturn;
+    currentAutoMode = controllerMoveToReef;
 
     SmartDashboard.putStringArray("Auto List", new String[] {});
     SmartDashboard.putStringArray("Auto List", AutoModes.keySet().toArray(new String[] {}));
