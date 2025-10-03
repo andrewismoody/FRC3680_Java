@@ -15,10 +15,10 @@ public class SequenceControllerMoveToReef extends AutoSequence {
 
     // Target Poses
     var scoreposition1 = new ActionPose(Group.Score, Location.Reef, 0, Position.Lower, Action.Pickup, new Pose3d());
-    var scoreaction1 = new ActionPose(Group.Score, Location.Reef, 0, Position.Lower, Action.Drop, new Pose3d());
-    var pickupposition1 = new ActionPose(Group.Pickup, Location.Coral, 0, Position.Trough, Action.Pickup, new Pose3d());
-    var scoreposition2 = new ActionPose(Group.Score, Location.Reef, 0, Position.Middle, Action.Pickup, new Pose3d());
-    var scoreaction2 = new ActionPose(Group.Score, Location.Reef, 0, Position.Middle, Action.Drop, new Pose3d());
+    // var scoreaction1 = new ActionPose(Group.Score, Location.Reef, 0, Position.Lower, Action.Drop, new Pose3d());
+    // var pickupposition1 = new ActionPose(Group.Pickup, Location.Coral, 0, Position.Trough, Action.Pickup, new Pose3d());
+    // var scoreposition2 = new ActionPose(Group.Score, Location.Reef, 0, Position.Middle, Action.Pickup, new Pose3d());
+    // var scoreaction2 = new ActionPose(Group.Score, Location.Reef, 0, Position.Middle, Action.Drop, new Pose3d());
 
     AutoEventTarget setScorePosition1 = new AutoEventTarget("Set Score Position 1", true, scoreposition1, AutoEvent.EventType.SetTarget, ac);
     setScorePosition1.moduleController = modules;

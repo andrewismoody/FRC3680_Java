@@ -58,9 +58,13 @@ public class SwerveDriveModule implements DriveModule {
     ArrayList<ActionPose> actionPoses = new ArrayList<ActionPose>();
     ActionPose targetPose;
 
-    PIDController lateralPidController = new PIDController(0.15, 0.0005, 0); // p=0.2
-    PIDController forwardPidController = new PIDController(0.15, 0.0005, 0); // p=0.2
-    PIDController rotationPidController = new PIDController(5, 0.0005, 0); // p=0.2
+    PIDController lateralPidController;
+    PIDController forwardPidController;
+    PIDController rotationPidController;
+
+    // Single settle counter: require N consecutive cycles with all axes reached
+    private int settleCyclesRequired = 3; // tune as needed
+    private int settleCount = 0;
 
     NetworkTable myTable;
 
@@ -95,6 +99,18 @@ public class SwerveDriveModule implements DriveModule {
         gyro = Gyro;
         positioner = Positioner;
         floatTolerance = FloatTolerance;
+        
+        // TODO: might be mixing things here with drivespeed applying to drive motors and also drivespeed for the whole robot
+        var posKp = driveSpeed / 20.0; 
+        var posKi = posKp / 10.0;
+        var posKd = posKi * 3.0;
+        lateralPidController = new PIDController(posKp, posKi, posKd);
+        forwardPidController = new PIDController(posKp, posKi, posKd);
+
+        var rotKp = 1.5 / 20.0; // guessing 1.5 radians per second for the whole robot
+        var rotKi = rotKp / 10.0;
+        var rotKd = rotKi * 3.0;
+        rotationPidController = new PIDController(rotKp, rotKi, rotKd);
 
         kinematics = new SwerveDriveKinematics(translations);
         odometry = new SwerveDriveOdometry(kinematics, new Rotation2d(gyro.getGyroAngleZ()), positions);
@@ -157,6 +173,9 @@ public class SwerveDriveModule implements DriveModule {
         var startupPosition = positioner.GetPosition();
         myTable.getEntry("startupPosition").setString(startupPosition.toString());
         myTable.getEntry("useFakeGyro").setBoolean(useFakeGyro);
+        myTable.getEntry("rotationPidSetpoints").setString(String.format("%f %f %f", rotationPidController.getP(), rotationPidController.getI(), rotationPidController.getD()));
+        myTable.getEntry("lateralPidSetpoints").setString(String.format("%f %f %f", lateralPidController.getP(), lateralPidController.getI(), lateralPidController.getD()));
+        myTable.getEntry("forwardPidSetpoints").setString(String.format("%f %f %f", forwardPidController.getP(), forwardPidController.getI(), forwardPidController.getD()));
 
         positioner.Initialize();
 
@@ -249,6 +268,10 @@ public class SwerveDriveModule implements DriveModule {
             myTable.getEntry("lateralReached").setBoolean(false);
             myTable.getEntry("forwardReached").setBoolean(false);
             myTable.getEntry("rotationReached").setBoolean(false);
+            
+            // reset settle counter on new target
+            settleCount = 0;
+            myTable.getEntry("settleCount").setNumber(settleCount);
         }
     }
 
@@ -318,7 +341,7 @@ public class SwerveDriveModule implements DriveModule {
                 ProcessLateralSpeed(0.0);
             }
 
-            var rotationSpeed = rotationPidController.calculate(rotation.getZ(), newAngleRad);
+            var rotationSpeed = rotationPidController.calculate(newAngleRad, rotation.getZ());
             if (Math.abs(rotationSpeed) < floatTolerance) {
                 rotationReached = true;
                 myTable.getEntry("rotationReached").setBoolean(rotationReached);
@@ -329,7 +352,18 @@ public class SwerveDriveModule implements DriveModule {
 
             if (lateralReached && forwardReached && rotationReached) {
                 AbandonTarget();
+                // increment global settle counter; do not abandon until threshold reached
+                if (settleCount < settleCyclesRequired) {
+                    settleCount++;
+                }
+                if (settleCount >= settleCyclesRequired) {
+                    AbandonTarget();
+                }
+            } else {
+                // any axis out of tolerance resets the settle window
+                settleCount = 0;
             }
+            myTable.getEntry("settleCount").setNumber(settleCount);
         }
     }
 
@@ -347,7 +381,7 @@ public class SwerveDriveModule implements DriveModule {
         // https://docs.wpilib.org/en/stable/docs/software/kinematics-and-odometry/swerve-drive-kinematics.htm
         // https://docs.wpilib.org/en/stable/docs/software/hardware-apis/sensors/gyros-software.html
         // https://www.chiefdelphi.com/t/set-motor-position-with-encoder/152088/3
-        
+
         // Invert the Gyro angle because it rotates opposite of the robot steering, then wrap it to a positive value
         double newAngle = ((-getGyroAngle() % 360.0) + 360.0) % 360.0;
         myTable.getEntry("actualAngle").setDouble(newAngle);

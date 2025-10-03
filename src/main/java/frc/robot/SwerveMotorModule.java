@@ -53,7 +53,7 @@ public class SwerveMotorModule {
   int sampleMin = 100;
   double maxDistance = 0.0;
 
-  PIDController pidController = new PIDController(0.15, 0.0005, 0); // p=0.2
+  PIDController pidController;
 
   public boolean debugAngle = false;
   public boolean debugSpeed = false;
@@ -102,6 +102,7 @@ public class SwerveMotorModule {
     myTable.getEntry("invertRotation").setBoolean(invertRotation);
     myTable.getEntry("enableDecelComp").setBoolean(enableDecelComp);
     myTable.getEntry("enableGiveUp").setBoolean(enableGiveUp);
+    myTable.getEntry("pidSetpoints").setString("kp: " + pidController.getP() + "; ki: " + pidController.getI() + "; kd: " + pidController.getD());
   }
 
   public SwerveModulePosition getPosition() {
@@ -112,6 +113,11 @@ public class SwerveMotorModule {
   public void setDriveModule(SwerveDriveModule DriveModule) {
     driveModule = DriveModule;
     encoderSimRate = driveModule.rotationSpeed;
+
+    var kp = driveModule.rotationSpeed / 20; // kp = 20% of motor capability
+    var ki = kp / 10; // ki = 10% of kp
+    var kd = ki * 3; // kd = 3 times ki
+    pidController = new PIDController(kp, ki, kd);
 
     myTable = NetworkTableInstance.getDefault().getTable(driveModule.moduleID).getSubTable(moduleID);
   }
@@ -170,23 +176,9 @@ public class SwerveMotorModule {
 
     primeGiveUpParams(delAngle);
 
-    var motorSpeed =
-      Math.abs(delAngle) > floatTolerance ?
-        // usePID ? pidController.calculate(delAngle, tarRad) :
-        delAngle
-      :
-        0.0
-    ;
-    double sign = motorSpeed > 0 ? 1 : -1;
-
     // start rotating wheel to the new optimized angle
-    // get volts conversion - need to do real-world measurements to understand/identify this conversion
-    // can't use this in conjunction with PID controller - not sure this is true?
-    // this caclulation must be division - originally was multiplication.  This was masked by the fact that the
-    // values 'look' correct for any RPS under 50, but in reality, RPS values under 50 were getting reduced and
-    // RPS values over 50 were inflated.  Division makes the values accurate.
-    motorSpeed = // usePID ? motorSpeed :
-      motorSpeed / (driveModule.rotationSpeed * (elapsedTime / 1000));
+    var motorSpeed = pidController.calculate(delAngle, tarRad);
+    double sign = motorSpeed > 0 ? 1 : -1;
 
     if (enableDecelComp)
       motorSpeed *= getAdjustmentFactor(delAngle);

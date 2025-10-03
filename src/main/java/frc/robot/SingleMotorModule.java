@@ -2,6 +2,7 @@ package frc.robot;
 
 import java.util.ArrayList;
 
+import edu.wpi.first.math.controller.PIDController;
 import edu.wpi.first.math.geometry.Pose3d;
 import edu.wpi.first.math.geometry.Rotation3d;
 import edu.wpi.first.math.geometry.Translation3d;
@@ -18,6 +19,7 @@ public class SingleMotorModule implements RobotModule {
     double driveSpeed;
     boolean invert;
     ModuleController controller;
+    PIDController pidController;
 
     Encoder enc;
     Switch upperLimit;
@@ -33,12 +35,12 @@ public class SingleMotorModule implements RobotModule {
     double previousDriveSpeed;
     double currentDriveSpeed;
 
-    int sampleCount = 0;
-    int sampleMin = 20;
-    double maxDistance = 0.0;
     double previousTargetDistance = 0.0;
     double encoderMultiplier = 1.0;
     double reverseMultiplier = 1.0;
+
+    private int settleCyclesRequired = 3; // tune as needed
+    private int settleCount = 0;
 
     ArrayList<ActionPose> actionPoses = new ArrayList<ActionPose>();
     ActionPose targetPose;
@@ -50,6 +52,11 @@ public class SingleMotorModule implements RobotModule {
         driveMotor = DriveMotor;
         driveSpeed = DriveSpeed;
         invert = Invert;
+
+        var kp = driveSpeed / 20; // kp = 20% of motor capability
+        var ki = kp / 10; // ki = 10% of kp
+        var kd = ki * 3; // kd = 3 times ki
+        pidController = new PIDController(kp, ki, kd);
 
         upperLimit = UpperLimit;
         lowerLimit = LowerLimit;
@@ -66,6 +73,7 @@ public class SingleMotorModule implements RobotModule {
 
         myTable.getEntry("invert").setBoolean(invert);
         myTable.getEntry("encoderMultiplier").setDouble(encoderMultiplier);
+        myTable.getEntry("pidSetpoints").setString(String.format("P: %f I: %f D: %f", pidController.getP(), pidController.getI(), pidController.getD()));
 
         if (enc != null) {
             enc.setMultiplier(encoderMultiplier);
@@ -109,6 +117,10 @@ public class SingleMotorModule implements RobotModule {
             myTable.getEntry("targetPose").setString(String.format("%s %s %d %s %s", group, location, locationIndex, position, action));
 
             this.targetPose = targetPose;
+
+            // reset settle counter on new target
+            settleCount = 0;
+            myTable.getEntry("settleCount").setNumber(settleCount);
         }
     }
     
@@ -172,14 +184,6 @@ public class SingleMotorModule implements RobotModule {
         if (targetPose != null && currentDriveSpeed == 0.0) {
             double angleTolerance = 0.00001; // 0.00001;
             var target = targetPose.pose;
-
-            if (enc != null) {
-                if (enc.isAbsolute())
-                    setRotationFromAbsolute();
-                else
-                    rotationCount = enc.getRawValue();
-                myTable.getEntry("rotationCount").setDouble(rotationCount);
-            }
     
             // we have a target and we're not manually applying a value, try to get to it.
             // the x axis of the position of the pose is the rotation count (distance along the motor axis)
@@ -190,34 +194,35 @@ public class SingleMotorModule implements RobotModule {
 
             var shouldMove = (Math.abs(targetDistance) > angleTolerance);
             if (!shouldMove) {
-                AbandonTarget();
-            } else {
-                if (targetRotation > rotationCount) {
-                    if (shouldMove) {
-                        currentDriveSpeed += controller.ApplyModifiers(invert ? -driveSpeed : driveSpeed);
-                    }
-                } else if (targetRotation < rotationCount) {
-                    if (shouldMove) {
-                        currentDriveSpeed += controller.ApplyModifiers(invert ? driveSpeed : -driveSpeed);
-                    }
+                // increment global settle counter; do not abandon until threshold reached
+                if (settleCount < settleCyclesRequired) {
+                    settleCount++;
+                    myTable.getEntry("settleCount").setNumber(settleCount);
                 }
+
+                if (settleCount >= settleCyclesRequired) {
+                    AbandonTarget();
+                }
+            } else {
+                currentDriveSpeed = pidController.calculate(rotationCount, targetRotation);
+                currentDriveSpeed = controller.ApplyModifiers(invert ? -currentDriveSpeed : currentDriveSpeed);
             }
 
             var driveDistance = Math.abs(rotationCount - previousRotationCount);
             myTable.getEntry("driveDistance").setDouble(driveDistance);
-            
-            if (sampleCount >= sampleMin && targetDistance < maxDistance) {
-                var adjustmentFactor = (targetDistance / maxDistance);
-                //System.out.printf("%s achieved sample count; adjusting motorSpeed by factor %f\n", moduleID, adjustmentFactor);
-                currentDriveSpeed *= adjustmentFactor;
-            }
-
-            sampleCount++;
         }
     }
     
     @Override
     public void ProcessState(boolean isAuto) {
+        if (enc != null) {
+            if (enc.isAbsolute())
+                setRotationFromAbsolute();
+            else
+                rotationCount = enc.getRawValue();
+            myTable.getEntry("rotationCount").setDouble(rotationCount);
+        }
+
         EvaluateTargetPose();
 
         myTable.getEntry("currentDriveSpeed").setDouble(currentDriveSpeed);

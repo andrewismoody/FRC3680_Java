@@ -103,54 +103,50 @@ public class Robot extends TimedRobot {
   final boolean isFieldOriented = false;
 
   final double m_floatTolerance = 0.08; // 0.2;
-  final double m_elevatorSpeed = 0.6;
+  // Rev NEO empirical motor speed = 5676 rotations per minute; 5676 * 6.28 = 35645 radians per minute; 35645 / 60 = 594 radians per second
+  // 100:1 gearbox on 594 rps = 5.94 rps shaft output
+  final double m_elevatorSpeed = ((5676.0 * 6.28) / 60.0) / 100.0;
+  final double elevatorEncoderMultiplier = 1.0 / 100.0;
+
   final double m_liftSpeed = 0.6;
   final double m_grabSpeed = 0.6;
-  // 24 teeth on driver, 42 teeth on driven = 24/42 = 0.5714
-  final double m_encoderMultiplier = 1.0 / 20.0; // 0.5714;
 
   double m_divider = 0.5;
   double m_speedMod = 1.0;
 
-  // sport gear box with 4:1 ratio on a 4" wheel yields 91.7 ft/sec which is
-  // 27.95016 meters/sec
-  // https://www.andymark.com/products/sport-gearbox
   // higher numbers result in faster drive speeds. To slow it down, send a higher
   // number, which will result in a lower voltage being sent to the motor for any
   // given speed.
-  double m_driveSpeed = 3.721; // 5.486 / m_speedMod; // 27.95 / m_speedMod; // should be actual meters per
-                               // second that is achievable by the drive motor
-  // JE motor turns at 310 RPM (rotations per minute) which is 5.16 rotations per
-  // second, which is 32.40 radians per second
+  // 4" wheel = 0.1016m, radius = 0.0508m
+  // Rev NEO empirical motor speed = 5676 rotations per minute; 5676 * 6.28 = 35645 radians per minute; 35645 / 60 = 594 radians per second
+  // 9:1 gearbox with 3:1 gear reduction (27:1 total) on 594 rps = 22 rps shaft output
+  // should be actual meters per second that is achievable by the drive motor
+  final double m_driveSpeed = 0.0508 * (((5676.0 * 6.28) / 60.0) / 27.0); 
+
   // https://cdn.andymark.com/media/W1siZiIsIjIwMjIvMDIvMDIvMDgvMzMvMTIvNzMzYmY3YmQtYTI0MC00ZDkyLWI5NGMtYjRlZWU1Zjc4NzY0L2FtLTQyMzNhIEpFLVBMRy00MTAgbW90b3IuUERGIl1d/am-4233a%20JE-PLG-410%20motor.PDF?sha=5387f684d4e2ce1f
   // higher numbers result in faster drive speeds. To slow it down, send a higher
   // number, which will result in a lower voltage being sent to the motor for any
   // given speed.
-  // 775/redline motors run at 21,000 rpms, with a 20:1 gearbox, 1,050 rpm,
-  // divided by 60 is 17.5 rotations per second, multiplied by 6.28 radians is
-  // 109.9 radians per second
-  // 775/redline motors run at 21,000 rpms, with a 100:1 gearbox, 210 rpm, divided
-  // by 60 is 3.5 rotations per second, multiplied by 6.28 radians is 21.98
-  // radians per second
-  // 775/redline motors run at 21,000 rpms, with a 125:1 gearbox, 168 rpm, divided
-  // by 60 is 2.8 rotations per second, multiplied by 6.28 radians is 17.584
-  // radians per second
-  double m_rotationSpeed = 59.4; //29.7; // 17.584; // 21.98; //32.40 / m_speedMod; // should be actual radians per
-                                   // second that is achievable by the rotation motor
+  // Rev NEO empirical motor speed = 5676 rotations per minute; 5676 * 6.28 = 35645 radians per minute; 35645 / 60 = 594 radians per second
+  // 20:1 gearbox on 594 rps = 29.7 rps shaft output
+  // should be actual radians per second that is achievable by the rotation motor
+  final double steerMotorSpeed = ((5676.0 * 6.28) / 60.0) / 20.0; 
+  // 20:1 gearbox
+  final double steeringEncoderMultiplier = 1.0 / 20.0;
 
-  SingleMotorModule elevator = new SingleMotorModule("elevator", can_elev, m_elevatorSpeed, false, null, null, enc_elev, 1.0 / 100.0, 0.5);
+  SingleMotorModule elevator = new SingleMotorModule("elevator", can_elev, m_elevatorSpeed, false, null, null, enc_elev, elevatorEncoderMultiplier, 0.5);
   // SingleMotorModule lifter = new SingleMotorModule("lifter", can_lift, m_liftSpeed, true, null, null, enc_lift);
   // SingleMotorModule grabber = new SingleMotorModule("grabber", can_grab, m_grabSpeed, false, null, null, enc_grabber);
 
   SingleActuatorModule slide = new SingleActuatorModule("slide", pwm_slide, false);
   
   // total length of robot is 32.375", width is 27.5", centerline is 16.1875" from edge.  Drive axle center is 4" from edge - 12.1875" from center which is 309.56mm or 0.30956 meters
-  SwerveMotorModule leftFrontMM = new SwerveMotorModule("leftFront", new Translation2d(-0.276225, -0.238125), can_drive_lf, can_steer_lf, enc_lf, m_encoderMultiplier, m_floatTolerance, false, true);
-  SwerveMotorModule rightFrontMM = new SwerveMotorModule("rightFront", new Translation2d(0.276225, -0.238125), can_drive_rf, can_steer_rf, enc_rf, m_encoderMultiplier, m_floatTolerance, false, false);
-  SwerveMotorModule leftRearMM = new SwerveMotorModule("leftRear", new Translation2d(-0.276225, 0.238125), can_drive_lr, can_steer_lr, enc_lr, m_encoderMultiplier, m_floatTolerance, false, false);
-  SwerveMotorModule rightRearMM = new SwerveMotorModule("rightRear", new Translation2d(0.276225, 0.238125), can_drive_rr, can_steer_rr, enc_rr, m_encoderMultiplier, m_floatTolerance, false, false);
+  SwerveMotorModule leftFrontMM = new SwerveMotorModule("leftFront", new Translation2d(-0.276225, -0.238125), can_drive_lf, can_steer_lf, enc_lf, steeringEncoderMultiplier, m_floatTolerance, false, true);
+  SwerveMotorModule rightFrontMM = new SwerveMotorModule("rightFront", new Translation2d(0.276225, -0.238125), can_drive_rf, can_steer_rf, enc_rf, steeringEncoderMultiplier, m_floatTolerance, false, false);
+  SwerveMotorModule leftRearMM = new SwerveMotorModule("leftRear", new Translation2d(-0.276225, 0.238125), can_drive_lr, can_steer_lr, enc_lr, steeringEncoderMultiplier, m_floatTolerance, false, false);
+  SwerveMotorModule rightRearMM = new SwerveMotorModule("rightRear", new Translation2d(0.276225, 0.238125), can_drive_rr, can_steer_rr, enc_rr, steeringEncoderMultiplier, m_floatTolerance, false, false);
 
-  SwerveDriveModule swerveDriveModule = new SwerveDriveModule("swerveDrive", m_gyro, m_positioner, m_driveSpeed, m_rotationSpeed, isFieldOriented, m_floatTolerance
+  SwerveDriveModule swerveDriveModule = new SwerveDriveModule("swerveDrive", m_gyro, m_positioner, m_driveSpeed, steerMotorSpeed, isFieldOriented, m_floatTolerance
     , leftFrontMM
     , rightFrontMM
     , leftRearMM
