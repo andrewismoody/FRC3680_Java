@@ -29,6 +29,8 @@ public class DifferentialDriveModule implements DriveModule {
     double previousForwardSpeed = 0.0;
     double previousRotationAngle = 0.0;
 
+    boolean isFieldOriented = false;
+
     Translation3d currentPosition = new Translation3d();
 
     ArrayList<ActionPose> actionPoses = new ArrayList<ActionPose>();
@@ -146,7 +148,16 @@ public class DifferentialDriveModule implements DriveModule {
     public void SetTargetActionPose(Group group, Location location, int locationIndex, Position position, Action action) {
         // TODO: Implement this.
     }
-    
+
+   public void SetFieldOriented(boolean value) {
+       this.isFieldOriented = value;
+       //myTable.getEntry("fieldOriented").setBoolean(value);
+   }
+
+   public boolean IsFieldOriented() {
+       return this.isFieldOriented;
+   }
+
     public void AbandonTarget() {
         targetPose = null;
     }

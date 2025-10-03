@@ -7,4 +7,6 @@ public interface DriveModule extends RobotModule {
     public void ProcessLateralSpeed(double value);
     public void ProcessRotationAngle(double value);
     public void StopRotation();
+    public void SetFieldOriented(boolean value);
+    public boolean IsFieldOriented();
 }

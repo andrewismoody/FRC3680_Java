@@ -31,7 +31,7 @@ public class SwerveDriveModule implements DriveModule {
     double rotationMultiplier = 10.0;
     ModuleController controller;
     SwerveDriveKinematics kinematics;
-    boolean isFieldOriented;
+    boolean isFieldOriented = false;
     Gyro gyro;
     Positioner positioner;
     SwerveDriveOdometry odometry;
@@ -75,7 +75,7 @@ public class SwerveDriveModule implements DriveModule {
     // private final long posStaleTimeoutMs = 300;    // treat stale samples as invalid
     
     public SwerveDriveModule(String ModuleID, Gyro Gyro, Positioner Positioner, double DriveSpeed, double RotationSpeed,
-            boolean IsFieldOriented, double FloatTolerance, SwerveMotorModule ... modules) {
+            double FloatTolerance, SwerveMotorModule ... modules) {
         moduleID = ModuleID;
 
         var translations = new Translation2d[modules.length];
@@ -86,13 +86,12 @@ public class SwerveDriveModule implements DriveModule {
 
         driveSpeed = DriveSpeed;
         rotationSpeed = RotationSpeed;
-        isFieldOriented = IsFieldOriented;
         gyro = Gyro;
         positioner = Positioner;
         floatTolerance = FloatTolerance;
 
         // initialize modules after setting values, as modules lookup values from controller
-        // maybe make this a little less brittle
+        // TODO: maybe make this a little less brittle
         for (SwerveMotorModule module : modules) {
             module.setDriveModule(this);
             driveModules.add(module);
@@ -181,12 +180,35 @@ public class SwerveDriveModule implements DriveModule {
         myTable.getEntry("rotationPidSetpoints").setString(String.format("%f %f %f", rotationPidController.getP(), rotationPidController.getI(), rotationPidController.getD()));
         myTable.getEntry("lateralPidSetpoints").setString(String.format("%f %f %f", lateralPidController.getP(), lateralPidController.getI(), lateralPidController.getD()));
         myTable.getEntry("forwardPidSetpoints").setString(String.format("%f %f %f", forwardPidController.getP(), forwardPidController.getI(), forwardPidController.getD()));
+        myTable.getEntry("fieldOriented").setBoolean(isFieldOriented);
 
         positioner.Initialize();
 
         for (SwerveMotorModule module : driveModules) {
             module.Initialize();
         }
+    }
+
+    public void SetFieldOriented(boolean value) {
+        this.isFieldOriented = value;
+        myTable.getEntry("fieldOriented").setBoolean(value);
+    }
+
+    public boolean IsFieldOriented() {
+        return this.isFieldOriented;
+    }
+
+    // Zero all commanded outputs and optionally push zeros to hardware
+    private void zeroDriveCommands() {
+        // clear commanded speeds
+        ProcessForwardSpeed(0.0);
+        ProcessLateralSpeed(0.0);
+        ProcessRotationAngle(0.0);
+
+        // reset controllers to avoid residual outputs
+        if (lateralPidController != null) lateralPidController.reset();
+        if (forwardPidController != null) forwardPidController.reset();
+        if (rotationPidController != null) rotationPidController.reset();
     }
 
     public double getGyroAngle() {
@@ -365,7 +387,6 @@ public class SwerveDriveModule implements DriveModule {
             }
 
             if (lateralReached && forwardReached && rotationReached) {
-                AbandonTarget();
                 // increment global settle counter; do not abandon until threshold reached
                 if (settleCount < settleCyclesRequired) {
                     settleCount++;
@@ -383,6 +404,7 @@ public class SwerveDriveModule implements DriveModule {
 
     public void AbandonTarget() {
         targetPose = null;
+        
         myTable.getEntry("targetActionPose").setString("none");
         myTable.getEntry("lateralReached").unpublish();
         myTable.getEntry("forwardReached").unpublish();
@@ -460,6 +482,8 @@ public class SwerveDriveModule implements DriveModule {
         SmartDashboard.putNumberArray("RobotDrive Motors", new double[] {driveModules.get(0).getSpeed(), driveModules.get(1).getSpeed(), 0.0, 0.0});
         //SmartDashboard.putNumberArray("My Motors", new double[] {driveModules.get(0).getSpeed(), driveModules.get(1).getSpeed(), 0.0, 0.0});
         //System.out.printf("leftFront speed: %f\n", driveModules.get(0).getSpeed()); // , driveModules.get(1).getSpeed(), 0.0, 0.0});
+
+        zeroDriveCommands();
     }
 
     public void SetController(ModuleController Controller) {

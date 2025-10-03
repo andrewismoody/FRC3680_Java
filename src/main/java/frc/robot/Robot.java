@@ -146,7 +146,7 @@ public class Robot extends TimedRobot {
   SwerveMotorModule leftRearMM = new SwerveMotorModule("leftRear", new Translation2d(-0.276225, 0.238125), can_drive_lr, can_steer_lr, enc_lr, steeringEncoderMultiplier, m_floatTolerance, false, false);
   SwerveMotorModule rightRearMM = new SwerveMotorModule("rightRear", new Translation2d(0.276225, 0.238125), can_drive_rr, can_steer_rr, enc_rr, steeringEncoderMultiplier, m_floatTolerance, false, false);
 
-  SwerveDriveModule swerveDriveModule = new SwerveDriveModule("swerveDrive", m_gyro, m_positioner, m_driveSpeed, steerMotorSpeed, isFieldOriented, m_floatTolerance
+  SwerveDriveModule swerveDriveModule = new SwerveDriveModule("swerveDrive", m_gyro, m_positioner, m_driveSpeed, steerMotorSpeed, m_floatTolerance
     , leftFrontMM
     , rightFrontMM
     , leftRearMM
@@ -370,6 +370,9 @@ public class Robot extends TimedRobot {
       selectedMode = currentAutoMode; 
     selectedMode.Initialize();
 
+    // always field oriented for Auto
+    modules.driveModule.SetFieldOriented(true);
+
     m_timer.restart();
 
     // ActionPose newPose = new ActionPose(Group.Score, Location.Any, -1, Position.Lower, Action.Any, new Pose3d(new Translation3d(), new Rotation3d(0,0,90)));
@@ -392,6 +395,7 @@ public class Robot extends TimedRobot {
    */
   @Override
   public void teleopInit() {
+    modules.driveModule.SetFieldOriented(isFieldOriented);
   }
 
   /** This function is called periodically during teleoperated mode. */
