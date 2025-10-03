@@ -68,12 +68,11 @@ public class SwerveDriveModule implements DriveModule {
 
     NetworkTable myTable;
 
-    private boolean positionerHealthy = true;
-    private Translation3d lastHealthPos = new Translation3d();
-    private long lastHealthTsMs = 0L;
-    private final double posJumpLimitMeters = 2.0; // treat larger jumps as invalid
-    private final long posStaleTimeoutMs = 300;    // treat stale samples as invalid
-
+    // private boolean positionerHealthy = true;
+    // private Translation3d lastHealthPos = new Translation3d();
+    // private long lastHealthTsMs = 0L;
+    // private final double posJumpLimitMeters = 2.0; // treat larger jumps as invalid
+    // private final long posStaleTimeoutMs = 300;    // treat stale samples as invalid
     
     public SwerveDriveModule(String ModuleID, Gyro Gyro, Positioner Positioner, double DriveSpeed, double RotationSpeed,
             boolean IsFieldOriented, double FloatTolerance, SwerveMotorModule ... modules) {
@@ -85,6 +84,15 @@ public class SwerveDriveModule implements DriveModule {
 
         myTable = NetworkTableInstance.getDefault().getTable(moduleID);
 
+        driveSpeed = DriveSpeed;
+        rotationSpeed = RotationSpeed;
+        isFieldOriented = IsFieldOriented;
+        gyro = Gyro;
+        positioner = Positioner;
+        floatTolerance = FloatTolerance;
+
+        // initialize modules after setting values, as modules lookup values from controller
+        // maybe make this a little less brittle
         for (SwerveMotorModule module : modules) {
             module.setDriveModule(this);
             driveModules.add(module);
@@ -92,26 +100,21 @@ public class SwerveDriveModule implements DriveModule {
             positions[i] = new SwerveModulePosition(0, new Rotation2d());
             i++;
         }
-
-        driveSpeed = DriveSpeed;
-        rotationSpeed = RotationSpeed;
-        isFieldOriented = IsFieldOriented;
-        gyro = Gyro;
-        positioner = Positioner;
-        floatTolerance = FloatTolerance;
         
         // TODO: might be mixing things here with drivespeed applying to drive motors and also drivespeed for the whole robot
-        var posKp = driveSpeed / 20.0; 
-        var posKi = posKp / 10.0;
-        var posKd = posKi * 3.0;
+        var posKp = 5.0; 
+        var posKi = 0; //posKp * 0.10;
+        var posKd = 0; //posKi * 3.0;
         lateralPidController = new PIDController(posKp, posKi, posKd);
         forwardPidController = new PIDController(posKp, posKi, posKd);
 
-        var rotKp = 1.5 / 20.0; // guessing 1.5 radians per second for the whole robot
-        var rotKi = rotKp / 10.0;
-        var rotKd = rotKi * 3.0;
+        var rotKp = 0.333;
+        var rotKi = 0; // rotKp * 0.10;
+        var rotKd = 0; //rotKi * 3.0;
         rotationPidController = new PIDController(rotKp, rotKi, rotKd);
-
+        rotationPidController.enableContinuousInput(-Math.PI, Math.PI);
+        rotationPidController.setTolerance(floatTolerance);
+    
         kinematics = new SwerveDriveKinematics(translations);
         odometry = new SwerveDriveOdometry(kinematics, new Rotation2d(gyro.getGyroAngleZ()), positions);
     }
@@ -173,6 +176,8 @@ public class SwerveDriveModule implements DriveModule {
         var startupPosition = positioner.GetPosition();
         myTable.getEntry("startupPosition").setString(startupPosition.toString());
         myTable.getEntry("useFakeGyro").setBoolean(useFakeGyro);
+        myTable.getEntry("rotationSpeed").setDouble(rotationSpeed);
+        myTable.getEntry("driveSpeed").setDouble(driveSpeed);
         myTable.getEntry("rotationPidSetpoints").setString(String.format("%f %f %f", rotationPidController.getP(), rotationPidController.getI(), rotationPidController.getD()));
         myTable.getEntry("lateralPidSetpoints").setString(String.format("%f %f %f", lateralPidController.getP(), lateralPidController.getI(), lateralPidController.getD()));
         myTable.getEntry("forwardPidSetpoints").setString(String.format("%f %f %f", forwardPidController.getP(), forwardPidController.getI(), forwardPidController.getD()));
@@ -276,28 +281,36 @@ public class SwerveDriveModule implements DriveModule {
     }
 
     private boolean isPositionerHealthy() {
-        long now = System.currentTimeMillis();
-        Translation3d pos = positioner.GetPosition();
-        boolean bad =
-            Double.isNaN(pos.getX()) || Double.isNaN(pos.getY()) || Double.isNaN(pos.getZ()) ||
-            Double.isInfinite(pos.getX()) || Double.isInfinite(pos.getY()) || Double.isInfinite(pos.getZ());
+        // var reason = "none";
+        // long now = System.currentTimeMillis();
+        // Translation3d pos = positioner.GetPosition();
+        // boolean bad =
+        //     Double.isNaN(pos.getX()) || Double.isNaN(pos.getY()) || Double.isNaN(pos.getZ()) ||
+        //     Double.isInfinite(pos.getX()) || Double.isInfinite(pos.getY()) || Double.isInfinite(pos.getZ());
 
-        if (!bad) {
-            double jump = lastHealthPos.minus(pos).getNorm();
-            if (lastHealthTsMs != 0 && jump > posJumpLimitMeters) bad = true;
-            if (lastHealthTsMs != 0 && (now - lastHealthTsMs) > posStaleTimeoutMs) bad = true;
-        }
+        // if (!bad) {
+        //     double jump = lastHealthPos.minus(pos).getNorm();
+        //     if (lastHealthTsMs != 0 && jump > posJumpLimitMeters) bad = true;
+        //     if (lastHealthTsMs != 0 && (now - lastHealthTsMs) > posStaleTimeoutMs) bad = true;
+        // } else
+        //     reason = "NAN/Infinite";
 
-        if (!bad) {
-            lastHealthPos = pos;
-            lastHealthTsMs = now;
-        }
-        positionerHealthy = !bad;
+        // if (!bad) {
+        //     lastHealthPos = pos;
+        //     lastHealthTsMs = now;
+        // } else
+        //     reason = "jump";
+
+        // positionerHealthy = !bad;
+
+        var positionerHealthy = positioner.IsValid();
+
         myTable.getEntry("positionerHealthy").setBoolean(positionerHealthy);
         return positionerHealthy;
     }
 
     public void EvaluateTargetPose(double newAngle) {
+        var positionerHealthy = isPositionerHealthy();
         if (targetPose != null) {
             double newAngleRad = Units.degreesToRadians(newAngle);
             myTable.getEntry("newAngleRad").setDouble(newAngleRad);
@@ -307,9 +320,10 @@ public class SwerveDriveModule implements DriveModule {
 
             var positionDelta = currentPosition.minus(position);
             var rotationDelta = newAngleRad - rotation.getZ();
-            myTable.getEntry("targetAngle").setDouble(rotation.getZ());
+            myTable.getEntry("rotationTarget").setDouble(rotation.getZ());
+            myTable.getEntry("positionTarget").setString(position.toString());
 
-            myTable.getEntry("targetDelta").setString(positionDelta.toString());
+            myTable.getEntry("positionDelta").setString(positionDelta.toString());
             myTable.getEntry("rotationDelta").setDouble(rotationDelta);
 
             var lateralReached = false;
@@ -318,7 +332,7 @@ public class SwerveDriveModule implements DriveModule {
 
             // TODO: tune PID values
             // TODO: determine if we need to adjust speed values
-            if (isPositionerHealthy()) { // don't drive if we've lost position or position is invalid
+            if (positionerHealthy) { // don't drive if we've lost position or position is invalid
                 var lateralSpeed = lateralPidController.calculate(currentPosition.getX(), position.getX());
                 if (Math.abs(lateralSpeed) < floatTolerance) {
                     lateralReached = true;

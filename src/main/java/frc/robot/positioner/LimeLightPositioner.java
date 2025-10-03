@@ -47,7 +47,7 @@ public class LimeLightPositioner implements Positioner {
                 return LimelightHelpers.getBotPoseEstimate_wpiBlue_MegaTag2("").tagCount > 0;
         } else {
             if (DriverStation.getAlliance().get() == Alliance.Red)
-            return LimelightHelpers.getBotPoseEstimate_wpiRed("").tagCount > 0;
+                return LimelightHelpers.getBotPoseEstimate_wpiRed("").tagCount > 0;
             else
                 return LimelightHelpers.getBotPoseEstimate_wpiBlue("").tagCount > 0;
         }

@@ -114,11 +114,13 @@ public class SwerveMotorModule {
     driveModule = DriveModule;
     encoderSimRate = driveModule.rotationSpeed;
 
-    var kp = driveModule.rotationSpeed / 20; // kp = 20% of motor capability
-    var ki = kp / 10; // ki = 10% of kp
-    var kd = ki * 3; // kd = 3 times ki
+    var kp = 0.333;
+    var ki = 0; //kp * 0.1; // ki = 10% of kp
+    var kd = 0; // ki * 3; // kd = 3 times ki
     pidController = new PIDController(kp, ki, kd);
-
+    // pidController.enableContinuousInput(-Math.PI, Math.PI);
+    // pidController.setTolerance(floatTolerance);
+    
     myTable = NetworkTableInstance.getDefault().getTable(driveModule.moduleID).getSubTable(moduleID);
   }
 
@@ -166,10 +168,10 @@ public class SwerveMotorModule {
 
     var tarAngle = state.angle;
     var tarRad = tarAngle.getRadians() + 0.0; // add 0 to prevent negative zero
-    myTable.getEntry("TargetRadians").setDouble(tarRad);
+    myTable.getEntry("targetRadians").setDouble(tarRad);
 
     var delAngle = tarAngle.minus(currentAngle).getRadians() + 0.0; // add 0 to prevent negative zero
-    myTable.getEntry("DeltaAngle").setDouble(delAngle);
+    myTable.getEntry("deltaAngle").setDouble(delAngle);
 
     var decelDistance = primeDecelParams(currentRad);
     myTable.getEntry("decelDistance").setDouble(decelDistance);
@@ -177,7 +179,9 @@ public class SwerveMotorModule {
     primeGiveUpParams(delAngle);
 
     // start rotating wheel to the new optimized angle
-    var motorSpeed = pidController.calculate(delAngle, tarRad);
+    var motorSpeed = pidController.calculate(currentRad, tarRad);
+    myTable.getEntry("pidOutput").setDouble(motorSpeed);
+
     double sign = motorSpeed > 0 ? 1 : -1;
 
     if (enableDecelComp)
@@ -201,7 +205,7 @@ public class SwerveMotorModule {
         motorSpeed = 0.0;
     }
 
-    myTable.getEntry("SteerMotorSpeed").setDouble(motorSpeed);
+    myTable.getEntry("steerMotorSpeed").setDouble(motorSpeed);
     rotatorMotor.set(motorSpeed);
 
     previousRotationSpeed = motorSpeed;

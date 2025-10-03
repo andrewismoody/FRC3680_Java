@@ -103,9 +103,9 @@ public class Robot extends TimedRobot {
   final boolean isFieldOriented = false;
 
   final double m_floatTolerance = 0.08; // 0.2;
-  // Rev NEO empirical motor speed = 5676 rotations per minute; 5676 * 6.28 = 35645 radians per minute; 35645 / 60 = 594 radians per second
-  // 100:1 gearbox on 594 rps = 5.94 rps shaft output
-  final double m_elevatorSpeed = ((5676.0 * 6.28) / 60.0) / 100.0;
+  // Rev NEO empirical motor speed = 5676 rotations per minute; 5676 / 60 = 94.6 rotations per second
+  // 100:1 gearbox on 94.6 rps = 0.946 rps shaft output
+  final double m_elevatorSpeed = (5676.0 / 60.0) / 100.0;
   final double elevatorEncoderMultiplier = 1.0 / 100.0;
 
   final double m_liftSpeed = 0.6;
@@ -264,8 +264,8 @@ public class Robot extends TimedRobot {
         break;
     }
 
-    swerveDriveModule.AddActionPose(new ActionPose(Group.Score, Location.Reef, 0, Position.Any, Action.Any, new Pose3d(new Translation3d(1.58, 4.44, 0), new Rotation3d(0, 0, 45))));
-    swerveDriveModule.AddActionPose(new ActionPose(Group.Pickup, Location.Coral, 0, Position.Any, Action.Any, new Pose3d(new Translation3d(2.0, 0.0, 0), new Rotation3d(0, 0, 45))));
+    swerveDriveModule.AddActionPose(new ActionPose(Group.Score, Location.Reef, 0, Position.Any, Action.Any, new Pose3d(new Translation3d(1.58, 4.44, 0), new Rotation3d(0, 0, 0))));
+    swerveDriveModule.AddActionPose(new ActionPose(Group.Pickup, Location.Coral, 0, Position.Any, Action.Any, new Pose3d(new Translation3d(2.0, 0.0, 0), new Rotation3d(0, 0, 0))));
     swerveDriveModule.AddActionPose(new ActionPose(Group.Pickup, Location.Coral, 1, Position.Any, Action.Any, new Pose3d(new Translation3d(2.0, 50.0, 0), new Rotation3d(0, 0, 315))));
 
     elevator.AddActionPose(new ActionPose(Group.Score, Location.Any, -1, Position.Lower, Action.Any, new Pose3d(new Translation3d(0.28, 0, 0), new Rotation3d())));
@@ -365,8 +365,10 @@ public class Robot extends TimedRobot {
   /** This function is run once each time the robot enters autonomous mode. */
   @Override
   public void autonomousInit() {
-    currentAutoMode = AutoModes.get(SmartDashboard.getString("Auto Selector", AutoModes.keys().nextElement()));
-    currentAutoMode.Initialize();
+    var selectedMode = AutoModes.get(SmartDashboard.getString("Auto Selector", AutoModes.keys().nextElement()));
+    if (selectedMode == null)
+      selectedMode = currentAutoMode; 
+    selectedMode.Initialize();
 
     m_timer.restart();
 

@@ -71,9 +71,6 @@ public class AutoSequence {
                         if (elapsedTime < timeEvent.milliseconds) {
                             timeEvent.Run();
                         } else {
-                            System.out.printf("Auto Event %s triggered at %d", timeEvent.GetLabel(),
-                                    timeEvent.GetMilliseconds());
-
                             timeEvent.SetComplete(true);
 
                             startTime = System.currentTimeMillis();
@@ -81,7 +78,6 @@ public class AutoSequence {
                         break;
                     case Target:
                         AutoEventTarget targetEvent = (AutoEventTarget) event;
-                        System.out.printf("Auto Event %s triggered at %s", event.GetLabel(), targetEvent.target);
 
                         // AwaitTarget should only complete when the target is null - which occurs inside the Run function
                         switch (targetEvent.GetEventType()) {
@@ -101,7 +97,7 @@ public class AutoSequence {
                         break;
                     case Position:
                         AutoEventPosition positionEvent = (AutoEventPosition) event;
-                        System.out.printf("Auto Event %s triggered at %s", event.GetLabel(), positionEvent.target);
+
                         positionEvent.Run();
                         if (positionEvent.IsComplete())
                             startTime = System.currentTimeMillis();

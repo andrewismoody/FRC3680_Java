@@ -144,6 +144,7 @@ public class ModuleController {
     for (RobotModule module : modules.values()) {
       module.SetTargetActionPose(group, location, locationIndex, position, action);
     }
+    driveModule.SetTargetActionPose(group, location, locationIndex, position, action);
   }
 
   public boolean GetTarget() {
@@ -153,6 +154,9 @@ public class ModuleController {
       if (module.GetTarget() != null)
         hasTarget = true;
     }
+
+    if (driveModule.GetTarget() != null)
+      hasTarget = true;
 
     return hasTarget;
   }
@@ -166,6 +170,9 @@ public class ModuleController {
                 // ignore and continue
             }
         }
+        
+        driveModule.AbandonTarget();
+
         // also ensure drive open-loop is zeroed if applicable
         try {
             GetDriveModule().ProcessForwardSpeed(0.0);

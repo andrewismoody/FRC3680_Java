@@ -53,9 +53,9 @@ public class SingleMotorModule implements RobotModule {
         driveSpeed = DriveSpeed;
         invert = Invert;
 
-        var kp = driveSpeed / 20; // kp = 20% of motor capability
-        var ki = kp / 10; // ki = 10% of kp
-        var kd = ki * 3; // kd = 3 times ki
+        var kp = 5; // kp = 20% over max motor capability
+        var ki = 0; //kp * 0.10; // ki = 10% of kp
+        var kd = 0; //ki * 3; // kd = 3 times ki
         pidController = new PIDController(kp, ki, kd);
 
         upperLimit = UpperLimit;
