@@ -107,7 +107,7 @@ public class SwerveDriveModule implements DriveModule {
         lateralPidController = new PIDController(posKp, posKi, posKd);
         forwardPidController = new PIDController(posKp, posKi, posKd);
 
-        var rotKp = 0.333;
+        var rotKp = 0.0667;
         var rotKi = 0; // rotKp * 0.10;
         var rotKd = 0; //rotKi * 3.0;
         rotationPidController = new PIDController(rotKp, rotKi, rotKd);
@@ -200,6 +200,7 @@ public class SwerveDriveModule implements DriveModule {
 
     // Zero all commanded outputs and optionally push zeros to hardware
     private void zeroDriveCommands() {
+        System.out.println("zeroDriveCommands");
         // clear commanded speeds
         ProcessForwardSpeed(0.0);
         ProcessLateralSpeed(0.0);
@@ -403,7 +404,10 @@ public class SwerveDriveModule implements DriveModule {
     }
 
     public void AbandonTarget() {
+        System.out.println("AbandonTarget");
         targetPose = null;
+
+        zeroDriveCommands();
         
         myTable.getEntry("targetActionPose").setString("none");
         myTable.getEntry("lateralReached").unpublish();
@@ -482,8 +486,6 @@ public class SwerveDriveModule implements DriveModule {
         SmartDashboard.putNumberArray("RobotDrive Motors", new double[] {driveModules.get(0).getSpeed(), driveModules.get(1).getSpeed(), 0.0, 0.0});
         //SmartDashboard.putNumberArray("My Motors", new double[] {driveModules.get(0).getSpeed(), driveModules.get(1).getSpeed(), 0.0, 0.0});
         //System.out.printf("leftFront speed: %f\n", driveModules.get(0).getSpeed()); // , driveModules.get(1).getSpeed(), 0.0, 0.0});
-
-        zeroDriveCommands();
     }
 
     public void SetController(ModuleController Controller) {
