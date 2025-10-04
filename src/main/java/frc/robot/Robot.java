@@ -264,7 +264,7 @@ public class Robot extends TimedRobot {
         break;
     }
 
-    swerveDriveModule.AddActionPose(new ActionPose(Group.Score, Location.Reef, 0, Position.Any, Action.Any, new Pose3d(new Translation3d(3.24, 5.44, 0), new Rotation3d(0, 0, 0))));
+    swerveDriveModule.AddActionPose(new ActionPose(Group.Score, Location.Reef, 0, Position.Any, Action.Any, new Pose3d(new Translation3d(2.65, 5.65, 0), new Rotation3d(0, 0, 5.495))));
     swerveDriveModule.AddActionPose(new ActionPose(Group.Pickup, Location.Coral, 0, Position.Any, Action.Any, new Pose3d(new Translation3d(2.0, 0.0, 0), new Rotation3d(0, 0, 0))));
     swerveDriveModule.AddActionPose(new ActionPose(Group.Pickup, Location.Coral, 1, Position.Any, Action.Any, new Pose3d(new Translation3d(2.0, 50.0, 0), new Rotation3d(0, 0, 315))));
 
@@ -315,7 +315,8 @@ public class Robot extends TimedRobot {
     // m_controller.RegisterBinaryButtonConsumer(ButtonName.POVRight, grabber::ApplyValue);
 
     // m_controller.RegisterBinaryButtonConsumer(ButtonName.LeftButton, swerveDriveModule::LockPosition);
-    // m_controller.RegisterBinaryButtonConsumer(ButtonName.RightButton, swerveDriveModule::ReturnToZero);
+    m_controller.RegisterBinaryButtonConsumer(ButtonName.Select, swerveDriveModule::ReturnToZero);
+    m_controller.RegisterBinaryButtonConsumer(ButtonName.Select, elevator::SetScoringPoseTrough);
 
     // m_controller.RegisterBinaryButtonConsumer(ButtonName.RightShoulderButton, modules::ProcessInverse);
 
@@ -395,7 +396,7 @@ public class Robot extends TimedRobot {
    */
   @Override
   public void teleopInit() {
-    modules.driveModule.SetFieldOriented(isFieldOriented);
+    modules.driveModule.SetFieldOriented(true);
   }
 
   /** This function is called periodically during teleoperated mode. */

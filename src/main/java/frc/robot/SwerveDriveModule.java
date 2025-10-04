@@ -111,7 +111,7 @@ public class SwerveDriveModule implements DriveModule {
         lateralPidController = new PIDController(posKp, posKi, posKd);
         forwardPidController = new PIDController(posKp, posKi, posKd);
 
-        var rotKp = 0.0667;
+        var rotKp = 0.333;
         var rotKi = 0; // rotKp * 0.10;
         var rotKd = 0; //rotKi * 3.0;
         rotationPidController = new PIDController(rotKp, rotKi, rotKd);
@@ -233,8 +233,6 @@ public class SwerveDriveModule implements DriveModule {
 
         newAngle -= angleOffset;
 
-        positioner.SetRobotOrientation("", newAngle, 0,0,0,0,0);
-
         return newAngle;        
     }
 
@@ -257,7 +255,12 @@ public class SwerveDriveModule implements DriveModule {
     }
 
     public double getCurrentGyroValue() {
-        double newAngle = ((-getGyroAngle() % 360.0) + 360.0) % 360.0;
+        double gyroRaw = getGyroAngle();
+        double newAngle = ((gyroRaw % 360.0) + 360.0) % 360.0;
+        double inverseAngle = ((-gyroRaw % 360.0) + 360.0) % 360.0;
+
+        positioner.SetRobotOrientation("", inverseAngle, 0,0,0,0,0);
+
         return Units.degreesToRadians(newAngle);  
     }
 
@@ -357,13 +360,13 @@ public class SwerveDriveModule implements DriveModule {
         if (targetPose != null) {
             myTable.getEntry("newAngleRad").setDouble(newAngleRad);
             var pose = targetPose.pose;
-            var position = pose.getTranslation();
-            var rotation = pose.getRotation();
+            var targetPosition = pose.getTranslation();
+            var targetRotation = pose.getRotation();
 
-            var positionDelta = currentPosition.minus(position);
-            var rotationDelta = newAngleRad - rotation.getZ();
-            myTable.getEntry("rotationTarget").setDouble(rotation.getZ());
-            myTable.getEntry("positionTarget").setString(position.toString());
+            var positionDelta = targetPosition.minus(currentPosition);
+            var rotationDelta = targetRotation.getZ() - newAngleRad;
+            myTable.getEntry("rotationTarget").setDouble(targetRotation.getZ());
+            myTable.getEntry("positionTarget").setString(targetPosition.toString());
 
             myTable.getEntry("positionDelta").setString(positionDelta.toString());
             myTable.getEntry("rotationDelta").setDouble(rotationDelta);
@@ -371,34 +374,41 @@ public class SwerveDriveModule implements DriveModule {
             var lateralReached = false;
             var forwardReached = false;
             var rotationReached = false;
+            var positionerHealthy = isPositionerHealthy();
 
-            // TODO: tune PID values
-            // TODO: determine if we need to adjust speed values
-            var lateralSpeed = lateralPidController.calculate(currentPosition.getX(), position.getX());
-            if (Math.abs(lateralSpeed) < floatTolerance) {
-                lateralReached = true;
-                myTable.getEntry("lateralReached").setBoolean(lateralReached);
-                ProcessLateralSpeed(0.0);
-            } else {
-                ProcessLateralSpeed(lateralSpeed);
+            // limelight team-based origin is x forward positive, y left positive - same as FRC field
+            // why does this only work inverted'? - we must've confused coordinates somewhere else
+            if (!wroteLateralThisTick) { // allows game controller precedence
+                var lateralSpeed = -lateralPidController.calculate(currentPosition.getY(), targetPosition.getY());
+                if (Math.abs(lateralSpeed) < floatTolerance) {
+                    lateralReached = true;
+                    myTable.getEntry("lateralReached").setBoolean(lateralReached);
+                    ProcessLateralSpeed(0.0);
+                } else if (positionerHealthy) { // prevents sending wrong coordinates
+                    ProcessLateralSpeed(lateralSpeed);
+                }
             }
 
-            var forwardSpeed = forwardPidController.calculate(currentPosition.getY(), position.getY());
-            if (Math.abs(forwardSpeed) < floatTolerance) {
-                forwardReached = true;
-                myTable.getEntry("forwardReached").setBoolean(forwardReached);
-                ProcessForwardSpeed(0.0);
-            } else {
-                ProcessForwardSpeed(forwardSpeed);
+            if (!wroteForwardThisTick) { // allows game controller precedence
+                var forwardSpeed = -forwardPidController.calculate(currentPosition.getX(), targetPosition.getX());
+                if (Math.abs(forwardSpeed) < floatTolerance) {
+                    forwardReached = true;
+                    myTable.getEntry("forwardReached").setBoolean(forwardReached);
+                    ProcessForwardSpeed(0.0);
+                } else if (positionerHealthy) { // prevents sending wrong coordinates
+                    ProcessForwardSpeed(forwardSpeed);
+                }
             }
 
-            var rotationSpeed = rotationPidController.calculate(newAngleRad, rotation.getZ());
-            if (Math.abs(rotationSpeed) < floatTolerance) {
-                rotationReached = true;
-                myTable.getEntry("rotationReached").setBoolean(rotationReached);
-                ProcessRotationAngle(0.0);
-            } else {
-                ProcessRotationAngle(rotationSpeed);
+            if (!wroteRotationThisTick) { // allows game controller precedence
+                var rotationSpeed = rotationPidController.calculate(newAngleRad, targetRotation.getZ());
+                if (Math.abs(rotationSpeed) < floatTolerance) {
+                    rotationReached = true;
+                    myTable.getEntry("rotationReached").setBoolean(rotationReached);
+                    ProcessRotationAngle(0.0);
+                } else {
+                    ProcessRotationAngle(rotationSpeed);
+                }
             }
 
             if (lateralReached && forwardReached && rotationReached) {
@@ -437,18 +447,23 @@ public class SwerveDriveModule implements DriveModule {
         // https://www.chiefdelphi.com/t/set-motor-position-with-encoder/152088/3
 
         // Invert the Gyro angle because it rotates opposite of the robot steering, then wrap it to a positive value
-        double currentGyroAngle = getCurrentGyroValue();
+        Pose3d currentPose = GetPosition();
+        double currentGyroAngle = currentPose.getRotation().getZ();
         myTable.getEntry("currentGyroAngle").setDouble(currentGyroAngle);
+
+        currentPosition = currentPose.getTranslation();
 
         EvaluateTargetPose(currentGyroAngle);
 
+        // prevents bleedover between target poses
         if (isAuto && targetPose == null
             && !(wroteForwardThisTick || wroteLateralThisTick || wroteRotationThisTick))
             // if we're in auto and have no target, zero all outputs
             zeroDriveCommands();
 
-        // TODO: if getanybutton only pauses auto sequences, this will need to change so it doesn't prevent manual control
-        if (targetPose != null && !isPositionerHealthy())
+        // prevents command bleedover from previous ticks
+        if (targetPose != null && !isPositionerHealthy()
+            && !(wroteForwardThisTick || wroteLateralThisTick))
             // if our position is invalid, zero position outputs
             zeroPositionCommands();
 
@@ -492,7 +507,6 @@ public class SwerveDriveModule implements DriveModule {
             // calculate and store current field position and rotation
             // var centerOffset = new Translation2d(Math.cos(getGyroAngle()) * primaryModule.modulePosition.getX(),
             //         Math.sin(getGyroAngle()) * primaryModule.modulePosition.getY());
-            currentPosition = GetPosition().getTranslation(); //primaryModule.currentPosition.minus(centerOffset);
             myTable.getEntry("currentPosition").setString(currentPosition.toString());
             if ((Math.abs(previousPosition.minus(currentPosition).getX()) > floatTolerance
                     || Math.abs(previousPosition.minus(currentPosition).getY()) > floatTolerance)
@@ -522,7 +536,7 @@ public class SwerveDriveModule implements DriveModule {
 
     @Override
     public Pose3d GetPosition() {
-        return new Pose3d(positioner.GetPosition(), new Rotation3d(0, 0, getGyroAngle()));
+        return new Pose3d(positioner.GetPosition(), new Rotation3d(0, 0, getCurrentGyroValue()));
         // return new Translation3d(currentPosition.getX(), currentPosition.getY(), currentAngle);
     }
 }

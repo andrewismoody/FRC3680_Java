@@ -33,6 +33,7 @@ public class LimeLightPositioner implements Positioner {
     public void SetRobotOrientation(String limelightName, double yaw, double yawRate, 
     double pitch, double pitchRate, 
     double roll, double rollRate) {
+        // TODO: re-evalutate this according to red/blue alliance positioning
         LimelightHelpers.SetRobotOrientation(limelightName, yaw, yawRate, pitch, pitchRate, roll, rollRate);
     }
 
