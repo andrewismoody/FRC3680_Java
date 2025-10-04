@@ -256,12 +256,12 @@ public class SwerveDriveModule implements DriveModule {
 
     public double getCurrentGyroValue() {
         double gyroRaw = getGyroAngle();
-        double newAngle = ((gyroRaw % 360.0) + 360.0) % 360.0;
+        //double newAngle = ((gyroRaw % 360.0) + 360.0) % 360.0;
         double inverseAngle = ((-gyroRaw % 360.0) + 360.0) % 360.0;
 
         positioner.SetRobotOrientation("", inverseAngle, 0,0,0,0,0);
 
-        return Units.degreesToRadians(newAngle);  
+        return Units.degreesToRadians(inverseAngle);  
     }
 
     public void StopRotation() {
@@ -401,7 +401,7 @@ public class SwerveDriveModule implements DriveModule {
             }
 
             if (!wroteRotationThisTick) { // allows game controller precedence
-                var rotationSpeed = rotationPidController.calculate(newAngleRad, targetRotation.getZ());
+                var rotationSpeed = -rotationPidController.calculate(newAngleRad, targetRotation.getZ());
                 if (Math.abs(rotationSpeed) < floatTolerance) {
                     rotationReached = true;
                     myTable.getEntry("rotationReached").setBoolean(rotationReached);
