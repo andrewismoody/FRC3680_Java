@@ -66,6 +66,10 @@ public class SwerveDriveModule implements DriveModule {
     private int settleCyclesRequired = 3; // tune as needed
     private int settleCount = 0;
 
+    private boolean wroteForwardThisTick = false;
+    private boolean wroteLateralThisTick = false;
+    private boolean wroteRotationThisTick = false;
+
     NetworkTable myTable;
 
     // private boolean positionerHealthy = true;
@@ -201,15 +205,25 @@ public class SwerveDriveModule implements DriveModule {
     // Zero all commanded outputs and optionally push zeros to hardware
     private void zeroDriveCommands() {
         System.out.println("zeroDriveCommands");
+        zeroPositionCommands();
+
+        // clear commanded speeds
+        ProcessRotationAngle(0.0);
+
+        // reset controllers to avoid residual outputs
+        if (rotationPidController != null) rotationPidController.reset();
+    }
+
+    // Zero all commanded outputs and optionally push zeros to hardware
+    private void zeroPositionCommands() {
+        System.out.println("zeroPositionCommands");
         // clear commanded speeds
         ProcessForwardSpeed(0.0);
         ProcessLateralSpeed(0.0);
-        ProcessRotationAngle(0.0);
 
         // reset controllers to avoid residual outputs
         if (lateralPidController != null) lateralPidController.reset();
         if (forwardPidController != null) forwardPidController.reset();
-        if (rotationPidController != null) rotationPidController.reset();
     }
 
     public double getGyroAngle() {
@@ -226,22 +240,29 @@ public class SwerveDriveModule implements DriveModule {
 
     public void ProcessForwardSpeed(double value) {
         forwardSpeed = value;
+        wroteForwardThisTick = true; // mark open-loop write this tick
         myTable.getEntry("forwardSpeed").setDouble(forwardSpeed);
     }
 
     public void ProcessLateralSpeed(double value) {
         lateralSpeed = value;
+        wroteLateralThisTick = true; // mark open-loop write this tick
         myTable.getEntry("lateralSpeed").setDouble(lateralSpeed);
     }
 
     public void ProcessRotationAngle(double value) {
         rotationAngle = value * rotationMultiplier;
+        wroteRotationThisTick = true; // mark open-loop write this tick
         myTable.getEntry("rotationAngle").setDouble(rotationAngle);
     }
 
+    public double getCurrentGyroValue() {
+        double newAngle = ((-getGyroAngle() % 360.0) + 360.0) % 360.0;
+        return Units.degreesToRadians(newAngle);  
+    }
+
     public void StopRotation() {
-        rotationAngle = getGyroAngle();
-        myTable.getEntry("rotationAngle").setDouble(rotationAngle);
+        ProcessRotationAngle(0.0);
     }
 
     public void ApplyInverse(boolean isAuto) {
@@ -332,10 +353,8 @@ public class SwerveDriveModule implements DriveModule {
         return positionerHealthy;
     }
 
-    public void EvaluateTargetPose(double newAngle) {
-        var positionerHealthy = isPositionerHealthy();
+    public void EvaluateTargetPose(double newAngleRad) {
         if (targetPose != null) {
-            double newAngleRad = Units.degreesToRadians(newAngle);
             myTable.getEntry("newAngleRad").setDouble(newAngleRad);
             var pose = targetPose.pose;
             var position = pose.getTranslation();
@@ -355,27 +374,22 @@ public class SwerveDriveModule implements DriveModule {
 
             // TODO: tune PID values
             // TODO: determine if we need to adjust speed values
-            if (positionerHealthy) { // don't drive if we've lost position or position is invalid
-                var lateralSpeed = lateralPidController.calculate(currentPosition.getX(), position.getX());
-                if (Math.abs(lateralSpeed) < floatTolerance) {
-                    lateralReached = true;
-                    myTable.getEntry("lateralReached").setBoolean(lateralReached);
-                    ProcessLateralSpeed(0.0);
-                } else {
-                    ProcessLateralSpeed(lateralSpeed);
-                }
-
-                var forwardSpeed = forwardPidController.calculate(currentPosition.getY(), position.getY());
-                if (Math.abs(forwardSpeed) < floatTolerance) {
-                    forwardReached = true;
-                    myTable.getEntry("forwardReached").setBoolean(forwardReached);
-                    ProcessForwardSpeed(0.0);
-                } else {
-                    ProcessForwardSpeed(forwardSpeed);
-                }
-            } else {
-                ProcessForwardSpeed(0.0);
+            var lateralSpeed = lateralPidController.calculate(currentPosition.getX(), position.getX());
+            if (Math.abs(lateralSpeed) < floatTolerance) {
+                lateralReached = true;
+                myTable.getEntry("lateralReached").setBoolean(lateralReached);
                 ProcessLateralSpeed(0.0);
+            } else {
+                ProcessLateralSpeed(lateralSpeed);
+            }
+
+            var forwardSpeed = forwardPidController.calculate(currentPosition.getY(), position.getY());
+            if (Math.abs(forwardSpeed) < floatTolerance) {
+                forwardReached = true;
+                myTable.getEntry("forwardReached").setBoolean(forwardReached);
+                ProcessForwardSpeed(0.0);
+            } else {
+                ProcessForwardSpeed(forwardSpeed);
             }
 
             var rotationSpeed = rotationPidController.calculate(newAngleRad, rotation.getZ());
@@ -423,10 +437,20 @@ public class SwerveDriveModule implements DriveModule {
         // https://www.chiefdelphi.com/t/set-motor-position-with-encoder/152088/3
 
         // Invert the Gyro angle because it rotates opposite of the robot steering, then wrap it to a positive value
-        double newAngle = ((-getGyroAngle() % 360.0) + 360.0) % 360.0;
-        myTable.getEntry("actualAngle").setDouble(newAngle);
+        double currentGyroAngle = getCurrentGyroValue();
+        myTable.getEntry("currentGyroAngle").setDouble(currentGyroAngle);
 
-        EvaluateTargetPose(newAngle);
+        EvaluateTargetPose(currentGyroAngle);
+
+        if (isAuto && targetPose == null
+            && !(wroteForwardThisTick || wroteLateralThisTick || wroteRotationThisTick))
+            // if we're in auto and have no target, zero all outputs
+            zeroDriveCommands();
+
+        // TODO: if getanybutton only pauses auto sequences, this will need to change so it doesn't prevent manual control
+        if (targetPose != null && !isPositionerHealthy())
+            // if our position is invalid, zero position outputs
+            zeroPositionCommands();
 
         // set the chassis speed object according to current controller values
         double forwardSpeed = this.forwardSpeed * controller.ApplyModifiers(driveSpeed);
@@ -435,7 +459,7 @@ public class SwerveDriveModule implements DriveModule {
         myTable.getEntry("rotationSpeed").setDouble(thisRotationSpeed);
 
         ChassisSpeeds speeds = isFieldOriented ?
-            ChassisSpeeds.fromFieldRelativeSpeeds(lateralSpeed, forwardSpeed, thisRotationSpeed, Rotation2d.fromDegrees(newAngle))
+            ChassisSpeeds.fromFieldRelativeSpeeds(lateralSpeed, forwardSpeed, thisRotationSpeed, Rotation2d.fromRadians(currentGyroAngle))
             : new ChassisSpeeds(lateralSpeed, forwardSpeed, thisRotationSpeed);
 
         SwerveModuleState[] moduleStates;
@@ -461,7 +485,7 @@ public class SwerveDriveModule implements DriveModule {
                 driveSpeeds[i] = module.getSpeed();
         }
 
-        odometry.update(Rotation2d.fromDegrees(newAngle), positions);
+        odometry.update(Rotation2d.fromRadians(currentGyroAngle), positions);
 
         var primaryModule = driveModules.get(0);
         if (primaryModule != null) {
@@ -486,6 +510,10 @@ public class SwerveDriveModule implements DriveModule {
         SmartDashboard.putNumberArray("RobotDrive Motors", new double[] {driveModules.get(0).getSpeed(), driveModules.get(1).getSpeed(), 0.0, 0.0});
         //SmartDashboard.putNumberArray("My Motors", new double[] {driveModules.get(0).getSpeed(), driveModules.get(1).getSpeed(), 0.0, 0.0});
         //System.out.printf("leftFront speed: %f\n", driveModules.get(0).getSpeed()); // , driveModules.get(1).getSpeed(), 0.0, 0.0});
+
+        wroteForwardThisTick = false;
+        wroteLateralThisTick = false;
+        wroteRotationThisTick = false;
     }
 
     public void SetController(ModuleController Controller) {

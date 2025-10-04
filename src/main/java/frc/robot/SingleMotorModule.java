@@ -275,16 +275,13 @@ public class SingleMotorModule implements RobotModule {
 
     public void SetNoPose(boolean isPressed) {
         if (isPressed) {
-            System.out.printf("%s: Setting No Pose\n", moduleID);
             AbandonTarget();
         }
     }
 
     public void AbandonTarget() {
-        if (debug) {
-            System.out.printf("%s: Setting No Pose\n", moduleID);
-        }
         targetPose = null;
+        myTable.getEntry("targetPose").setString("none");
     }
 
     public Pose3d GetPosition() {
