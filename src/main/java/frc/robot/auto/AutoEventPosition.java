@@ -43,6 +43,24 @@ public class AutoEventPosition implements AutoEvent {
         target = Target;
     }
 
+    public void SetDoubleEvent(double Value, Consumer<Double> Event) {
+        doubleValue = Value;
+        doubleEvent = Event;
+    }
+
+    public void SetBoolEvent(boolean Value, Consumer<Boolean> Event) {
+        boolValue = Value;
+        boolEvent = Event;
+    }
+
+    public void SetAutoEvent(AutoSequence AutoEvent) {
+        autoEvent = AutoEvent;
+    }
+
+    public void SetVoidEvent(Runnable Event) {
+        voidEvent = Event;
+    }
+
     public void Run() {
         wasNearby = isNearby;
         isNearby = isNearby(driveModule.GetPosition(), target, positionTolerance, rotationTolerance);

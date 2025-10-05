@@ -1,4 +1,4 @@
-package frc.robot.s2025.Sequences;
+package frc.robot.z2025.Sequences;
 
 import frc.robot.auto.AutoController;
 import frc.robot.auto.AutoEventAuto;
@@ -13,21 +13,19 @@ public class SequenceMoveAndShoot extends AutoSequence {
         super(Label, modules, MyController);
 
         // adds an event to start driving the motors immediately
-        AutoEventTime event0 = new AutoEventTime("Move Forward", true, 0, EventType.Double, autoController);
-        event0.doubleEvent = modules.GetDriveModule()::ProcessForwardSpeed;
-        event0.doubleValue = 1.0;
+        AutoEventTime event0 = new AutoEventTime("Move Forward", true, 0, EventType.Double, MyController);
+        event0.SetDoubleEvent(1.0, modules.GetDriveModule()::ProcessForwardSpeed);
         AddEvent(event0);
 
         // adds an event to stop driving the motors after some time
-        AutoEventTime event2 = new AutoEventTime("Stop Driving", false, 3000, EventType.Double, autoController);
-        event2.doubleEvent = modules.GetDriveModule()::ProcessForwardSpeed;
-        event2.doubleValue = 0.0;
+        AutoEventTime event2 = new AutoEventTime("Stop Driving", false, 3000, EventType.Double, MyController);
+        event2.SetDoubleEvent(0.0, modules.GetDriveModule()::ProcessForwardSpeed);
         AddEvent(event2);
 
         // adds an event to trigger the nested sequence at a particular time
         AutoSequence ShootSequence = new SequenceShoot("Shoot", modules, MyController);
-        AutoEventTime event4 = new AutoEventTime("Start Shoot", false, 2000, EventType.Auto, autoController);
-        event4.autoEvent = ShootSequence;
+        AutoEventTime event4 = new AutoEventTime("Start Shoot", false, 2000, EventType.Auto, MyController);
+        event4.SetAutoEvent(ShootSequence);
         AddEvent(event4);
 
         // adds an event to capture when the nested sequence is finished (need to send

@@ -1,4 +1,4 @@
-package frc.robot.s2025.Sequences;
+package frc.robot.z2025.Sequences;
 
 import edu.wpi.first.math.geometry.Pose3d;
 import edu.wpi.first.math.geometry.Rotation3d;
@@ -13,7 +13,6 @@ import frc.robot.auto.AutoEvent;
 import frc.robot.auto.AutoEventTarget;
 import frc.robot.auto.AutoEventTime;
 import frc.robot.auto.AutoSequence;
-import frc.robot.auto.AutoEvent.EventType;
 import frc.robot.modules.ModuleController;
 import frc.robot.modules.SwerveDriveModule;
 
@@ -40,24 +39,24 @@ public class SequenceRotateWaitReturn extends AutoSequence {
 
     // Phase 1: Dispatch both targets in parallel
     AutoEventTarget setDrive90 = new AutoEventTarget("Set Drive 90deg", false, rotate90, AutoEvent.EventType.SetTarget, ac);
-    setDrive90.targetModule = drive;
+    setDrive90.SetTargetModule(drive);
     AddEvent(setDrive90);
 
     // Phase 2: Await completion
     AutoEventTarget awaitDrive90 = new AutoEventTarget("Await Drive 90deg", false, null, AutoEvent.EventType.AwaitTarget, ac);
-    awaitDrive90.targetModule = drive;
+    awaitDrive90.SetTargetModule(drive);
     AddEvent(awaitDrive90);
 
     AutoEventTime waitTime = new AutoEventTime("Wait 10 seconds", false, 10000, AutoEvent.EventType.Void, ac);
     AddEvent(waitTime);
 
     AutoEventTarget setDrive0 = new AutoEventTarget("Set Drive 0deg", false, rotate0, AutoEvent.EventType.SetTarget, ac);
-    setDrive0.targetModule = drive;
+    setDrive0.SetTargetModule(drive);
     AddEvent(setDrive0);
 
     // Phase 5: Await completion
     AutoEventTarget awaitDrive0 = new AutoEventTarget("Await Drive 0deg", false, null, AutoEvent.EventType.AwaitTarget, ac);
-    awaitDrive0.targetModule = drive;
+    awaitDrive0.SetTargetModule(drive);
     AddEvent(awaitDrive0);
   }
 }

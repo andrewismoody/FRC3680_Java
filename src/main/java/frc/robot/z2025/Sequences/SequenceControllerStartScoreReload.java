@@ -1,4 +1,4 @@
-package frc.robot.s2025.Sequences;
+package frc.robot.z2025.Sequences;
 
 import java.util.ArrayList;
 import java.util.Collections;

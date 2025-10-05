@@ -1,11 +1,10 @@
-package frc.robot.s2025.Sequences;
+package frc.robot.z2025.Sequences;
 
 import frc.robot.auto.AutoController;
 import frc.robot.auto.AutoEvent;
 import frc.robot.auto.AutoEventPosition;
 import frc.robot.auto.AutoEventTime;
 import frc.robot.auto.AutoSequence;
-import frc.robot.auto.AutoEvent.EventType;
 import frc.robot.modules.DriveModule;
 import frc.robot.modules.ModuleController;
 import frc.robot.modules.SingleActuatorModule;
@@ -27,26 +26,22 @@ public class SequencePositionDemo extends AutoSequence {
     AutoEventPosition holdOpenNearStart = new AutoEventPosition(
       "Hold Open Near Start", true, startPose, AutoEvent.EventType.Boolean, ac, drive
     );
-    holdOpenNearStart.boolEvent = slide::ApplyValue;
-    holdOpenNearStart.boolValue = true;
+    holdOpenNearStart.SetBoolEvent(true, slide::ApplyValue);
     AddEvent(holdOpenNearStart);
 
     // Drive forward for 2 seconds so we leave the start pose region.
     AutoEventTime driveForward = new AutoEventTime("Drive Forward 2s", false, 2000, AutoEvent.EventType.Double, ac);
-    driveForward.doubleEvent = drive::ProcessForwardSpeed;
-    driveForward.doubleValue = 0.5;
+    driveForward.SetDoubleEvent(0.5, drive::ProcessForwardSpeed);
     AddEvent(driveForward);
 
     // Stop the drive (use non-zero duration so Run() executes).
     AutoEventTime stopDrive = new AutoEventTime("Stop Drive", false, 50, AutoEvent.EventType.Double, ac);
-    stopDrive.doubleEvent = drive::ProcessForwardSpeed;
-    stopDrive.doubleValue = 0.0;
+    stopDrive.SetDoubleEvent(0.0, drive::ProcessForwardSpeed);
     AddEvent(stopDrive);
 
     // Close the latch (short hold so ApplyInverse is actually applied).
     AutoEventTime closeLatch = new AutoEventTime("Close Latch", false, 50, AutoEvent.EventType.Boolean, ac);
-    closeLatch.boolEvent = slide::ApplyInverse;
-    closeLatch.boolValue = true;
+    closeLatch.SetBoolEvent(true, slide::ApplyInverse);
     AddEvent(closeLatch);
   }
 }

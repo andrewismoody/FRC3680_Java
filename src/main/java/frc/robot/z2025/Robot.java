@@ -2,7 +2,7 @@
 // Open Source Software; you can modify and/or share it under the terms of
 // the WPILib BSD license file in the root directory of this project.
 
-package frc.robot.s2025;
+package frc.robot.z2025;
 
 import java.util.Hashtable;
 
@@ -36,9 +36,9 @@ import frc.robot.modules.SwerveDriveModule;
 import frc.robot.modules.SwerveMotorModule;
 import frc.robot.positioner.LimeLightPositioner;
 import frc.robot.positioner.Positioner;
-import frc.robot.s2025.Sequences.SequenceControllerMoveToReef;
-import frc.robot.s2025.Sequences.SequenceControllerScoreReloadScore;
-import frc.robot.s2025.Sequences.SequenceRotateScoreReturn;
+import frc.robot.z2025.Sequences.SequenceControllerMoveToReef;
+import frc.robot.z2025.Sequences.SequenceControllerScoreReloadScore;
+import frc.robot.z2025.Sequences.SequenceRotateScoreReturn;
 import frc.robot.encoder.Encoder;
 import frc.robot.encoder.REVEncoder;
 
@@ -366,19 +366,19 @@ public class Robot extends TimedRobot {
 
   public void InitializeAutoModes() {
     // TODO: need to move this definition to preferences and initialize in automodes rather than hard coding
-    AutoController rotateScoreReturn = new AutoController("RotateScoreReturn", m_controller);
+    AutoController rotateScoreReturn = new AutoController("RotateScoreReturn", m_controller, modules);
     rotateScoreReturn.AddSequence(new SequenceRotateScoreReturn(rotateScoreReturn.GetLabel(), modules, rotateScoreReturn));
     AutoModes.put(rotateScoreReturn.GetLabel(), rotateScoreReturn);
 
-    AutoController rotateWaitReturn = new AutoController("RotateWaitReturn", m_controller);
+    AutoController rotateWaitReturn = new AutoController("RotateWaitReturn", m_controller, modules);
     rotateWaitReturn.AddSequence(new SequenceRotateScoreReturn(rotateWaitReturn.GetLabel(), modules, rotateWaitReturn));
     AutoModes.put(rotateWaitReturn.GetLabel(), rotateWaitReturn);
 
-    AutoController controllerScoreReloadScore = new AutoController("ControllerScoreReloadScore", m_controller);
+    AutoController controllerScoreReloadScore = new AutoController("ControllerScoreReloadScore", m_controller, modules);
     controllerScoreReloadScore.AddSequence(new SequenceControllerScoreReloadScore(controllerScoreReloadScore.GetLabel(), modules, controllerScoreReloadScore));
     AutoModes.put(controllerScoreReloadScore.GetLabel(), controllerScoreReloadScore);
 
-    AutoController controllerMoveToReef = new AutoController("controllerMoveToReef", m_controller);
+    AutoController controllerMoveToReef = new AutoController("controllerMoveToReef", m_controller, modules);
     controllerMoveToReef.AddSequence(new SequenceControllerMoveToReef(controllerMoveToReef.GetLabel(), modules, controllerMoveToReef));
     AutoModes.put(controllerMoveToReef.GetLabel(), controllerMoveToReef);
     

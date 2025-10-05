@@ -33,6 +33,24 @@ public class AutoEventTime implements AutoEvent {
         eventType = EventType;
     }
 
+    public void SetDoubleEvent(double Value, Consumer<Double> Event) {
+        doubleValue = Value;
+        doubleEvent = Event;
+    }
+
+    public void SetBoolEvent(boolean Value, Consumer<Boolean> Event) {
+        boolValue = Value;
+        boolEvent = Event;
+    }
+
+    public void SetAutoEvent(AutoSequence AutoEvent) {
+        autoEvent = AutoEvent;
+    }
+
+    public void SetVoidEvent(Runnable Event) {
+        voidEvent = Event;
+    }
+
     public void Run() {
         switch (eventType) {
             case Void:

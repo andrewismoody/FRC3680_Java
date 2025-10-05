@@ -1,7 +1,5 @@
 package frc.robot.auto;
 
-import java.util.function.Consumer;
-
 import frc.robot.action.ActionPose;
 import frc.robot.modules.ModuleController;
 import frc.robot.modules.RobotModule;
@@ -17,16 +15,6 @@ public class AutoEventTarget implements AutoEvent {
 
     EventType eventType;
 
-    boolean boolValue;
-    Consumer<Boolean> boolEvent;
-
-    double doubleValue;
-    Consumer<Double> doubleEvent;
-
-    Runnable voidEvent;
-
-    AutoSequence autoEvent;
-
     RobotModule targetModule;
     ModuleController moduleController;
 
@@ -35,6 +23,7 @@ public class AutoEventTarget implements AutoEvent {
         parallel = Parallel;
         eventType = EventType;
         autoController = AutoController;
+        moduleController = autoController.GetModuleController();
 
         target = Target;
     }
@@ -100,10 +89,6 @@ public class AutoEventTarget implements AutoEvent {
 
     public RobotModule GetTargetModule() {
         return targetModule;
-    }
-
-    public void SetModuleController(ModuleController ModuleController) {
-        moduleController = ModuleController;
     }
 
     public ModuleController GetModuleController() {

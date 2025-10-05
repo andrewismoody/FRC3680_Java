@@ -1,4 +1,4 @@
-package frc.robot.s2025.Sequences;
+package frc.robot.z2025.Sequences;
 
 import edu.wpi.first.math.geometry.Pose3d;
 import edu.wpi.first.math.geometry.Rotation3d;
@@ -13,7 +13,6 @@ import frc.robot.auto.AutoEvent;
 import frc.robot.auto.AutoEventTarget;
 import frc.robot.auto.AutoEventTime;
 import frc.robot.auto.AutoSequence;
-import frc.robot.auto.AutoEvent.EventType;
 import frc.robot.modules.ModuleController;
 import frc.robot.modules.SingleActuatorModule;
 import frc.robot.modules.SingleMotorModule;
@@ -48,49 +47,47 @@ public class SequenceRotateScoreReturn extends AutoSequence {
 
     // Phase 1: Dispatch both targets in parallel
     AutoEventTarget setDrive90 = new AutoEventTarget("Set Drive 90deg", true, rotate90, AutoEvent.EventType.SetTarget, ac);
-    setDrive90.targetModule = drive;
+    setDrive90.SetTargetModule(drive);
     AddEvent(setDrive90);
 
     AutoEventTarget setElevL2 = new AutoEventTarget("Set Elevator L2", true, elevL2, AutoEvent.EventType.SetTarget, ac);
-    setElevL2.targetModule = elevator;
+    setElevL2.SetTargetModule(elevator);
     AddEvent(setElevL2);
 
     // Phase 2: Await both completions in parallel
     AutoEventTarget awaitDrive90 = new AutoEventTarget("Await Drive 90deg", false, null, AutoEvent.EventType.AwaitTarget, ac);
-    awaitDrive90.targetModule = drive;
+    awaitDrive90.SetTargetModule(drive);
     AddEvent(awaitDrive90);
 
     AutoEventTarget awaitElevL2 = new AutoEventTarget("Await Elevator L2", false, null, AutoEvent.EventType.AwaitTarget, ac);
-    awaitElevL2.targetModule = elevator;
+    awaitElevL2.SetTargetModule(elevator);
     AddEvent(awaitElevL2);
 
     // Phase 3: Open slide latch for 2 seconds
     AutoEventTime openLatch = new AutoEventTime("Open Latch", false, 0, AutoEvent.EventType.Boolean, ac);
-    openLatch.boolEvent = slide::ApplyValue;
-    openLatch.boolValue = true;
+    openLatch.SetBoolEvent(true, slide::ApplyValue);
     AddEvent(openLatch);
 
     AutoEventTime closeLatchAfter = new AutoEventTime("Close Latch (after 2s)", false, 2000, AutoEvent.EventType.Boolean, ac);
-    closeLatchAfter.boolEvent = slide::ApplyInverse; // true => reverse/close
-    closeLatchAfter.boolValue = true;
+    closeLatchAfter.SetBoolEvent(true, slide::ApplyInverse); // true => reverse/close
     AddEvent(closeLatchAfter);
 
     // Phase 4: Simultaneously dispatch elevator to zero and rotate back to 0deg
     AutoEventTarget setElevZero = new AutoEventTarget("Set Elevator Zero", false, elevZero, AutoEvent.EventType.SetTarget, ac);
-    setElevZero.targetModule = elevator;
+    setElevZero.SetTargetModule(elevator);
     AddEvent(setElevZero);
 
     AutoEventTarget awaitElevZero = new AutoEventTarget("Await Elevator Zero", false, null, AutoEvent.EventType.AwaitTarget, ac);
-    awaitElevZero.targetModule = elevator;
+    awaitElevZero.SetTargetModule(elevator);
     AddEvent(awaitElevZero);
 
     AutoEventTarget setDrive0 = new AutoEventTarget("Set Drive 0deg", false, rotate0, AutoEvent.EventType.SetTarget, ac);
-    setDrive0.targetModule = drive;
+    setDrive0.SetTargetModule(drive);
     AddEvent(setDrive0);
 
     // Phase 5: Await both completions in parallel
     AutoEventTarget awaitDrive0 = new AutoEventTarget("Await Drive 0deg", false, null, AutoEvent.EventType.AwaitTarget, ac);
-    awaitDrive0.targetModule = drive;
+    awaitDrive0.SetTargetModule(drive);
     AddEvent(awaitDrive0);
   }
 }

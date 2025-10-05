@@ -5,6 +5,7 @@ import java.util.HashMap;
 
 import edu.wpi.first.wpilibj.DriverStation;
 import frc.robot.GameController;
+import frc.robot.modules.ModuleController;
 
 //TODO: Set module controller here instead of inside events and reference to simplify construction
 
@@ -13,12 +14,18 @@ public class AutoController {
     HashMap<String, AutoSequence> sequences = new HashMap<String, AutoSequence>();
 
     String label = "unset";
-    GameController m_controller;
+    GameController gameController;
+    ModuleController moduleController;
     boolean interrupt = false;
 
-    public AutoController(String Label, GameController controller) {
+    public AutoController(String Label, GameController gameController, ModuleController moduleController) {
         label = Label;
-        m_controller = controller;
+        this.gameController = gameController;
+        this.moduleController = moduleController;
+    }
+
+    public ModuleController GetModuleController() {
+        return moduleController;
     }
 
     public String GetLabel() {
@@ -51,8 +58,8 @@ public class AutoController {
     }
 
     public void Update() {
-        if (!DriverStation.isAutonomous() && m_controller != null) {
-            interrupt = m_controller.getAnyButton();
+        if (!DriverStation.isAutonomous() && gameController != null) {
+            interrupt = gameController.getAnyButton();
             if (interrupt) {
                 InterruptAll(true);
                 return;

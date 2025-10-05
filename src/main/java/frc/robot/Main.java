@@ -5,7 +5,7 @@
 package frc.robot;
 
 import edu.wpi.first.wpilibj.RobotBase;
-import frc.robot.s2025.Robot;
+import frc.robot.z2025.Robot;
 
 /**
  * Do NOT add any static variables to this class, or any initialization at all. Unless you know what
