@@ -3,7 +3,7 @@ package frc.robot.auto;
 import java.util.function.Consumer;
 
 import edu.wpi.first.math.geometry.Pose3d;
-import frc.robot.DriveModule;
+import frc.robot.modules.DriveModule;
 
 // AutoEventPosition represents an auto event that is triggered when the drive module reaches a specific pose.
 public class AutoEventPosition implements AutoEvent {

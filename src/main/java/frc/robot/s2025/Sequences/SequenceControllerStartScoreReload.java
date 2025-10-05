@@ -1,4 +1,4 @@
-package frc.robot.auto;
+package frc.robot.s2025.Sequences;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -6,12 +6,17 @@ import java.util.Hashtable;
 import java.util.List;
 
 import edu.wpi.first.math.geometry.Pose3d;
-import frc.robot.ModuleController;
+import frc.robot.modules.ModuleController;
 import frc.robot.action.Action;
 import frc.robot.action.ActionPose;
 import frc.robot.action.Group;
 import frc.robot.action.Location;
 import frc.robot.action.Position;
+import frc.robot.auto.AutoController;
+import frc.robot.auto.AutoEvent;
+import frc.robot.auto.AutoEventTarget;
+import frc.robot.auto.AutoSequence;
+import frc.robot.auto.AutoEvent.EventType;
 
 public class SequenceControllerStartScoreReload extends AutoSequence {
   public SequenceControllerStartScoreReload(String label, ModuleController modules, AutoController ac) {
@@ -41,11 +46,9 @@ public class SequenceControllerStartScoreReload extends AutoSequence {
     for (var key : poseKeys) {
       var pose = Poses.get(key);
       AutoEventTarget setPose = new AutoEventTarget("Set Pose " + key, true, pose, AutoEvent.EventType.SetTarget, ac);
-      setPose.moduleController = modules;
       AddEvent(setPose);
 
       AutoEventTarget awaitPose = new AutoEventTarget("Await Pose " + key, false, null, AutoEvent.EventType.AwaitTarget, ac);
-      awaitPose.moduleController = modules;
       AddEvent(awaitPose);
     }
   }

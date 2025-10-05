@@ -1,8 +1,11 @@
-package frc.robot.auto;
+package frc.robot.s2025.Sequences;
 
-import frc.robot.ModuleController;
-import frc.robot.RobotModule;
+import frc.robot.auto.AutoController;
+import frc.robot.auto.AutoEventTime;
+import frc.robot.auto.AutoSequence;
 import frc.robot.auto.AutoEvent.EventType;
+import frc.robot.modules.ModuleController;
+import frc.robot.modules.RobotModule;
 
 // SequenceShoot is an autonomous sequence that demonstrates controlling a single module with timed events.
 public class SequenceShoot extends AutoSequence {

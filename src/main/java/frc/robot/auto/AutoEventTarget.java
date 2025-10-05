@@ -2,9 +2,9 @@ package frc.robot.auto;
 
 import java.util.function.Consumer;
 
-import frc.robot.ModuleController;
-import frc.robot.RobotModule;
 import frc.robot.action.ActionPose;
+import frc.robot.modules.ModuleController;
+import frc.robot.modules.RobotModule;
 
 // AutoEventTarget represents an auto event that attempts to achieve a specific position or pose.
 public class AutoEventTarget implements AutoEvent {
@@ -92,5 +92,21 @@ public class AutoEventTarget implements AutoEvent {
 
     public boolean IsParallel() {
         return parallel;
+    }
+
+    public void SetTargetModule(RobotModule TargetModule) {
+        targetModule = TargetModule;
+    }
+
+    public RobotModule GetTargetModule() {
+        return targetModule;
+    }
+
+    public void SetModuleController(ModuleController ModuleController) {
+        moduleController = ModuleController;
+    }
+
+    public ModuleController GetModuleController() {
+        return moduleController;
     }
 }

@@ -1,8 +1,14 @@
-package frc.robot.auto;
+package frc.robot.s2025.Sequences;
 
-import frc.robot.ModuleController;
-import frc.robot.DriveModule;
-import frc.robot.SingleActuatorModule;
+import frc.robot.auto.AutoController;
+import frc.robot.auto.AutoEvent;
+import frc.robot.auto.AutoEventPosition;
+import frc.robot.auto.AutoEventTime;
+import frc.robot.auto.AutoSequence;
+import frc.robot.auto.AutoEvent.EventType;
+import frc.robot.modules.DriveModule;
+import frc.robot.modules.ModuleController;
+import frc.robot.modules.SingleActuatorModule;
 
 // SequencePositionDemo is an example autonomous sequence that demonstrates using a position-based event to control a module.
 public class SequencePositionDemo extends AutoSequence {

@@ -1,17 +1,23 @@
-package frc.robot.auto;
+package frc.robot.s2025.Sequences;
 
 import edu.wpi.first.math.geometry.Pose3d;
 import edu.wpi.first.math.geometry.Rotation3d;
 import edu.wpi.first.math.util.Units;
-import frc.robot.ModuleController;
-import frc.robot.SingleActuatorModule;
-import frc.robot.SingleMotorModule;
-import frc.robot.SwerveDriveModule;
 import frc.robot.action.Action;
 import frc.robot.action.ActionPose;
 import frc.robot.action.Group;
 import frc.robot.action.Location;
 import frc.robot.action.Position;
+import frc.robot.auto.AutoController;
+import frc.robot.auto.AutoEvent;
+import frc.robot.auto.AutoEventTarget;
+import frc.robot.auto.AutoEventTime;
+import frc.robot.auto.AutoSequence;
+import frc.robot.auto.AutoEvent.EventType;
+import frc.robot.modules.ModuleController;
+import frc.robot.modules.SingleActuatorModule;
+import frc.robot.modules.SingleMotorModule;
+import frc.robot.modules.SwerveDriveModule;
 
 // SequenceRotateScoreReturn is an example auto sequence that uses target events mixed with timed events to control multiple modules.
 public class SequenceRotateScoreReturn extends AutoSequence {

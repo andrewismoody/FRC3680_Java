@@ -1,4 +1,4 @@
-package frc.robot;
+package frc.robot.modules;
 
 import java.util.ArrayList;
 
@@ -124,6 +124,14 @@ public class SwerveDriveModule implements DriveModule {
 
     public String GetModuleID() {
         return moduleID;
+    }
+
+    public void SetDebug(boolean value) {
+        debug = value;
+    }
+
+    public boolean GetDebug() {
+        return debug;
     }
 
     public void ReturnToZero(boolean isPressed) {

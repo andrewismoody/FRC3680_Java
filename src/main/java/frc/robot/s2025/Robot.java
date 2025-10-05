@@ -2,7 +2,7 @@
 // Open Source Software; you can modify and/or share it under the terms of
 // the WPILib BSD license file in the root directory of this project.
 
-package frc.robot;
+package frc.robot.s2025;
 
 import java.util.Hashtable;
 
@@ -13,7 +13,6 @@ import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.geometry.Translation3d;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.GenericHID;
-import edu.wpi.first.wpilibj.Preferences;
 import edu.wpi.first.wpilibj.Relay;
 import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj.Timer;
@@ -23,18 +22,23 @@ import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import com.revrobotics.spark.SparkLowLevel.MotorType;
 import com.revrobotics.spark.SparkMax;
 
+import frc.robot.GameController;
 import frc.robot.GameController.ButtonName;
 import frc.robot.GameController.ControllerType;
 import frc.robot.action.*;
 import frc.robot.auto.AutoController;
-import frc.robot.auto.SequenceControllerScoreReloadScore;
-import frc.robot.auto.SequenceControllerStartScoreReload;
-import frc.robot.auto.SequenceControllerMoveToReef;
-import frc.robot.auto.SequenceRotateScoreReturn;
 import frc.robot.gyro.AHRSGyro;
 import frc.robot.gyro.Gyro;
+import frc.robot.modules.ModuleController;
+import frc.robot.modules.SingleActuatorModule;
+import frc.robot.modules.SingleMotorModule;
+import frc.robot.modules.SwerveDriveModule;
+import frc.robot.modules.SwerveMotorModule;
 import frc.robot.positioner.LimeLightPositioner;
 import frc.robot.positioner.Positioner;
+import frc.robot.s2025.Sequences.SequenceControllerMoveToReef;
+import frc.robot.s2025.Sequences.SequenceControllerScoreReloadScore;
+import frc.robot.s2025.Sequences.SequenceRotateScoreReturn;
 import frc.robot.encoder.Encoder;
 import frc.robot.encoder.REVEncoder;
 
@@ -51,7 +55,7 @@ public class Robot extends TimedRobot {
 
   double elapsedTime;
 
-  final String codeBuildVersion = "2025.02.15-PreSeason";
+  final String codeBuildVersion = "2025.10.05-THOR";
 
   // RR
   final SparkMax can_drive_rr = new SparkMax(10, MotorType.kBrushless);
@@ -70,15 +74,8 @@ public class Robot extends TimedRobot {
   final SparkMax can_steer_lr = new SparkMax(9, MotorType.kBrushless);
 
   final SparkMax can_elev = new SparkMax(2, MotorType.kBrushless);
-  // final SparkMax can_lift = new SparkMax(4, MotorType.kBrushless);
-  // final SparkMax can_grab = new SparkMax(3, MotorType.kBrushless);
 
   final Relay pwm_slide = new Relay(0);
-
-  // JE motor is 44.4 pulses per rotation, and it reports in degrees, so there are
-  // 8.108 degress per pulse.
-  // not used for absolute encoders
-  // final Encoder m_enc1 = new QuadEncoder(0, 1, 8.108);
 
   // rf
   final Encoder enc_rf = new REVEncoder(can_steer_rf.getEncoder());
@@ -92,8 +89,6 @@ public class Robot extends TimedRobot {
   final Gyro m_gyro = new AHRSGyro();
 
   final Encoder enc_elev = new REVEncoder(can_elev.getEncoder());
-  // final Encoder enc_lift = new REVEncoder(can_lift.getEncoder());
-  // final Encoder enc_grabber = new REVEncoder(can_grab.getEncoder());
 
   final Positioner m_positioner = new LimeLightPositioner(false);
 
@@ -136,8 +131,6 @@ public class Robot extends TimedRobot {
   final double steeringEncoderMultiplier = 1.0 / 20.0;
 
   SingleMotorModule elevator = new SingleMotorModule("elevator", can_elev, m_elevatorSpeed, false, null, null, enc_elev, elevatorEncoderMultiplier, 0.5);
-  // SingleMotorModule lifter = new SingleMotorModule("lifter", can_lift, m_liftSpeed, true, null, null, enc_lift);
-  // SingleMotorModule grabber = new SingleMotorModule("grabber", can_grab, m_grabSpeed, false, null, null, enc_grabber);
 
   SingleActuatorModule slide = new SingleActuatorModule("slide", pwm_slide, false);
   
@@ -154,25 +147,17 @@ public class Robot extends TimedRobot {
     , rightRearMM
   );
 
-  DifferentialDriveModule diffDriveModule = new DifferentialDriveModule("differentialDrive", can_steer_rr, can_drive_lf);
+  // DifferentialDriveModule diffDriveModule = new DifferentialDriveModule("differentialDrive", can_steer_rr, can_drive_lf);
 
   ModuleController modules;
 
   Hashtable<String, AutoController> AutoModes = new Hashtable<String, AutoController>();
   AutoController currentAutoMode;
 
-  public static final String DriveSelectionKey = "DriveSelection";
-  public static final String DriveSelectionSwerve = "Swerve";
-  public static final String DriveSelectionDifferential = "Differential";
-
-
-
   public Robot() {
-    // SendableRegistry.addChild(m_robotDrive, m_leftDrive);
-    // SendableRegistry.addChild(m_robotDrive, m_rightDrive);
-    
     CameraServer.startAutomaticCapture();
   }
+
   /**
    * This function is run when the robot is first started up and should be used
    * for any
@@ -183,9 +168,85 @@ public class Robot extends TimedRobot {
     SmartDashboard.putString("DB/String 0", codeBuildVersion);
     SmartDashboard.putNumber("DB/Slider 0", m_speedMod);
 
-    Preferences.initString(DriveSelectionKey, DriveSelectionSwerve);
-    String DriveSelection = Preferences.getString(DriveSelectionKey, DriveSelectionSwerve);
+    modules = new ModuleController(swerveDriveModule, m_divider, m_controller);
 
+    modules.AddModule(elevator);
+    modules.AddModule(slide);
+    
+    modules.Initialize();
+
+    // modules.SetEnableDrive(true);
+    // modules.SetEnableSteer(true);
+    // modules.SetEnableDriveTrain(true);
+
+    InitializeChoosers();
+    InitializeJoystick();
+    InitializeButtonMappings();
+    InitializeActionPoses();
+    InitializeAutoModes();
+  }
+
+  /** This function is run once each time the robot enters autonomous mode. */
+  @Override
+  public void autonomousInit() {
+    var selectedMode = AutoModes.get(SmartDashboard.getString("Auto Selector", AutoModes.keys().nextElement()));
+    if (selectedMode == null)
+      selectedMode = currentAutoMode; 
+    selectedMode.Initialize();
+
+    // default to field oriented for Auto
+    modules.GetDriveModule().SetFieldOriented(true);
+
+    m_timer.restart();
+  }
+
+  /** This function is called periodically during autonomous. */
+  @Override
+  public void autonomousPeriodic() {
+    currentAutoMode.Update();
+    
+    modules.ProcessState(true);
+  }
+
+  /**
+   * This function is called once each time the robot enters teleoperated mode.
+   */
+  @Override
+  public void teleopInit() {
+    // switch back to defined field oriented mode when we start up tele-op; prevents bleedover from auto
+    modules.GetDriveModule().SetFieldOriented(isFieldOriented);
+  }
+
+  /** This function is called periodically during teleoperated mode. */
+  @Override
+  public void teleopPeriodic() {
+    SmartDashboard.putNumber("Gyro", m_gyro.getAngle());
+
+    // get settings from dashboard
+    // slider 0 is motor speed
+    modules.setSpeedMod(SmartDashboard.getNumber("DB/Slider 0", 1.0));
+
+    modules.ProcessState(false);
+
+    // TODO: figure out why these print blank values sometimes
+    SmartDashboard.putString("DB/String 5", "LF: " + String.valueOf(leftFrontMM.getPosition().angle.getDegrees()));
+    SmartDashboard.putString("DB/String 6", "RF: " + String.valueOf(rightFrontMM.getPosition().angle.getDegrees()));
+    SmartDashboard.putString("DB/String 7", "LR: " + String.valueOf(leftRearMM.getPosition().angle.getDegrees()));
+    SmartDashboard.putString("DB/String 8", "RR: " + String.valueOf(rightRearMM.getPosition().angle.getDegrees()));
+    SmartDashboard.putString("DB/String 9", "gyro: " + String.valueOf(m_gyro.getAngle()));
+  }
+
+  /** This function is called once each time the robot enters test mode. */
+  @Override
+  public void testInit() {
+  }
+
+  /** This function is called periodically during test mode. */
+  @Override
+  public void testPeriodic() {
+  }
+
+  public void InitializeChoosers() {
     SendableChooser<Group> GroupChooser = new SendableChooser<>();
     for (Group item : Group.class.getEnumConstants()) {
       GroupChooser.addOption(item.toString(), item);
@@ -215,13 +276,9 @@ public class Robot extends TimedRobot {
       ActionChooser.addOption(item.toString(), item);
     }
     SmartDashboard.putData(ActionChooser);
+  }
 
-    swerveDriveModule.debug = false;
-    leftRearMM.debugAngle = false;
-    leftFrontMM.debugSpeed = false;
-
-    elevator.debug = false;
-
+  public void InitializeJoystick() {
     JoystickIndexLoop: for (int j = 0; j < 6; j++) {
       System.out.printf("Checking for joystick on port %d\n", j);
 
@@ -254,61 +311,10 @@ public class Robot extends TimedRobot {
       System.out.println("no joysticks detected!  Assuming XBox Controller on port 0");
       m_controller = new GameController(0, ControllerType.Xbox);
     }
+  }
 
-    switch (DriveSelection) {
-      case DriveSelectionDifferential:
-        modules = new ModuleController(diffDriveModule, m_divider, m_controller);
-        break;
-      case DriveSelectionSwerve:
-      default:
-        modules = new ModuleController(swerveDriveModule, m_divider, m_controller);
-        break;
-    }
-
-    // left start, 240
-    swerveDriveModule.AddActionPose(new ActionPose(Group.Start, Location.Barge, 1, Position.Any, Action.Any, new Pose3d(new Translation3d(9.271, 7.79, 0), new Rotation3d(0, 0, 3.654))));
-    // waypoint 11, 240
-    swerveDriveModule.AddActionPose(new ActionPose(Group.Score, Location.AdHoc, 11, Position.Any, Action.Any, new Pose3d(new Translation3d(5.8, 5.75, 0), new Rotation3d(0, 0, 3.654))));
-    // waypoint 12, 240
-    swerveDriveModule.AddActionPose(new ActionPose(Group.Score, Location.AdHoc, 12, Position.Any, Action.Any, new Pose3d(new Translation3d(4.47, 6.45, 0), new Rotation3d(0, 0, 4.7))));
-    // waypoint 1, 300
-    swerveDriveModule.AddActionPose(new ActionPose(Group.Score, Location.AdHoc, 1, Position.Any, Action.Any, new Pose3d(new Translation3d(3.15, 5.75, 0), new Rotation3d(0, 0, 5.22))));
-    // reef 1, 300
-    swerveDriveModule.AddActionPose(new ActionPose(Group.Score, Location.Reef, 1, Position.Any, Action.Any, new Pose3d(new Translation3d(3.75, 5.05, 0), new Rotation3d(0, 0, 5.22))));
-    // waypoint 1, 126
-    swerveDriveModule.AddActionPose(new ActionPose(Group.Pickup, Location.AdHoc, 1, Position.Any, Action.Any, new Pose3d(new Translation3d(3.15, 5.75, 0), new Rotation3d(0, 0, 2.1924))));
-    // loading 1, 126
-    swerveDriveModule.AddActionPose(new ActionPose(Group.Pickup, Location.Coral, 1, Position.Any, Action.Any, new Pose3d(new Translation3d(1.15, 7.08, 0), new Rotation3d(0, 0, 2.1924))));
-
-    elevator.AddActionPose(new ActionPose(Group.Score, Location.Any, -1, Position.Lower, Action.Any, new Pose3d(new Translation3d(0.28, 0, 0), new Rotation3d())));
-    elevator.AddActionPose(new ActionPose(Group.Score, Location.Any, -1, Position.Middle, Action.Any, new Pose3d(new Translation3d(1.14, 0, 0), new Rotation3d())));
-    elevator.AddActionPose(new ActionPose(Group.Any, Location.Any, -1, Position.Trough, Action.Any, new Pose3d(new Translation3d(0.0, 0, 0), new Rotation3d())));
-    modules.AddModule(elevator);
-
-  //  modules.AddModule(lifter);
-  //   modules.AddModule(grabber);
-    slide.AddActionPose(new ActionPose(Group.Any, Location.Any, -1, Position.Any, Action.Drop, new Pose3d(new Translation3d(1, 0, 0), new Rotation3d())));
-    slide.AddActionPose(new ActionPose(Group.Any, Location.Any, -1, Position.Any, Action.Pickup, new Pose3d(new Translation3d(-1, 0, 0), new Rotation3d())));
-    modules.AddModule(slide);
-
-    modules.enableDrive = true;
-    modules.enableSteer = true;
-    modules.enableDriveTrain = true;
-    
-    modules.Initialize();
-
-
-    // TODO: Any button push should pause current auto sequence across the autocontroller
+  public void InitializeButtonMappings() {
     // TODO: need to move button mappings to preferences and initialize in game controller class
-
-    // three different modules operate the same component differently
-    // m_controller.RegisterBinaryButtonConsumer(ButtonName.LeftButton, ejector::ApplyValue);
-    // m_controller.RegisterBinaryButtonConsumer(ButtonName.RightButton, ejectorSlow::ApplyValue);
-    // m_controller.RegisterBinaryButtonConsumer(ButtonName.LeftShoulderButton, intakeUpper::ApplyValue);
-
-    // map both of these actions to the same button
-    // m_controller.RegisterBinaryButtonConsumer(ButtonName.TopButton, intake::ApplyValue);
-    // m_controller.RegisterBinaryButtonConsumer(ButtonName.TopButton, feeder::ApplyValue);
     
     m_controller.RegisterBinaryButtonConsumer(ButtonName.LeftShoulderButton, slide::ApplyValue);
     m_controller.RegisterBinaryButtonConsumer(ButtonName.RightShoulderButton, slide::ApplyInverse);
@@ -317,8 +323,6 @@ public class Robot extends TimedRobot {
     m_controller.RegisterBinaryButtonConsumer(ButtonName.TopButton, elevator::SetScoringPoseMiddle);
     m_controller.RegisterBinaryButtonConsumer(ButtonName.LeftButton, elevator::SetScoringPoseLower);
     m_controller.RegisterBinaryButtonConsumer(ButtonName.RightButton, elevator::SetScoringPoseTrough);
-
-
 
     m_controller.RegisterBinaryButtonConsumer(ButtonName.POVDown, elevator::ApplyInverse);
     m_controller.RegisterBinaryButtonConsumer(ButtonName.POVUp, elevator::ApplyValue);
@@ -335,7 +339,7 @@ public class Robot extends TimedRobot {
     m_controller.RegisterValueButtonConsumer(ButtonName.LeftTrigger, modules::ProcessDivider1);
 
     m_controller.SetValueButtonInversion(ButtonName.RightTrigger, true);
-    m_controller.RegisterValueButtonConsumer(ButtonName.RightTrigger, modules::ProcessSpeedDilation); // ProcessSpeedLock);
+    m_controller.RegisterValueButtonConsumer(ButtonName.RightTrigger, modules::ProcessSpeedDilation);
 
     m_controller.SetValueButtonInversion(ButtonName.LeftThumbstickY, false);
     m_controller.RegisterValueButtonConsumer(ButtonName.LeftThumbstickY, swerveDriveModule::ProcessForwardSpeed);
@@ -345,13 +349,22 @@ public class Robot extends TimedRobot {
 
     m_controller.SetValueButtonInversion(ButtonName.RightThumbstickX, false);
     m_controller.RegisterValueButtonConsumer(ButtonName.RightThumbstickX, swerveDriveModule::ProcessRotationAngle);
+  }
 
-    m_controller.RegisterValueButtonConsumer(ButtonName.RightThumbstickY, diffDriveModule::ProcessForwardSpeed);
-    m_controller.RegisterValueButtonConsumer(ButtonName.LeftThumbstickX, diffDriveModule::ProcessRotationAngle);
+  public void InitializeActionPoses() {
+    swerveDriveModule.AddActionPose(new ActionPose(Group.Score, Location.Reef, 0, Position.Any, Action.Any, new Pose3d(new Translation3d(2.65, 5.65, 0), new Rotation3d(0, 0, 5.495))));
+    swerveDriveModule.AddActionPose(new ActionPose(Group.Pickup, Location.Coral, 0, Position.Any, Action.Any, new Pose3d(new Translation3d(2.0, 0.0, 0), new Rotation3d(0, 0, 0))));
+    swerveDriveModule.AddActionPose(new ActionPose(Group.Pickup, Location.Coral, 1, Position.Any, Action.Any, new Pose3d(new Translation3d(2.0, 50.0, 0), new Rotation3d(0, 0, 315))));
 
-    // m_controller.RegisterValueButtonConsumer(ButtonName.RightThumbstickY,
-    // modules::ProcessSpeedDilation);
+    elevator.AddActionPose(new ActionPose(Group.Score, Location.Any, -1, Position.Lower, Action.Any, new Pose3d(new Translation3d(0.28, 0, 0), new Rotation3d())));
+    elevator.AddActionPose(new ActionPose(Group.Score, Location.Any, -1, Position.Middle, Action.Any, new Pose3d(new Translation3d(1.14, 0, 0), new Rotation3d())));
+    elevator.AddActionPose(new ActionPose(Group.Any, Location.Any, -1, Position.Trough, Action.Any, new Pose3d(new Translation3d(0.0, 0, 0), new Rotation3d())));
 
+    slide.AddActionPose(new ActionPose(Group.Any, Location.Any, -1, Position.Any, Action.Drop, new Pose3d(new Translation3d(1, 0, 0), new Rotation3d())));
+    slide.AddActionPose(new ActionPose(Group.Any, Location.Any, -1, Position.Any, Action.Pickup, new Pose3d(new Translation3d(-1, 0, 0), new Rotation3d())));
+  }
+
+  public void InitializeAutoModes() {
     // TODO: need to move this definition to preferences and initialize in automodes rather than hard coding
     AutoController rotateScoreReturn = new AutoController("RotateScoreReturn", m_controller);
     rotateScoreReturn.AddSequence(new SequenceRotateScoreReturn(rotateScoreReturn.GetLabel(), modules, rotateScoreReturn));
@@ -368,84 +381,10 @@ public class Robot extends TimedRobot {
     AutoController controllerMoveToReef = new AutoController("controllerMoveToReef", m_controller);
     controllerMoveToReef.AddSequence(new SequenceControllerMoveToReef(controllerMoveToReef.GetLabel(), modules, controllerMoveToReef));
     AutoModes.put(controllerMoveToReef.GetLabel(), controllerMoveToReef);
-
-    AutoController controllerStartScoreReload = new AutoController("controllerStartScoreReload", m_controller);
-    controllerStartScoreReload.AddSequence(new SequenceControllerStartScoreReload(controllerStartScoreReload.GetLabel(), modules, controllerStartScoreReload));
-    AutoModes.put(controllerStartScoreReload.GetLabel(), controllerStartScoreReload);
-
-    currentAutoMode = controllerStartScoreReload;
+    
+    currentAutoMode = controllerMoveToReef;
 
     SmartDashboard.putStringArray("Auto List", new String[] {});
     SmartDashboard.putStringArray("Auto List", AutoModes.keySet().toArray(new String[] {}));
-  }
-
-  /** This function is run once each time the robot enters autonomous mode. */
-  @Override
-  public void autonomousInit() {
-    var selectedMode = AutoModes.get(SmartDashboard.getString("Auto Selector", AutoModes.keys().nextElement()));
-    if (selectedMode == null)
-      selectedMode = currentAutoMode; 
-    selectedMode.Initialize();
-
-    // always field oriented for Auto
-    modules.driveModule.SetFieldOriented(true);
-
-    m_timer.restart();
-
-    // ActionPose newPose = new ActionPose(Group.Score, Location.Any, -1, Position.Lower, Action.Any, new Pose3d(new Translation3d(), new Rotation3d(0,0,90)));
-    // swerveDriveModule.AddActionPose(newPose);
-    // swerveDriveModule.SetTargetActionPose(newPose);
-  }
-
-  /** This function is called periodically during autonomous. */
-  @Override
-  public void autonomousPeriodic() {
-    currentAutoMode.Update();
-
-    // swerveDriveModule.ProcessForwardSpeed(0.5);
-    
-    modules.ProcessState(true);
-  }
-
-  /**
-   * This function is called once each time the robot enters teleoperated mode.
-   */
-  @Override
-  public void teleopInit() {
-    modules.driveModule.SetFieldOriented(true);
-  }
-
-  /** This function is called periodically during teleoperated mode. */
-  @Override
-  public void teleopPeriodic() {
-    SmartDashboard.putNumber("Gyro", m_gyro.getAngle());
-
-    // get settings from dashboard
-    // slider 0 is motor speed
-    modules.setSpeedMod(SmartDashboard.getNumber("DB/Slider 0", 1.0));
-
-    // if (SmartDashboard.getBoolean("DB/Button 0", false))
-    //   modules.setInverseValue(1.0);
-    // else
-    //   modules.setInverseValue(-1.0);
-
-    modules.ProcessState(false);
-
-    // TODO: figure out why these print blank values sometimes
-    SmartDashboard.putString("DB/String 5", "LF: " + String.valueOf(leftFrontMM.currentAngle.getDegrees()));
-    SmartDashboard.putString("DB/String 6", "RF: " + String.valueOf(rightFrontMM.currentAngle.getDegrees()));
-    SmartDashboard.putString("DB/String 7", "LR: " + String.valueOf(leftRearMM.currentAngle.getDegrees()));
-    SmartDashboard.putString("DB/String 8", "RR: " + String.valueOf(rightRearMM.currentAngle.getDegrees()));
-    SmartDashboard.putString("DB/String 9", "gyro: " + String.valueOf(m_gyro.getAngle()));
-  }
-
-  /** This function is called once each time the robot enters test mode. */
-  @Override
-  public void testInit() {
-  }
-
-  /** This function is called periodically during test mode. */
-  @Override
-  public void testPeriodic() {
   }
 }

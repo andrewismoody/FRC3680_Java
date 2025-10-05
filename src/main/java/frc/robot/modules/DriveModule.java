@@ -1,4 +1,4 @@
-package frc.robot;
+package frc.robot.modules;
 
 public interface DriveModule extends RobotModule {
     public void Initialize();

@@ -1,8 +1,9 @@
-package frc.robot;
+package frc.robot.modules;
 
 import java.util.Hashtable;
 
 import edu.wpi.first.math.geometry.Pose3d;
+import frc.robot.GameController;
 import frc.robot.action.Action;
 import frc.robot.action.ActionPose;
 import frc.robot.action.Group;
@@ -43,6 +44,30 @@ public class ModuleController {
 
   public DriveModule GetDriveModule() {
     return driveModule;
+  }
+
+  public void SetEnableDrive(boolean value) {
+    enableDrive = value;
+  }
+
+  public boolean GetEnableDrive() {
+    return enableDrive;
+  }
+
+  public void SetEnableSteer(boolean value) {
+    enableSteer = value;
+  }
+
+  public boolean GetEnableSteer() {
+    return enableSteer;
+  }
+
+  public void SetEnableDriveTrain(boolean value) {
+    enableDriveTrain = value;
+  }
+
+  public boolean GetEnableDriveTrain() {
+    return enableDriveTrain;
   }
 
   public void AddModule(RobotModule module) {

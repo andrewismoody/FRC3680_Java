@@ -1,7 +1,11 @@
-package frc.robot.auto;
+package frc.robot.s2025.Sequences;
 
-import frc.robot.ModuleController;
+import frc.robot.auto.AutoController;
+import frc.robot.auto.AutoEventAuto;
+import frc.robot.auto.AutoEventTime;
+import frc.robot.auto.AutoSequence;
 import frc.robot.auto.AutoEvent.EventType;
+import frc.robot.modules.ModuleController;
 
 // SequenceMoveAndShoot is an example of using time events to move the robot and nested sequences.
 public class SequenceMoveAndShoot extends AutoSequence {

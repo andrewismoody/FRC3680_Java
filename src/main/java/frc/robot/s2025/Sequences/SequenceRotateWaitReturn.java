@@ -1,15 +1,21 @@
-package frc.robot.auto;
+package frc.robot.s2025.Sequences;
 
 import edu.wpi.first.math.geometry.Pose3d;
 import edu.wpi.first.math.geometry.Rotation3d;
 import edu.wpi.first.math.util.Units;
-import frc.robot.ModuleController;
-import frc.robot.SwerveDriveModule;
 import frc.robot.action.Action;
 import frc.robot.action.ActionPose;
 import frc.robot.action.Group;
 import frc.robot.action.Location;
 import frc.robot.action.Position;
+import frc.robot.auto.AutoController;
+import frc.robot.auto.AutoEvent;
+import frc.robot.auto.AutoEventTarget;
+import frc.robot.auto.AutoEventTime;
+import frc.robot.auto.AutoSequence;
+import frc.robot.auto.AutoEvent.EventType;
+import frc.robot.modules.ModuleController;
+import frc.robot.modules.SwerveDriveModule;
 
 // SequenceRotateWaitReturn is a simple example auto sequence that uses target events mixed with timed events to move the robot.
 public class SequenceRotateWaitReturn extends AutoSequence {

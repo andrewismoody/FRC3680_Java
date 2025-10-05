@@ -1,4 +1,4 @@
-package frc.robot;
+package frc.robot.modules;
 
 import edu.wpi.first.wpilibj.RobotBase;
 import edu.wpi.first.wpilibj.motorcontrol.MotorController;

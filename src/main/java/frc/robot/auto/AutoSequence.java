@@ -2,7 +2,7 @@ package frc.robot.auto;
 
 import java.util.ArrayList;
 
-import frc.robot.ModuleController;
+import frc.robot.modules.ModuleController;
 
 public class AutoSequence {
 
@@ -17,6 +17,8 @@ public class AutoSequence {
     ArrayList<AutoEvent> Events = new ArrayList<AutoEvent>();
 
     boolean interrupt = false;
+
+    // TODO: move modulecontroller to autocontroller and reduce complexity
 
     public AutoSequence(String Label, ModuleController Controller, AutoController MyController) {
         label = Label;
@@ -45,7 +47,7 @@ public class AutoSequence {
         for (AutoEvent event : Events) {
             event.SetComplete(false);
         }
-        
+
         interrupt = false;
         finished = false;
     }
