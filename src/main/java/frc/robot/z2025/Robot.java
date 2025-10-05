@@ -381,8 +381,12 @@ public class Robot extends TimedRobot {
     AutoController controllerMoveToReef = new AutoController("controllerMoveToReef", m_controller, modules);
     controllerMoveToReef.AddSequence(new SequenceControllerMoveToReef(controllerMoveToReef.GetLabel(), modules, controllerMoveToReef));
     AutoModes.put(controllerMoveToReef.GetLabel(), controllerMoveToReef);
-    
-    currentAutoMode = controllerMoveToReef;
+
+    AutoController controllerStartScoreReload = new AutoController("controllerStartScoreReload", m_controller);
+    controllerStartScoreReload.AddSequence(new SequenceControllerStartScoreReload(controllerStartScoreReload.GetLabel(), modules, controllerStartScoreReload));
+    AutoModes.put(controllerStartScoreReload.GetLabel(), controllerStartScoreReload);
+
+    currentAutoMode = controllerStartScoreReload;
 
     SmartDashboard.putStringArray("Auto List", new String[] {});
     SmartDashboard.putStringArray("Auto List", AutoModes.keySet().toArray(new String[] {}));
