@@ -181,7 +181,8 @@ public class SingleMotorModule implements RobotModule {
     }
 
     public void EvaluateTargetPose() {
-        if (targetPose != null && currentDriveSpeed == 0.0) {
+        // TODO: detect button input and bypass
+        if (targetPose != null) {
             double angleTolerance = 0.00001; // 0.00001;
             var target = targetPose.pose;
     

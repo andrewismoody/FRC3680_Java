@@ -118,7 +118,8 @@ public class DualMotorModule implements RobotModule {
     }
 
     public void EvaluateTargetPose(double rotationCount) {
-        if (targetPose != null && currentDriveSpeed == 0.0) {
+        // TODO: Detect button input and bypass
+        if (targetPose != null) {
             double angleTolerance = 0.00001; // 0.00001;
             var target = targetPose.pose;
     

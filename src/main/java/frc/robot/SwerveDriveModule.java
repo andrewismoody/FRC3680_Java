@@ -254,14 +254,21 @@ public class SwerveDriveModule implements DriveModule {
         myTable.getEntry("rotationAngle").setDouble(rotationAngle);
     }
 
+    public double getInvertedGyroValue() {
+        double gyroRaw = getGyroAngle();
+        double inverseAngle = ((-gyroRaw % 360.0) + 360.0) % 360.0;
+
+        return Units.degreesToRadians(inverseAngle);  
+    }
+
     public double getCurrentGyroValue() {
         double gyroRaw = getGyroAngle();
-        //double newAngle = ((gyroRaw % 360.0) + 360.0) % 360.0;
+        double newAngle = ((gyroRaw % 360.0) + 360.0) % 360.0;
         double inverseAngle = ((-gyroRaw % 360.0) + 360.0) % 360.0;
 
         positioner.SetRobotOrientation("", inverseAngle, 0,0,0,0,0);
 
-        return Units.degreesToRadians(inverseAngle);  
+        return Units.degreesToRadians(newAngle);  
     }
 
     public void StopRotation() {
@@ -448,7 +455,7 @@ public class SwerveDriveModule implements DriveModule {
 
         // Invert the Gyro angle because it rotates opposite of the robot steering, then wrap it to a positive value
         Pose3d currentPose = GetPosition();
-        double currentGyroAngle = currentPose.getRotation().getZ();
+        double currentGyroAngle = getInvertedGyroValue();
         myTable.getEntry("currentGyroAngle").setDouble(currentGyroAngle);
 
         currentPosition = currentPose.getTranslation();
@@ -474,7 +481,7 @@ public class SwerveDriveModule implements DriveModule {
         myTable.getEntry("rotationSpeed").setDouble(thisRotationSpeed);
 
         ChassisSpeeds speeds = isFieldOriented ?
-            ChassisSpeeds.fromFieldRelativeSpeeds(lateralSpeed, forwardSpeed, thisRotationSpeed, Rotation2d.fromRadians(currentGyroAngle))
+            ChassisSpeeds.fromFieldRelativeSpeeds(lateralSpeed, forwardSpeed, thisRotationSpeed, Rotation2d.fromRadians(getCurrentGyroValue()))
             : new ChassisSpeeds(lateralSpeed, forwardSpeed, thisRotationSpeed);
 
         SwerveModuleState[] moduleStates;
