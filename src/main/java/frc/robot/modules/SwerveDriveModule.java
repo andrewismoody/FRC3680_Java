@@ -113,7 +113,9 @@ public class SwerveDriveModule implements DriveModule {
         lateralPidController = new PIDController(posKp, posKi, posKd);
         forwardPidController = new PIDController(posKp, posKi, posKd);
 
-        var rotKp = 0.333;
+        // bumping this up to 2.0 after removing the rotation multiplier from processrotation
+        // hoping this will offset the 10x multiplier but also dampen (not fully 3.3, but reduced down to 2.0)
+        var rotKp = 2.0; //0.333;
         var rotKi = 0; // rotKp * 0.10;
         var rotKd = 0; //rotKi * 3.0;
         rotationPidController = new PIDController(rotKp, rotKi, rotKd);
@@ -249,7 +251,8 @@ public class SwerveDriveModule implements DriveModule {
 
     public void ProcessRotationAngle(double value) {
         // TODO: we need to soften rotation - should we modify this or adjust PID or both?
-        rotationAngle = value * rotationMultiplier;
+        // was multiplying value by rotationMultiplier - moving this to processstate and reducing by speed dilation
+        rotationAngle = value;
         wroteRotationThisTick = true; // mark open-loop write this tick
         myTable.getEntry("rotationAngle").setDouble(rotationAngle);
     }
@@ -496,7 +499,10 @@ public class SwerveDriveModule implements DriveModule {
         // set the chassis speed object according to current controller values
         double forwardSpeed = this.forwardSpeed * controller.ApplyModifiers(driveSpeed);
         double lateralSpeed = this.lateralSpeed * controller.ApplyModifiers(driveSpeed);
-        double thisRotationSpeed = controller.ApplyModifiers(rotationAngle); //rotationAngle; // * controller.ApplyModifiers(this.rotationSpeed);
+        // we were applying modifiers directly to rotation angle, but this seems ineffective.
+        // trying similar approach as linear speed - apply dilation to rotation multiplier
+        // this will only affect open-loop rotation, not PID-based rotation
+        double thisRotationSpeed = rotationAngle * controller.ApplyModifiers(rotationMultiplier); //rotationAngle; // * controller.ApplyModifiers(this.rotationSpeed);
         myTable.getEntry("rotationSpeed").setDouble(thisRotationSpeed);
 
         ChassisSpeeds speeds = isFieldOriented ?
