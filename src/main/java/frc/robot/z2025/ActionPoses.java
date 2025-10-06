@@ -15,20 +15,29 @@ import frc.robot.z2025.action.Position;
 
 public class ActionPoses {
     public static void Initialize(SwerveDriveModule swerveDriveModule, SingleMotorModule elevator, SingleActuatorModule slide) {
-        // left start, 240
-        swerveDriveModule.AddActionPose(new ActionPose(Group.Start, Location.Barge.getValue(), 1, Position.Any.getValue(), Action.Any, new AutoTarget(new Translation3d(9.271, 7.79, 0), new Rotation2d(3.654))));
-        // waypoint 11, 240
-        swerveDriveModule.AddActionPose(new ActionPose(Group.Score, Location.Waypoint.getValue(), 11, Position.Any.getValue(), Action.Any, new AutoTarget(new Translation3d(5.8, 5.75, 0), new Rotation2d(3.654))));
-        // waypoint 12, 240
-        swerveDriveModule.AddActionPose(new ActionPose(Group.Score, Location.Waypoint.getValue(), 12, Position.Any.getValue(), Action.Any, new AutoTarget(new Translation3d(4.47, 6.45, 0), new Rotation2d(4.7))));
-        // waypoint 1, 300
-        swerveDriveModule.AddActionPose(new ActionPose(Group.Score, Location.Waypoint.getValue(), 1, Position.Any.getValue(), Action.Any, new AutoTarget(new Translation3d(3.15, 5.75, 0), new Rotation2d(5.22))));
-        // reef 1, 300
-        swerveDriveModule.AddActionPose(new ActionPose(Group.Score, Location.Reef.getValue(), 1, Position.Any.getValue(), Action.Any, new AutoTarget(new Translation3d(3.75, 5.05, 0), new Rotation2d(5.22))));
-        // waypoint 1, 126
-        swerveDriveModule.AddActionPose(new ActionPose(Group.Pickup, Location.Waypoint.getValue(), 1, Position.Any.getValue(), Action.Any, new AutoTarget(new Translation3d(3.15, 5.75, 0), new Rotation2d(2.1924))));
+        // Position Targets
+        var Waypoint1 = new Translation3d(3.15, 5.75, 0);
+        var Waypoint11 = new Translation3d(5.8, 5.75, 0);
+        var Waypoint12 = new Translation3d(4.47, 6.45, 0);
+        var Scoring1 = new Translation3d(3.75, 5.05, 0);
+        var Loading1 = new Translation3d(1.15, 7.08, 0);
+
+        // Lookat Targets
+        var Tag1 = new Translation3d(0.85, 7.40, 0);
+        var ReefCenter = new Translation3d(4.49, 4.03, 0);
+
+        // waypoint 11, 240 (we don't know where we are yet, so rotate a specific angle to face a tag)
+        swerveDriveModule.AddActionPose(new ActionPose(Group.Score, Location.Waypoint.getValue(), 11, Position.Any.getValue(), Action.Any, new AutoTarget(Waypoint11, new Rotation2d(3.654))));
+        // waypoint 12, Lookat reef
+        swerveDriveModule.AddActionPose(new ActionPose(Group.Score, Location.Waypoint.getValue(), 12, Position.Any.getValue(), Action.Any, new AutoTarget(Waypoint12, ReefCenter)));
+        // waypoint 1, Lookat reef
+        swerveDriveModule.AddActionPose(new ActionPose(Group.Score, Location.Waypoint.getValue(), 1, Position.Any.getValue(), Action.Any, new AutoTarget(Waypoint1, ReefCenter)));
+        // scoring 1, Lookat reef
+        swerveDriveModule.AddActionPose(new ActionPose(Group.Score, Location.Reef.getValue(), 1, Position.Any.getValue(), Action.Any, new AutoTarget(Scoring1, ReefCenter)));
+        // waypoint 1, 126 -- should this be hard-coded to a rotation or will LookAt work as long as we don't "clear" our position?
+        swerveDriveModule.AddActionPose(new ActionPose(Group.Pickup, Location.Waypoint.getValue(), 1, Position.Any.getValue(), Action.Any, new AutoTarget(Waypoint1, Tag1)));
         // loading 1, 126
-        swerveDriveModule.AddActionPose(new ActionPose(Group.Pickup, Location.Coral.getValue(), 1, Position.Any.getValue(), Action.Any, new AutoTarget(new Translation3d(1.15, 7.08, 0), new Rotation2d(2.1924))));
+        swerveDriveModule.AddActionPose(new ActionPose(Group.Pickup, Location.Coral.getValue(), 1, Position.Any.getValue(), Action.Any, new AutoTarget(Loading1, Tag1)));
 
         elevator.AddActionPose(new ActionPose(Group.Score, Location.Any.getValue(), -1, Position.Lower.getValue(), Action.Any, new AutoTarget(0.28)));
         elevator.AddActionPose(new ActionPose(Group.Score, Location.Any.getValue(), -1, Position.Middle.getValue(), Action.Any, new AutoTarget(1.14)));

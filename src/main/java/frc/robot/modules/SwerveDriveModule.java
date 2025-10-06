@@ -266,6 +266,8 @@ public class SwerveDriveModule implements DriveModule {
         double newAngle = ((gyroRaw % 360.0) + 360.0) % 360.0;
         double inverseAngle = ((-gyroRaw % 360.0) + 360.0) % 360.0;
 
+        // TODO: Identify if this is correct - does it really need inverse or does everything use normal?
+        // TODO: should probably set this discretely and not as part of gyro retrieval
         positioner.SetRobotOrientation("", inverseAngle, 0,0,0,0,0);
 
         return Units.degreesToRadians(newAngle);  
@@ -375,6 +377,7 @@ public class SwerveDriveModule implements DriveModule {
             var rotationReached = false;
             var positionerHealthy = isPositionerHealthy();
 
+            // only process position if we have a target
             if (pose.HasPosition) {
                 var positionDelta = targetPosition.minus(currentPosition);
                 myTable.getEntry("positionDelta").setString(positionDelta.toString());
@@ -405,14 +408,28 @@ public class SwerveDriveModule implements DriveModule {
                 }
             }
 
-            if (pose.HasOrientation && !wroteRotationThisTick) { // allows game controller precedence
-                var rotationDelta = targetRotation.getRadians() - newAngleRad;
-                myTable.getEntry("rotationDelta").setDouble(rotationDelta);
-                myTable.getEntry("rotationTarget").setDouble(targetRotation.getRadians());
+            // only process rotation if we have a target and haven't already been overridden this tick
+            if ((pose.HasOrientation || pose.HasLookAt) && !wroteRotationThisTick) { // allows game controller precedence
+                double targetValue = 0.0;
 
-                var rotationSpeed = -rotationPidController.calculate(newAngleRad, targetRotation.getRadians());
+                if (pose.HasOrientation) {
+                    var rotationDelta = targetRotation.getRadians() - newAngleRad;
+                    myTable.getEntry("rotationDelta").setDouble(rotationDelta);
+                    myTable.getEntry("rotationTarget").setDouble(targetRotation.getRadians());
+                    targetValue = targetRotation.getRadians();
+                } else if (pose.HasLookAt) {
+                    var lookAt = pose.LookAt;
+                    var lookDelta = Math.atan2(lookAt.getY() - currentPosition.getY(), lookAt.getX() - currentPosition.getX());
+                    myTable.getEntry("lookDelta").setDouble(lookDelta);
+                    myTable.getEntry("lookTarget").setString(lookAt.toString());
+                    targetValue = lookDelta;
+                }
+
+                var rotationSpeed = -rotationPidController.calculate(newAngleRad, targetValue);
                 if (Math.abs(rotationSpeed) < floatTolerance) {
-                    rotationReached = true;
+                    // only mark 'reached' if we don't have a lookat target or our position is also reached
+                    if (!pose.HasLookAt || (lateralReached && forwardReached))
+                        rotationReached = true;
                     myTable.getEntry("rotationReached").setBoolean(rotationReached);
                     ProcessRotationAngle(0.0);
                 } else {
@@ -545,7 +562,8 @@ public class SwerveDriveModule implements DriveModule {
 
     @Override
     public Pose3d GetPosition() {
-        return new Pose3d(positioner.GetPosition(), new Rotation3d(0, 0, getCurrentGyroValue()));
+        var newPosition = isPositionerHealthy() ? positioner.GetPosition() : currentPosition;
+        return new Pose3d(newPosition, new Rotation3d(0, 0, getCurrentGyroValue()));
         // return new Translation3d(currentPosition.getX(), currentPosition.getY(), currentAngle);
     }
 }
