@@ -1,4 +1,4 @@
-package frc.robot;
+package frc.robot.misc;
 
 import org.opencv.core.*;
 import org.opencv.imgcodecs.Imgcodecs;

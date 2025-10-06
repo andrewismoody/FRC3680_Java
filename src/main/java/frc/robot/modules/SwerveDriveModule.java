@@ -20,7 +20,9 @@ import edu.wpi.first.wpilibj.RobotBase;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 
 import frc.robot.positioner.Positioner;
-import frc.robot.action.*;
+import frc.robot.action.Group;
+import frc.robot.action.Action;
+import frc.robot.action.ActionPose;
 import frc.robot.gyro.Gyro;
 
 public class SwerveDriveModule implements DriveModule {
@@ -303,13 +305,13 @@ public class SwerveDriveModule implements DriveModule {
         return GetActionPose(newAction.group, newAction.location, newAction.locationIndex, newAction.position, newAction.action);
     }
 
-    public ActionPose GetActionPose(Group group, Location location, int locationIndex, Position position, Action action) {
+    public ActionPose GetActionPose(Group group, int location, int locationIndex, int position, Action action) {
         for (ActionPose pose : actionPoses) {
             if (
                 (pose.group == group || pose.group == Group.Any)
                 && (pose.locationIndex == locationIndex || pose.locationIndex == -1)
-                && (pose.location == location || pose.location == Location.Any)
-                && (pose.position == position || pose.position == Position.Any)
+                && (pose.location == location || pose.location == -1)
+                && (pose.position == position || pose.position == -1)
                 && (pose.action == action || pose.action == Action.Any)
             ) {
                 return pose;
@@ -327,7 +329,7 @@ public class SwerveDriveModule implements DriveModule {
         SetTargetActionPose(actionPose.group, actionPose.location, actionPose.locationIndex, actionPose.position, actionPose.action);
     }      
     
-    public void SetTargetActionPose(Group group, Location location, int locationIndex, Position position, Action action) {
+    public void SetTargetActionPose(Group group, int location, int locationIndex, int position, Action action) {
         ActionPose actionPose = GetActionPose(group, location, locationIndex, position, action);
 
         if (actionPose != null) {

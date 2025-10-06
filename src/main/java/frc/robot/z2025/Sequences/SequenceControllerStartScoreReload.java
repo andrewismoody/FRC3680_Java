@@ -9,8 +9,8 @@ import frc.robot.modules.ModuleController;
 import frc.robot.action.Action;
 import frc.robot.action.ActionPose;
 import frc.robot.action.Group;
-import frc.robot.action.Location;
-import frc.robot.action.Position;
+import frc.robot.z2025.action.Location;
+import frc.robot.z2025.action.Position;
 import frc.robot.auto.AutoController;
 import frc.robot.auto.AutoEvent;
 import frc.robot.auto.AutoEventTarget;
@@ -22,12 +22,12 @@ public class SequenceControllerStartScoreReload extends AutoSequence {
 
     // Target Poses
     // var start1 = new ActionPose(Group.Start, Location.Barge, 1, Position.Lower, Action.Pickup, null);
-    var waypoint11_240 = new ActionPose(Group.Score, Location.AdHoc, 11, Position.Lower, Action.Pickup, null);
-    var waypoint12_180 = new ActionPose(Group.Score, Location.AdHoc, 12, Position.Lower, Action.Pickup, null);
-    var waypoint1_300 = new ActionPose(Group.Score, Location.AdHoc, 1, Position.Lower, Action.Pickup, null);
-    var score1_300 = new ActionPose(Group.Score, Location.Reef, 1, Position.Lower, Action.Pickup, null);
-    var waypoint1_126 = new ActionPose(Group.Pickup, Location.AdHoc, 1, Position.Lower, Action.Pickup, null);
-    var loading1_126 = new ActionPose(Group.Pickup, Location.Coral, 1, Position.Lower, Action.Pickup, null);
+    var waypoint11_240 = new ActionPose(Group.Score, Location.Waypoint.getValue(), 11, Position.Trough.getValue(), Action.Pickup, null);
+    var waypoint12_180 = new ActionPose(Group.Score, Location.Waypoint.getValue(), 12, Position.Trough.getValue(), Action.Pickup, null);
+    var waypoint1_300 = new ActionPose(Group.Score, Location.Waypoint.getValue(), 1, Position.Trough.getValue(), Action.Pickup, null);
+    var score1_300 = new ActionPose(Group.Score, Location.Reef.getValue(), 1, Position.Trough.getValue(), Action.Pickup, null);
+    var waypoint1_126 = new ActionPose(Group.Pickup, Location.Waypoint.getValue(), 1, Position.Trough.getValue(), Action.Pickup, null);
+    var loading1_126 = new ActionPose(Group.Pickup, Location.Coral.getValue(), 1, Position.Trough.getValue(), Action.Pickup, null);
 
     var Poses = new Hashtable<String, ActionPose>();
     // Poses.put("1 Start 1", start1);

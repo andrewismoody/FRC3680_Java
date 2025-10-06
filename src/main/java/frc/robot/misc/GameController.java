@@ -1,4 +1,4 @@
-package frc.robot;
+package frc.robot.misc;
 
 import java.util.Hashtable;
 import java.util.Map;

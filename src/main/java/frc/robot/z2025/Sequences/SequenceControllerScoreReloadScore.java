@@ -3,8 +3,8 @@ package frc.robot.z2025.Sequences;
 import frc.robot.action.Action;
 import frc.robot.action.ActionPose;
 import frc.robot.action.Group;
-import frc.robot.action.Location;
-import frc.robot.action.Position;
+import frc.robot.z2025.action.Location;
+import frc.robot.z2025.action.Position;
 import frc.robot.auto.AutoController;
 import frc.robot.auto.AutoEvent;
 import frc.robot.auto.AutoEventTarget;
@@ -17,11 +17,11 @@ public class SequenceControllerScoreReloadScore extends AutoSequence {
 
 
     // Target Poses
-    var scoreposition1 = new ActionPose(Group.Score, Location.Reef, 0, Position.Lower, Action.Pickup, null);
-    var scoreaction1 = new ActionPose(Group.Score, Location.Reef, 0, Position.Lower, Action.Drop, null);
-    var pickupposition1 = new ActionPose(Group.Pickup, Location.Coral, 0, Position.Trough, Action.Pickup, null);
-    var scoreposition2 = new ActionPose(Group.Score, Location.Reef, 0, Position.Middle, Action.Pickup, null);
-    var scoreaction2 = new ActionPose(Group.Score, Location.Reef, 0, Position.Middle, Action.Drop, null);
+    var scoreposition1 = new ActionPose(Group.Score, Location.Reef.getValue(), 0, Position.Lower.getValue(), Action.Pickup, null);
+    var scoreaction1 = new ActionPose(Group.Score, Location.Reef.getValue(), 0, Position.Lower.getValue(), Action.Drop, null);
+    var pickupposition1 = new ActionPose(Group.Pickup, Location.Coral.getValue(), 0, Position.Trough.getValue(), Action.Pickup, null);
+    var scoreposition2 = new ActionPose(Group.Score, Location.Reef.getValue(), 0, Position.Middle.getValue(), Action.Pickup, null);
+    var scoreaction2 = new ActionPose(Group.Score, Location.Reef.getValue(), 0, Position.Middle.getValue(), Action.Drop, null);
 
     AutoEventTarget awaitScorePosition1 = new AutoEventTarget("Await Score Position 1", false, scoreposition1, AutoEvent.EventType.AwaitTarget, ac);
     AddEvent(awaitScorePosition1);

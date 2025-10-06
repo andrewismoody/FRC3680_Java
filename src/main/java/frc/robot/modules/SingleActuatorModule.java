@@ -12,8 +12,6 @@ import edu.wpi.first.wpilibj.Relay.Value;
 import frc.robot.action.Action;
 import frc.robot.action.ActionPose;
 import frc.robot.action.Group;
-import frc.robot.action.Location;
-import frc.robot.action.Position;
 
 
 public class SingleActuatorModule implements RobotModule {
@@ -116,7 +114,7 @@ public class SingleActuatorModule implements RobotModule {
     }
 
     @Override
-    public void SetTargetActionPose(Group Group, Location Location, int LocationIndex, Position Position,
+    public void SetTargetActionPose(Group Group, int Location, int LocationIndex, int Position,
             Action Action) {
         var targetPose = GetActionPose(Group, Location, LocationIndex, Position, Action);
         if (targetPose != null) {
@@ -158,14 +156,14 @@ public class SingleActuatorModule implements RobotModule {
     }
 
     @Override
-    public ActionPose GetActionPose(Group group, Location location, int locationIndex, Position position,
+    public ActionPose GetActionPose(Group group, int location, int locationIndex, int position,
             Action action) {
         for (ActionPose pose : actionPoses) {
             if (
                 (pose.group == group || pose.group == Group.Any)
                 && (pose.locationIndex == locationIndex || pose.locationIndex == -1)
-                && (pose.location == location || pose.location == Location.Any)
-                && (pose.position == position || pose.position == Position.Any)
+                && (pose.location == location || pose.location == -1)
+                && (pose.position == position || pose.position == -1)
                 && (pose.action == action || pose.action == Action.Any)
             ) {
                 return pose;

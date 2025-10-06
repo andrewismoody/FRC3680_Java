@@ -8,7 +8,9 @@ import edu.wpi.first.math.geometry.Translation3d;
 import edu.wpi.first.networktables.NetworkTable;
 import edu.wpi.first.networktables.NetworkTableInstance;
 import edu.wpi.first.wpilibj.motorcontrol.MotorController;
-import frc.robot.action.*;
+import frc.robot.action.Group;
+import frc.robot.action.Action;
+import frc.robot.action.ActionPose;
 import frc.robot.encoder.Encoder;
 import frc.robot.switches.Switch;
 
@@ -79,13 +81,13 @@ public class DualMotorModule implements RobotModule {
         }
     }
 
-    public ActionPose GetActionPose(Group group, Location location, int locationIndex, Position position, Action action) {
+    public ActionPose GetActionPose(Group group, int location, int locationIndex, int position, Action action) {
         for (ActionPose pose : actionPoses) {
             if (
                 (pose.group == group || pose.group == Group.Any)
                 && (pose.locationIndex == locationIndex || pose.locationIndex == -1)
-                && (pose.location == location || pose.location == Location.Any)
-                && (pose.position == position || pose.position == Position.Any)
+                && (pose.location == location || pose.location == -1)
+                && (pose.position == position || pose.position == -1)
                 && (pose.action == action || pose.action == Action.Any)
             ) {
                 return pose;
@@ -221,7 +223,7 @@ public class DualMotorModule implements RobotModule {
         return moduleID;
     }
 
-    public void SetTargetActionPose(Group group, Location location, int locationIndex, Position position, Action action) {
+    public void SetTargetActionPose(Group group, int location, int locationIndex, int position, Action action) {
         var targetPose = GetActionPose(group, location, locationIndex, position, action);
         if (targetPose != null) {
             myTable.getEntry("targetPose").setString(String.format("%s %s %d %s %s", group, location, locationIndex, position, action));

@@ -5,8 +5,8 @@ import edu.wpi.first.math.util.Units;
 import frc.robot.action.Action;
 import frc.robot.action.ActionPose;
 import frc.robot.action.Group;
-import frc.robot.action.Location;
-import frc.robot.action.Position;
+import frc.robot.z2025.action.Location;
+import frc.robot.z2025.action.Position;
 import frc.robot.auto.AutoController;
 import frc.robot.auto.AutoEvent;
 import frc.robot.auto.AutoEventTarget;
@@ -30,19 +30,19 @@ public class SequenceRotateScoreReturn extends AutoSequence {
 
     // Drive poses (rotation only)
     ActionPose rotate90 = new ActionPose(
-      Group.Any, Location.Any, 0, Position.Any, Action.Any,
+      Group.Any, Location.Any.getValue(), 0, Position.Any.getValue(), Action.Any,
       new AutoTarget(new Rotation2d(Units.degreesToRadians(90)))
     );
     ActionPose rotate0 = new ActionPose(
-      Group.Any, Location.Any, 1, Position.Any, Action.Any,
+      Group.Any, Location.Any.getValue(), 1, Position.Any.getValue(), Action.Any,
       new AutoTarget(new Rotation2d(Units.degreesToRadians(0)))
     );
     drive.AddActionPose(rotate90);
     drive.AddActionPose(rotate0);
 
     // Elevator poses (assumes these were added in robotInit; Middle=L2, Trough=zero)
-    var elevL2 = elevator.GetActionPose(Group.Score, Location.Any, -1, Position.Middle, Action.Any);
-    var elevZero = elevator.GetActionPose(Group.Score, Location.Any, -1, Position.Trough, Action.Any);
+    var elevL2 = elevator.GetActionPose(Group.Score, Location.Any.getValue(), -1, Position.Middle.getValue(), Action.Any);
+    var elevZero = elevator.GetActionPose(Group.Score, Location.Any.getValue(), -1, Position.Trough.getValue(), Action.Any);
 
     // Phase 1: Dispatch both targets in parallel
     AutoEventTarget setDrive90 = new AutoEventTarget("Set Drive 90deg", true, rotate90, AutoEvent.EventType.SetTarget, ac);

@@ -4,13 +4,13 @@ import frc.robot.auto.AutoTarget;
 
 public class ActionPose {
     public Group group;
-    public Location location;
+    public int location;
     public int locationIndex;
-    public Position position;
+    public int position;
     public Action action;
     public AutoTarget target;
 
-    public ActionPose(Group Group, Location Location, int LocationIndex, Position Position, Action Action, AutoTarget Target) {
+    public ActionPose(Group Group, int Location, int LocationIndex, int Position, Action Action, AutoTarget Target) {
         group = Group;
         location = Location;
         locationIndex = LocationIndex;

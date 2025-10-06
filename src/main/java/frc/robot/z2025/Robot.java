@@ -21,14 +21,16 @@ import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import com.revrobotics.spark.SparkLowLevel.MotorType;
 import com.revrobotics.spark.SparkMax;
 
-import frc.robot.GameController;
-import frc.robot.GameController.ButtonName;
-import frc.robot.GameController.ControllerType;
-import frc.robot.action.*;
+import frc.robot.action.Group;
+import frc.robot.action.Action;
+import frc.robot.action.ActionPose;
 import frc.robot.auto.AutoController;
 import frc.robot.auto.AutoTarget;
 import frc.robot.gyro.AHRSGyro;
 import frc.robot.gyro.Gyro;
+import frc.robot.misc.GameController;
+import frc.robot.misc.GameController.ButtonName;
+import frc.robot.misc.GameController.ControllerType;
 import frc.robot.modules.ModuleController;
 import frc.robot.modules.ModuleState;
 import frc.robot.modules.SingleActuatorModule;
@@ -41,6 +43,8 @@ import frc.robot.z2025.Sequences.SequenceControllerMoveToReef;
 import frc.robot.z2025.Sequences.SequenceControllerScoreReloadScore;
 import frc.robot.z2025.Sequences.SequenceControllerStartScoreReload;
 import frc.robot.z2025.Sequences.SequenceRotateScoreReturn;
+import frc.robot.z2025.action.Location;
+import frc.robot.z2025.action.Position;
 import frc.robot.encoder.Encoder;
 import frc.robot.encoder.REVEncoder;
 
@@ -355,26 +359,26 @@ public class Robot extends TimedRobot {
 
   public void InitializeActionPoses() {
     // left start, 240
-    swerveDriveModule.AddActionPose(new ActionPose(Group.Start, Location.Barge, 1, Position.Any, Action.Any, new AutoTarget(new Translation3d(9.271, 7.79, 0), new Rotation2d(3.654))));
+    swerveDriveModule.AddActionPose(new ActionPose(Group.Start, Location.Barge.getValue(), 1, Position.Any.getValue(), Action.Any, new AutoTarget(new Translation3d(9.271, 7.79, 0), new Rotation2d(3.654))));
     // waypoint 11, 240
-    swerveDriveModule.AddActionPose(new ActionPose(Group.Score, Location.AdHoc, 11, Position.Any, Action.Any, new AutoTarget(new Translation3d(5.8, 5.75, 0), new Rotation2d(3.654))));
+    swerveDriveModule.AddActionPose(new ActionPose(Group.Score, Location.Waypoint.getValue(), 11, Position.Any.getValue(), Action.Any, new AutoTarget(new Translation3d(5.8, 5.75, 0), new Rotation2d(3.654))));
     // waypoint 12, 240
-    swerveDriveModule.AddActionPose(new ActionPose(Group.Score, Location.AdHoc, 12, Position.Any, Action.Any, new AutoTarget(new Translation3d(4.47, 6.45, 0), new Rotation2d(4.7))));
+    swerveDriveModule.AddActionPose(new ActionPose(Group.Score, Location.Waypoint.getValue(), 12, Position.Any.getValue(), Action.Any, new AutoTarget(new Translation3d(4.47, 6.45, 0), new Rotation2d(4.7))));
     // waypoint 1, 300
-    swerveDriveModule.AddActionPose(new ActionPose(Group.Score, Location.AdHoc, 1, Position.Any, Action.Any, new AutoTarget(new Translation3d(3.15, 5.75, 0), new Rotation2d(5.22))));
+    swerveDriveModule.AddActionPose(new ActionPose(Group.Score, Location.Waypoint.getValue(), 1, Position.Any.getValue(), Action.Any, new AutoTarget(new Translation3d(3.15, 5.75, 0), new Rotation2d(5.22))));
     // reef 1, 300
-    swerveDriveModule.AddActionPose(new ActionPose(Group.Score, Location.Reef, 1, Position.Any, Action.Any, new AutoTarget(new Translation3d(3.75, 5.05, 0), new Rotation2d(5.22))));
+    swerveDriveModule.AddActionPose(new ActionPose(Group.Score, Location.Reef.getValue(), 1, Position.Any.getValue(), Action.Any, new AutoTarget(new Translation3d(3.75, 5.05, 0), new Rotation2d(5.22))));
     // waypoint 1, 126
-    swerveDriveModule.AddActionPose(new ActionPose(Group.Pickup, Location.AdHoc, 1, Position.Any, Action.Any, new AutoTarget(new Translation3d(3.15, 5.75, 0), new Rotation2d(2.1924))));
+    swerveDriveModule.AddActionPose(new ActionPose(Group.Pickup, Location.Waypoint.getValue(), 1, Position.Any.getValue(), Action.Any, new AutoTarget(new Translation3d(3.15, 5.75, 0), new Rotation2d(2.1924))));
     // loading 1, 126
-    swerveDriveModule.AddActionPose(new ActionPose(Group.Pickup, Location.Coral, 1, Position.Any, Action.Any, new AutoTarget(new Translation3d(1.15, 7.08, 0), new Rotation2d(2.1924))));
+    swerveDriveModule.AddActionPose(new ActionPose(Group.Pickup, Location.Coral.getValue(), 1, Position.Any.getValue(), Action.Any, new AutoTarget(new Translation3d(1.15, 7.08, 0), new Rotation2d(2.1924))));
 
-    elevator.AddActionPose(new ActionPose(Group.Score, Location.Any, -1, Position.Lower, Action.Any, new AutoTarget(0.28)));
-    elevator.AddActionPose(new ActionPose(Group.Score, Location.Any, -1, Position.Middle, Action.Any, new AutoTarget(1.14)));
-    elevator.AddActionPose(new ActionPose(Group.Any, Location.Any, -1, Position.Trough, Action.Any, new AutoTarget(0.0)));
+    elevator.AddActionPose(new ActionPose(Group.Score, Location.Any.getValue(), -1, Position.Lower.getValue(), Action.Any, new AutoTarget(0.28)));
+    elevator.AddActionPose(new ActionPose(Group.Score, Location.Any.getValue(), -1, Position.Middle.getValue(), Action.Any, new AutoTarget(1.14)));
+    elevator.AddActionPose(new ActionPose(Group.Any, Location.Any.getValue(), -1, Position.Trough.getValue(), Action.Any, new AutoTarget(0.0)));
 
-    slide.AddActionPose(new ActionPose(Group.Any, Location.Any, -1, Position.Any, Action.Drop, new AutoTarget(ModuleState.Forward)));
-    slide.AddActionPose(new ActionPose(Group.Any, Location.Any, -1, Position.Any, Action.Pickup, new AutoTarget(ModuleState.Reverse)));
+    slide.AddActionPose(new ActionPose(Group.Any, Location.Any.getValue(), -1, Position.Any.getValue(), Action.Drop, new AutoTarget(ModuleState.Forward)));
+    slide.AddActionPose(new ActionPose(Group.Any, Location.Any.getValue(), -1, Position.Any.getValue(), Action.Pickup, new AutoTarget(ModuleState.Reverse)));
   }
 
   public void InitializeAutoModes() {

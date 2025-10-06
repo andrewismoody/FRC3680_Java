@@ -5,8 +5,8 @@ import edu.wpi.first.math.util.Units;
 import frc.robot.action.Action;
 import frc.robot.action.ActionPose;
 import frc.robot.action.Group;
-import frc.robot.action.Location;
-import frc.robot.action.Position;
+import frc.robot.z2025.action.Location;
+import frc.robot.z2025.action.Position;
 import frc.robot.auto.AutoController;
 import frc.robot.auto.AutoEvent;
 import frc.robot.auto.AutoEventTarget;
@@ -26,11 +26,11 @@ public class SequenceRotateWaitReturn extends AutoSequence {
 
     // Drive poses (rotation only; zero translation)
     ActionPose rotate90 = new ActionPose(
-      Group.Any, Location.Any, 0, Position.Any, Action.Any,
+      Group.Any, Location.Any.getValue(), 0, Position.Any.getValue(), Action.Any,
       new AutoTarget(new Rotation2d(Units.degreesToRadians(90)))
     );
     ActionPose rotate0 = new ActionPose(
-      Group.Any, Location.Any, 1, Position.Any, Action.Any,
+      Group.Any, Location.Any.getValue(), 1, Position.Any.getValue(), Action.Any,
       new AutoTarget(new Rotation2d(0))
     );
     drive.AddActionPose(rotate90);

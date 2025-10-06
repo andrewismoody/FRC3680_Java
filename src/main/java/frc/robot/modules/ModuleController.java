@@ -3,12 +3,10 @@ package frc.robot.modules;
 import java.util.Hashtable;
 
 import edu.wpi.first.math.geometry.Pose3d;
-import frc.robot.GameController;
 import frc.robot.action.Action;
 import frc.robot.action.ActionPose;
 import frc.robot.action.Group;
-import frc.robot.action.Location;
-import frc.robot.action.Position;
+import frc.robot.misc.GameController;
 
 public class ModuleController {
   Hashtable<String, RobotModule> modules = new Hashtable<String, RobotModule>();
@@ -165,7 +163,7 @@ public class ModuleController {
     SetTargetActionPose(actionPose.group, actionPose.location, actionPose.locationIndex, actionPose.position, actionPose.action);
   }    
 
-  public void SetTargetActionPose(Group group, Location location, int locationIndex, Position position, Action action) {
+  public void SetTargetActionPose(Group group, int location, int locationIndex, int position, Action action) {
     for (RobotModule module : modules.values()) {
       module.SetTargetActionPose(group, location, locationIndex, position, action);
     }

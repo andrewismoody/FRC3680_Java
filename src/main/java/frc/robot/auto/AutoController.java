@@ -4,7 +4,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 
 import edu.wpi.first.wpilibj.DriverStation;
-import frc.robot.GameController;
+import frc.robot.misc.GameController;
 import frc.robot.modules.ModuleController;
 
 //TODO: Set module controller here instead of inside events and reference to simplify construction

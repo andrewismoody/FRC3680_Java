@@ -3,8 +3,8 @@ package frc.robot.z2025.Sequences;
 import frc.robot.action.Action;
 import frc.robot.action.ActionPose;
 import frc.robot.action.Group;
-import frc.robot.action.Location;
-import frc.robot.action.Position;
+import frc.robot.z2025.action.Location;
+import frc.robot.z2025.action.Position;
 import frc.robot.auto.AutoController;
 import frc.robot.auto.AutoEvent;
 import frc.robot.auto.AutoEventTarget;
@@ -17,7 +17,7 @@ public class SequenceControllerMoveToReef extends AutoSequence {
 
 
     // Target Poses
-    var scoreposition1 = new ActionPose(Group.Score, Location.Reef, 0, Position.Lower, Action.Pickup, null);
+    var scoreposition1 = new ActionPose(Group.Score, Location.Reef.getValue(), 0, Position.Lower.getValue(), Action.Pickup, null);
     // var scoreaction1 = new ActionPose(Group.Score, Location.Reef, 0, Position.Lower, Action.Drop, new Pose3d());
     // var pickupposition1 = new ActionPose(Group.Pickup, Location.Coral, 0, Position.Trough, Action.Pickup, new Pose3d());
     // var scoreposition2 = new ActionPose(Group.Score, Location.Reef, 0, Position.Middle, Action.Pickup, new Pose3d());
