@@ -26,8 +26,10 @@ public class ActionPoses {
         var Tag1 = new Translation3d(0.85, 7.40, 0);
         var ReefCenter = new Translation3d(4.49, 4.03, 0);
 
-        // waypoint 11, 240 (we don't know where we are yet, so rotate a specific angle to face a tag)
-        swerveDriveModule.AddActionPose(new ActionPose(Group.Score, Location.Waypoint.getValue(), 11, Position.Any.getValue(), Action.Any, new AutoTarget(Waypoint11, new Rotation2d(3.654))));
+        // start, 240 (we don't know where we are yet, so rotate a specific angle to face a tag)
+        swerveDriveModule.AddActionPose(new ActionPose(Group.Start, Location.Barge.getValue(), 1, Position.Any.getValue(), Action.Any, new AutoTarget(new Rotation2d(3.654))));
+        // waypoint 11, Lookta reef
+        swerveDriveModule.AddActionPose(new ActionPose(Group.Score, Location.Waypoint.getValue(), 11, Position.Any.getValue(), Action.Any, new AutoTarget(Waypoint11, ReefCenter)));
         // waypoint 12, Lookat reef
         swerveDriveModule.AddActionPose(new ActionPose(Group.Score, Location.Waypoint.getValue(), 12, Position.Any.getValue(), Action.Any, new AutoTarget(Waypoint12, ReefCenter)));
         // waypoint 1, Lookat reef

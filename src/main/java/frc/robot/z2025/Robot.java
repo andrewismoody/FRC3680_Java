@@ -84,7 +84,7 @@ public class Robot extends TimedRobot {
 
   final Timer m_timer = new Timer();
 
-  final boolean isFieldOriented = false;
+  final boolean isFieldOriented = true;
 
   final double m_floatTolerance = 0.08; // 0.2;
   // Rev NEO empirical motor speed = 5676 rotations per minute; 5676 / 60 = 94.6 rotations per second

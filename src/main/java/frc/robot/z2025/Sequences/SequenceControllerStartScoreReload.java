@@ -21,8 +21,8 @@ public class SequenceControllerStartScoreReload extends AutoSequence {
     super(label, modules, ac);
 
     // Target Poses
-    // var start1 = new ActionPose(Group.Start, Location.Barge, 1, Position.Lower, Action.Pickup, null);
-    var waypoint11_240 = new ActionPose(Group.Score, Location.Waypoint.getValue(), 11, Position.Trough.getValue(), Action.Pickup, null);
+    var start1 = new ActionPose(Group.Start, Location.Barge.getValue(), 1, Position.Trough.getValue(), Action.Pickup, null);
+    //var waypoint11_240 = new ActionPose(Group.Score, Location.Waypoint.getValue(), 11, Position.Trough.getValue(), Action.Pickup, null);
     var waypoint12_180 = new ActionPose(Group.Score, Location.Waypoint.getValue(), 12, Position.Trough.getValue(), Action.Pickup, null);
     var waypoint1_300 = new ActionPose(Group.Score, Location.Waypoint.getValue(), 1, Position.Trough.getValue(), Action.Pickup, null);
     var score1_300 = new ActionPose(Group.Score, Location.Reef.getValue(), 1, Position.Trough.getValue(), Action.Pickup, null);
@@ -30,8 +30,8 @@ public class SequenceControllerStartScoreReload extends AutoSequence {
     var loading1_126 = new ActionPose(Group.Pickup, Location.Coral.getValue(), 1, Position.Trough.getValue(), Action.Pickup, null);
 
     var Poses = new Hashtable<String, ActionPose>();
-    // Poses.put("1 Start 1", start1);
-    Poses.put("1 Waypoint 11 240", waypoint11_240);
+    Poses.put("1 Start 1", start1);
+    // Poses.put("1 Waypoint 11 240", waypoint11_240);
     Poses.put("2 Waypoint 12 180", waypoint12_180);
     Poses.put("3 Waypoint 1 300", waypoint1_300);
     Poses.put("4 Score 1 300", score1_300);

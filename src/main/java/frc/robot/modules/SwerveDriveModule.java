@@ -30,7 +30,7 @@ public class SwerveDriveModule implements DriveModule {
     ArrayList<SwerveMotorModule> driveModules = new ArrayList<SwerveMotorModule>();
     double driveSpeed;
     double rotationSpeed;
-    double rotationMultiplier = 10.0;
+    double rotationMultiplier = 5.0;
     ModuleController controller;
     SwerveDriveKinematics kinematics;
     boolean isFieldOriented = false;
@@ -75,10 +75,10 @@ public class SwerveDriveModule implements DriveModule {
     NetworkTable myTable;
 
     // private boolean positionerHealthy = true;
-    // private Translation3d lastHealthPos = new Translation3d();
-    // private long lastHealthTsMs = 0L;
-    // private final double posJumpLimitMeters = 2.0; // treat larger jumps as invalid
-    // private final long posStaleTimeoutMs = 300;    // treat stale samples as invalid
+    private Translation3d lastHealthPos = new Translation3d();
+    private long lastHealthTsMs = 0L;
+    private final double posJumpLimitMeters = 2.0; // treat larger jumps as invalid
+    private final long posStaleTimeoutMs = 300;    // treat stale samples as invalid
     
     public SwerveDriveModule(String ModuleID, Gyro Gyro, Positioner Positioner, double DriveSpeed, double RotationSpeed,
             double FloatTolerance, SwerveMotorModule ... modules) {
@@ -107,15 +107,15 @@ public class SwerveDriveModule implements DriveModule {
         }
         
         // TODO: might be mixing things here with drivespeed applying to drive motors and also drivespeed for the whole robot
-        var posKp = 5.0; 
+        var posKp = 2.0; 
         var posKi = 0; //posKp * 0.10;
         var posKd = 0; //posKi * 3.0;
         lateralPidController = new PIDController(posKp, posKi, posKd);
         forwardPidController = new PIDController(posKp, posKi, posKd);
 
-        // bumping this up to 2.0 after removing the rotation multiplier from processrotation
-        // hoping this will offset the 10x multiplier but also dampen (not fully 3.3, but reduced down to 2.0)
-        var rotKp = 2.0; //0.333;
+        // bumping this up to 1.0 after removing the rotation multiplier from processrotation
+        // hoping this will offset the 5x multiplier but also dampen (not fully 3.3, but reduced down to 2.0)
+        var rotKp = 1.0; //0.333;
         var rotKi = 0; // rotKp * 0.10;
         var rotKd = 0; //rotKi * 3.0;
         rotationPidController = new PIDController(rotKp, rotKi, rotKd);
@@ -250,8 +250,6 @@ public class SwerveDriveModule implements DriveModule {
     }
 
     public void ProcessRotationAngle(double value) {
-        // TODO: we need to soften rotation - should we modify this or adjust PID or both?
-        // was multiplying value by rotationMultiplier - moving this to processstate and reducing by speed dilation
         rotationAngle = value;
         wroteRotationThisTick = true; // mark open-loop write this tick
         myTable.getEntry("rotationAngle").setDouble(rotationAngle);
@@ -340,31 +338,39 @@ public class SwerveDriveModule implements DriveModule {
     }
 
     private boolean isPositionerHealthy() {
-        // var reason = "none";
-        // long now = System.currentTimeMillis();
-        // Translation3d pos = positioner.GetPosition();
-        // boolean bad =
-        //     Double.isNaN(pos.getX()) || Double.isNaN(pos.getY()) || Double.isNaN(pos.getZ()) ||
-        //     Double.isInfinite(pos.getX()) || Double.isInfinite(pos.getY()) || Double.isInfinite(pos.getZ());
+        var positionerHealthy = false;
 
-        // if (!bad) {
-        //     double jump = lastHealthPos.minus(pos).getNorm();
-        //     if (lastHealthTsMs != 0 && jump > posJumpLimitMeters) bad = true;
-        //     if (lastHealthTsMs != 0 && (now - lastHealthTsMs) > posStaleTimeoutMs) bad = true;
-        // } else
-        //     reason = "NAN/Infinite";
+        var reason = "none";
+        long now = System.currentTimeMillis();
+        Translation3d pos = positioner.GetPosition();
+        boolean bad = positioner.IsValid();
 
-        // if (!bad) {
-        //     lastHealthPos = pos;
-        //     lastHealthTsMs = now;
-        // } else
-        //     reason = "jump";
+        if (!bad) {
+            bad = Double.isNaN(pos.getX()) || Double.isNaN(pos.getY()) || Double.isNaN(pos.getZ()) ||
+            Double.isInfinite(pos.getX()) || Double.isInfinite(pos.getY()) || Double.isInfinite(pos.getZ());
+        } else
+            reason = "Not Valid";
 
-        // positionerHealthy = !bad;
+        if (!bad) {
+            if (pos != new Translation3d()) {
+                double jump = lastHealthPos.minus(pos).getNorm();
+                if (lastHealthTsMs > 0 && jump > posJumpLimitMeters) bad = true;
+                if (lastHealthTsMs > 0 && (now - lastHealthTsMs) > posStaleTimeoutMs) bad = true;
+            }
+        } else
+            reason = "NAN/Infinite";
 
-        var positionerHealthy = positioner.IsValid();
+        if (!bad) {
+            lastHealthPos = pos;
+            lastHealthTsMs = now;
+        } else
+            reason = "jump";
+
+        positionerHealthy = !bad;
 
         myTable.getEntry("positionerHealthy").setBoolean(positionerHealthy);
+        myTable.getEntry("positionHealthReason").setString(reason);
+
         return positionerHealthy;
     }
 
@@ -409,35 +415,47 @@ public class SwerveDriveModule implements DriveModule {
                         ProcessForwardSpeed(forwardSpeed);
                     }
                 }
+            } else {
+                // avoid deadlock, if we don't have a position defined, short circuit
+                lateralReached = true;
+                forwardReached = true;
             }
 
             // only process rotation if we have a target and haven't already been overridden this tick
-            if ((pose.HasOrientation || pose.HasLookAt) && !wroteRotationThisTick) { // allows game controller precedence
-                double targetValue = 0.0;
+            if (pose.HasOrientation || pose.HasLookAt) {
+                if (!wroteRotationThisTick) { // allows game controller precedence
+                    double targetValue = 0.0;
 
-                if (pose.HasOrientation) {
-                    var rotationDelta = targetRotation.getRadians() - newAngleRad;
-                    myTable.getEntry("rotationDelta").setDouble(rotationDelta);
-                    myTable.getEntry("rotationTarget").setDouble(targetRotation.getRadians());
-                    targetValue = targetRotation.getRadians();
-                } else if (pose.HasLookAt) {
-                    var lookAt = pose.LookAt;
-                    var lookDelta = Math.atan2(lookAt.getY() - currentPosition.getY(), lookAt.getX() - currentPosition.getX());
-                    myTable.getEntry("lookDelta").setDouble(lookDelta);
-                    myTable.getEntry("lookTarget").setString(lookAt.toString());
-                    targetValue = lookDelta;
-                }
+                    if (pose.HasOrientation) {
+                        var rotationDelta = targetRotation.getRadians() - newAngleRad;
+                        myTable.getEntry("rotationDelta").setDouble(rotationDelta);
+                        myTable.getEntry("rotationTarget").setDouble(targetRotation.getRadians());
+                        targetValue = targetRotation.getRadians();
+                    } else if (pose.HasLookAt) {
+                        var lookAt = pose.LookAt;
+                        // should this be X,Y or Y,X?
+                        var lookTarget = Math.atan2(lookAt.getY() - currentPosition.getY(), lookAt.getX() - currentPosition.getX());
+                        // add 90 deg to adjust for coordinate system, then wrap to positive and modulo
+                        lookTarget = (lookTarget + (2 * Math.PI)) % (2 * Math.PI);
+                        myTable.getEntry("lookTargetAng").setDouble(lookTarget);
+                        myTable.getEntry("lookTargetPos").setString(lookAt.toString());
+                        targetValue = lookTarget;
+                    }
 
-                var rotationSpeed = -rotationPidController.calculate(newAngleRad, targetValue);
-                if (Math.abs(rotationSpeed) < floatTolerance) {
-                    // only mark 'reached' if we don't have a lookat target or our position is also reached
-                    if (!pose.HasLookAt || (lateralReached && forwardReached))
-                        rotationReached = true;
-                    myTable.getEntry("rotationReached").setBoolean(rotationReached);
-                    ProcessRotationAngle(0.0);
-                } else {
-                    ProcessRotationAngle(rotationSpeed);
+                    var rotationSpeed = -rotationPidController.calculate(newAngleRad, targetValue);
+                    if (Math.abs(rotationSpeed) < floatTolerance) {
+                        // only mark 'reached' if we don't have a lookat target or our position is also reached
+                        if (!pose.HasLookAt || (lateralReached && forwardReached))
+                            rotationReached = true;
+                        myTable.getEntry("rotationReached").setBoolean(rotationReached);
+                        ProcessRotationAngle(0.0);
+                    } else {
+                        ProcessRotationAngle(rotationSpeed);
+                    }
                 }
+            } else {
+                // avoid deadlock, if we don't have a rotation defined, short circuit
+                rotationReached = true;
             }
 
             if (lateralReached && forwardReached && rotationReached) {

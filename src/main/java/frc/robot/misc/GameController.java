@@ -8,6 +8,8 @@ import java.util.function.Consumer;
 
 import edu.wpi.first.wpilibj.PS4Controller;
 import edu.wpi.first.wpilibj.XboxController;
+import edu.wpi.first.networktables.NetworkTable;
+import edu.wpi.first.networktables.NetworkTableInstance;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.GenericHID;
 import edu.wpi.first.wpilibj.Joystick;
@@ -57,6 +59,8 @@ public class GameController {
     Hashtable<ButtonName, ArrayList<Consumer<Integer>>> POVButtonConsumers = new Hashtable<GameController.ButtonName,ArrayList<Consumer<Integer>>>();
 
     Hashtable<ButtonName, Boolean> ValueButtonInversion = new Hashtable<>();
+
+    NetworkTable myTable;
 
     void RegisterBinaryButtonSupplier(ButtonName button, Supplier<Boolean> func) {
         BinaryButtonSuppliers.put(button, func);
@@ -183,6 +187,8 @@ public class GameController {
         RegisterPOVButtonSupplier(ButtonName.POVAngle, this::getPOV);
         
         RegisterBinaryButtonSupplier(ButtonName.Any, this::getAnyButton);
+
+        myTable = NetworkTableInstance.getDefault().getTable("GameController");
     }
 
    public boolean getAnyButton() {
@@ -207,107 +213,163 @@ public class GameController {
    }
 
     boolean getLeftButton() {
+        var value = false;
+
         switch (Type) {
             case Xbox:
-                return xboxController.getXButton();
+                value = xboxController.getXButton();
+                break;
             case PS4:
-                return ps4Controller.getSquareButton();
+                value = ps4Controller.getSquareButton();
+                break;
             case FlightStick:
-                return fsController.getRawButton(0);
+                value = fsController.getRawButton(0);
+                break;
         }
 
-        return false;
+        myTable.getEntry(ButtonName.LeftButton.toString()).setBoolean(value);
+
+        return value;
     }
 
     boolean getTopButton() {
+        var value = false;
+
         switch (Type) {
             case Xbox:
-                return xboxController.getYButton();
+                value = xboxController.getYButton();
+                break;
             case PS4:
-                return ps4Controller.getTriangleButton();
+                value = ps4Controller.getTriangleButton();
+                break;
             case FlightStick:
-                return fsController.getRawButton(1);
+                value = fsController.getRawButton(1);
+                break;
         }
 
-        return false;
+        myTable.getEntry(ButtonName.TopButton.toString()).setBoolean(value);
+
+        return value;
     }
 
     boolean getRightButton() {
+        var value = false;
+
         switch (Type) {
             case Xbox:
-                return xboxController.getBButton();
+                value = xboxController.getBButton();
+                break;
             case PS4:
-                return ps4Controller.getCircleButton();
+                value = ps4Controller.getCircleButton();
+                break;
             case FlightStick:
-                return fsController.getRawButton(2);
+                value = fsController.getRawButton(2);
+                break;
         }
 
-        return false;
+        myTable.getEntry(ButtonName.RightButton.toString()).setBoolean(value);
+
+        return value;
     }
  
     boolean getBottomButton() {
+        var value = false;
+
         switch (Type) {
             case Xbox:
-                return xboxController.getAButton();
+                value = xboxController.getAButton();
+                break;
             case PS4:
-                return ps4Controller.getCrossButton();
+                value = ps4Controller.getCrossButton();
+                break;
             case FlightStick:
-                return fsController.getRawButton(3);
+                value = fsController.getRawButton(3);
+                break;
         }
 
-        return false;
+        myTable.getEntry(ButtonName.BottomButton.toString()).setBoolean(value);
+
+        return value;
     }
  
     boolean getLeftShoulderButton() {
+        var value = false;
+
         switch (Type) {
             case Xbox:
-                return xboxController.getLeftBumper();
+                value = xboxController.getLeftBumper();
+                break;
             case PS4:
-                return ps4Controller.getL1Button();
+                value = ps4Controller.getL1Button();
+                break;
             case FlightStick:
-                return fsController.getRawButton(4);
+                value = fsController.getRawButton(4);
+                break;
         }
 
-        return false;
+        myTable.getEntry(ButtonName.LeftShoulderButton.toString()).setBoolean(value);
+
+        return value;
     }
 
     double getLeftTriggerValue() {
+        var value = 0.0;
+
         switch (Type) {
             case Xbox:
-                return xboxController.getLeftTriggerAxis();
+                value = xboxController.getLeftTriggerAxis();
+                break;
             case PS4:
-                return ps4Controller.getL2Button() ? 1.0 : 0.0;
+                value = ps4Controller.getL2Button() ? 1.0 : 0.0;
+                break;
             case FlightStick:
-                return fsController.getRawAxis(2);
+                value = fsController.getRawAxis(2);
+                break;
         }
 
-        return 0.0;
+        myTable.getEntry(ButtonName.LeftTrigger.toString()).setDouble(value);
+
+        return value;
     }
  
     boolean getRightShoulderButton() {
+        var value = false;
+
         switch (Type) {
             case Xbox:
-                return xboxController.getRightBumper();
+                value = xboxController.getRightBumper();
+                break;
             case PS4:
-                return ps4Controller.getR1Button();
+                value = ps4Controller.getR1Button();
+                break;
             case FlightStick:
-                return fsController.getRawButton(5);
+                value = fsController.getRawButton(5);
+                break;
         }
 
-        return false;
+        myTable.getEntry(ButtonName.RightShoulderButton.toString()).setBoolean(value);
+
+        return value;
     }
 
     double getRightTriggerValue() {
+        var value = 0.0;
+
         switch (Type) {
             case Xbox:
-                return xboxController.getRightTriggerAxis();
+                value = xboxController.getRightTriggerAxis();
+                break;
             case PS4:
-                return ps4Controller.getR2Button() ? 1.0 : 0.0;
+                value = ps4Controller.getR2Button() ? 1.0 : 0.0;
+                break;
             case FlightStick:
-                return fsController.getRawAxis(3);
+                value = fsController.getRawAxis(3);
+                break;
         }
 
-        return 0.0;
+        myTable.getEntry(ButtonName.RightTrigger.toString()).setDouble(value);
+
+        return value;
     }
 
     double getRightY() {
@@ -321,10 +383,15 @@ public class GameController {
                 value = ps4Controller.getRightY();
                 break;
             case FlightStick:
-                return fsController.getRawAxis(0);
+                value = fsController.getRawAxis(0);
+                break;
         }
 
-        return Math.abs(value) > thumbstickDeadZone ? value : 0.0;
+        value = Math.abs(value) > thumbstickDeadZone ? value : 0.0;
+
+        myTable.getEntry(ButtonName.RightThumbstickY.toString()).setDouble(value);
+
+        return value;
     }
 
     double getRightX() {
@@ -338,10 +405,15 @@ public class GameController {
                 value = ps4Controller.getRightX();
                 break;
             case FlightStick:
-                return fsController.getRawAxis(1);
+                value = fsController.getRawAxis(1);
+                break;
         }
 
-        return Math.abs(value) > thumbstickDeadZone ? value : 0.0;
+        value = Math.abs(value) > thumbstickDeadZone ? value : 0.0;
+
+        myTable.getEntry(ButtonName.RightThumbstickX.toString()).setDouble(value);
+
+        return value;
     }
 
     double getLeftY() {
@@ -355,10 +427,15 @@ public class GameController {
                 value = ps4Controller.getLeftY();
                 break;
             case FlightStick:
-                return fsController.getRawAxis(0);
+                value = fsController.getRawAxis(0);
+                break;
         }
 
-        return Math.abs(value) > thumbstickDeadZone ? value : 0.0;
+        value = Math.abs(value) > thumbstickDeadZone ? value : 0.0;
+
+        myTable.getEntry(ButtonName.LeftThumbstickY.toString()).setDouble(value);
+
+        return value;
     }
 
     double getLeftX() {
@@ -372,94 +449,142 @@ public class GameController {
                 value = ps4Controller.getLeftX();
                 break;
             case FlightStick:
-                return fsController.getRawAxis(1);
+                value = fsController.getRawAxis(1);
+                break;
         }
 
-        return Math.abs(value) > thumbstickDeadZone ? value : 0.0;
+        value = Math.abs(value) > thumbstickDeadZone ? value : 0.0;
+
+        myTable.getEntry(ButtonName.LeftThumbstickX.toString()).setDouble(value);
+
+        return value;
     }
 
     int getPOV() {
+        var value = 0;
+
         switch (Type) {
             case Xbox:
-                return xboxController.getPOV();
+                value = xboxController.getPOV();
+                break;
             case PS4:
-                return ps4Controller.getPOV();
+                value = ps4Controller.getPOV();
+                break;
             case FlightStick:
-                return fsController.getPOV();
+                value = fsController.getPOV();
+                break;
         }
 
-        return 0;
+        myTable.getEntry(ButtonName.POVAngle.toString()).setInteger(value);
+
+        return value;
     }
 
     boolean getPOVUp() {
+        var value = false;
+
         int angle = getPOV();
         if (angle == 0) { // -1 means not pressed
-            return true;
+            value = true;
         }
-        return false;
+
+        myTable.getEntry(ButtonName.POVUp.toString()).setBoolean(value);
+
+        return value;
     }
  
     boolean getPOVDown() {
+        var value = false;
         int angle = getPOV();
         if (angle == 180) {  // -1 means not pressed
-            return true;
+            value = true;
         }
-        return false;
+
+        myTable.getEntry(ButtonName.POVDown.toString()).setBoolean(value);
+
+        return value;
     }
  
     boolean getPOVRight() {
+        var value = false;
         int angle = getPOV();
         if (angle == 90) {  // -1 means not pressed
-            return true;
+            value = true;
         }
-        return false;
+
+        myTable.getEntry(ButtonName.POVRight.toString()).setBoolean(value);
+
+        return value;
     }
  
     boolean getPOVLeft() {
+        var value = false;
         int angle = getPOV();
         if (angle == 270) {  // -1 means not pressed
-            return true;
+            value = true;
         }
-        return false;
+
+        myTable.getEntry(ButtonName.POVLeft.toString()).setBoolean(value);
+
+        return value;
     }
 
     boolean getStartButton() {
+        var value = false;
+
         switch (Type) {
             case Xbox:
-                return xboxController.getStartButton();
+                value = xboxController.getStartButton();
+                break;
             case PS4:
-                return ps4Controller.getShareButton();
+                value = ps4Controller.getShareButton();
+                break;
              case FlightStick:
-                return fsController.getTop();
+                value = fsController.getTop();
+                break;
        }
 
-        return false;
+        myTable.getEntry(ButtonName.Start.toString()).setBoolean(value);
+
+        return value;
     }
  
     boolean getSelectButton() {
+        var value = false;
+
         switch (Type) {
             case Xbox:
-                return xboxController.getBackButton();
+                value = xboxController.getBackButton();
+                break;
             case PS4:
-                return ps4Controller.getOptionsButton();
+                value = ps4Controller.getOptionsButton();
+                break;
              case FlightStick:
-                return fsController.getTrigger();
+                value = fsController.getTrigger();
+                break;
         }
 
-        return false;
+        myTable.getEntry(ButtonName.Select.toString()).setBoolean(value);
+
+        return value;
     }
  
     boolean getLogoButton() {
+        var value = false;
+        
         switch (Type) {
             case Xbox:
-                return false;
+                break;
             case PS4:
-                return ps4Controller.getPSButton();
+                value = ps4Controller.getPSButton();
+                break;
              case FlightStick:
-                return false;
+                break;
         }
 
-        return false;
+        myTable.getEntry(ButtonName.Logo.toString()).setBoolean(value);
+
+        return value;
     }
     
     public static GameController Initialize() {
