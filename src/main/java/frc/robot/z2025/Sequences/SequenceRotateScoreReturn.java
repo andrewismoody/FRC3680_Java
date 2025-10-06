@@ -28,15 +28,14 @@ public class SequenceRotateScoreReturn extends AutoSequence {
     var elevator = (SingleMotorModule) modules.GetModule("elevator");
     var slide = (SingleActuatorModule) modules.GetModule("slide");
 
-    // Drive poses (rotation only; use current translation)
-    var currentTrans = drive.GetPosition().getTranslation();
+    // Drive poses (rotation only)
     ActionPose rotate90 = new ActionPose(
       Group.Any, Location.Any, 0, Position.Any, Action.Any,
-      new AutoTarget(currentTrans, new Rotation2d(Units.degreesToRadians(90)))
+      new AutoTarget(new Rotation2d(Units.degreesToRadians(90)))
     );
     ActionPose rotate0 = new ActionPose(
       Group.Any, Location.Any, 1, Position.Any, Action.Any,
-      new AutoTarget(currentTrans, new Rotation2d(Units.degreesToRadians(0)))
+      new AutoTarget(new Rotation2d(Units.degreesToRadians(0)))
     );
     drive.AddActionPose(rotate90);
     drive.AddActionPose(rotate0);

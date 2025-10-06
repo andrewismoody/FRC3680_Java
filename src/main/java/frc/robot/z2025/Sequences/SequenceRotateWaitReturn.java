@@ -25,14 +25,13 @@ public class SequenceRotateWaitReturn extends AutoSequence {
     var drive = (SwerveDriveModule) modules.GetDriveModule();
 
     // Drive poses (rotation only; zero translation)
-    var currentTrans = drive.GetPosition().getTranslation();
     ActionPose rotate90 = new ActionPose(
       Group.Any, Location.Any, 0, Position.Any, Action.Any,
-      new AutoTarget(currentTrans, new Rotation2d(Units.degreesToRadians(90)))
+      new AutoTarget(new Rotation2d(Units.degreesToRadians(90)))
     );
     ActionPose rotate0 = new ActionPose(
       Group.Any, Location.Any, 1, Position.Any, Action.Any,
-      new AutoTarget(currentTrans, new Rotation2d(0))
+      new AutoTarget(new Rotation2d(0))
     );
     drive.AddActionPose(rotate90);
     drive.AddActionPose(rotate0);

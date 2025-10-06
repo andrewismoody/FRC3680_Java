@@ -257,6 +257,7 @@ public class SwerveDriveModule implements DriveModule {
     }
 
     public void ProcessRotationAngle(double value) {
+        // TODO: we need to soften rotation - should we modify this or adjust PID or both?
         rotationAngle = value * rotationMultiplier;
         wroteRotationThisTick = true; // mark open-loop write this tick
         myTable.getEntry("rotationAngle").setDouble(rotationAngle);

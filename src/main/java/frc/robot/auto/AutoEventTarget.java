@@ -9,6 +9,7 @@ public class AutoEventTarget implements AutoEvent {
     boolean complete;
     boolean parallel;
     String label;
+    boolean hasSetTarget = false;
     AutoController autoController;
 
     ActionPose target;
@@ -32,10 +33,7 @@ public class AutoEventTarget implements AutoEvent {
         switch (eventType) {
             case SetTarget:
                 if (target != null) {
-                    if (targetModule != null)
-                        targetModule.SetTargetActionPose(target);
-                    else if (moduleController != null)
-                        moduleController.SetTargetActionPose(target);
+                    SetTarget();
                 }
                 complete = true;
                 break;
@@ -45,18 +43,37 @@ public class AutoEventTarget implements AutoEvent {
                     break;
                 }
 
-                if (targetModule != null && targetModule.GetTarget() == null) {
-                    complete = true;
-                }
-
-                if (moduleController != null && !moduleController.GetTarget()) {
-                    complete = true;
+                // Allow setting and awaiting in same action
+                if (!hasSetTarget) {
+                    if (target != null) {
+                        SetTarget();
+                    } else {
+                        complete = IsTargetReached();
+                    }
+                } else {
+                    complete = IsTargetReached();
                 }
                 break;
             default:
                 complete = true;
                 break;
         }
+    }
+
+    public void SetTarget() {
+        if (targetModule != null)
+            targetModule.SetTargetActionPose(target);
+        else if (moduleController != null)
+            moduleController.SetTargetActionPose(target);
+        hasSetTarget = true;
+    }
+
+    public boolean IsTargetReached() {
+        if (targetModule != null)
+            return targetModule.GetTarget() == null;
+        else if (moduleController != null)
+            return !moduleController.GetTarget();
+        return false;
     }
 
     public TriggerType GetTriggerType() {

@@ -42,11 +42,7 @@ public class SequenceControllerStartScoreReload extends AutoSequence {
     Collections.sort(poseKeys);
 
     for (var key : poseKeys) {
-      var pose = Poses.get(key);
-      AutoEventTarget setPose = new AutoEventTarget("Set Pose " + key, true, pose, AutoEvent.EventType.SetTarget, ac);
-      AddEvent(setPose);
-
-      AutoEventTarget awaitPose = new AutoEventTarget("Await Pose " + key, false, null, AutoEvent.EventType.AwaitTarget, ac);
+      AutoEventTarget awaitPose = new AutoEventTarget("Await Pose " + key, false, Poses.get(key), AutoEvent.EventType.AwaitTarget, ac);
       AddEvent(awaitPose);
     }
   }
