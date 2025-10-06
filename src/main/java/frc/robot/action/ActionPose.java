@@ -1,6 +1,6 @@
 package frc.robot.action;
 
-import edu.wpi.first.math.geometry.Pose3d;
+import frc.robot.auto.AutoTarget;
 
 public class ActionPose {
     public Group group;
@@ -8,14 +8,14 @@ public class ActionPose {
     public int locationIndex;
     public Position position;
     public Action action;
-    public Pose3d pose;
+    public AutoTarget target;
 
-    public ActionPose(Group Group, Location Location, int LocationIndex, Position Position, Action Action, Pose3d Pose) {
+    public ActionPose(Group Group, Location Location, int LocationIndex, Position Position, Action Action, AutoTarget Target) {
         group = Group;
         location = Location;
         locationIndex = LocationIndex;
         position = Position;
         action = Action;
-        pose = Pose;
+        target = Target;
     }
 }

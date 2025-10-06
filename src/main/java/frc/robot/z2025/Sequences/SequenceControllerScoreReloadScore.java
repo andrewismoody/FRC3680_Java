@@ -1,6 +1,5 @@
 package frc.robot.z2025.Sequences;
 
-import edu.wpi.first.math.geometry.Pose3d;
 import frc.robot.action.Action;
 import frc.robot.action.ActionPose;
 import frc.robot.action.Group;
@@ -18,11 +17,11 @@ public class SequenceControllerScoreReloadScore extends AutoSequence {
 
 
     // Target Poses
-    var scoreposition1 = new ActionPose(Group.Score, Location.Reef, 0, Position.Lower, Action.Pickup, new Pose3d());
-    var scoreaction1 = new ActionPose(Group.Score, Location.Reef, 0, Position.Lower, Action.Drop, new Pose3d());
-    var pickupposition1 = new ActionPose(Group.Pickup, Location.Coral, 0, Position.Trough, Action.Pickup, new Pose3d());
-    var scoreposition2 = new ActionPose(Group.Score, Location.Reef, 0, Position.Middle, Action.Pickup, new Pose3d());
-    var scoreaction2 = new ActionPose(Group.Score, Location.Reef, 0, Position.Middle, Action.Drop, new Pose3d());
+    var scoreposition1 = new ActionPose(Group.Score, Location.Reef, 0, Position.Lower, Action.Pickup, null);
+    var scoreaction1 = new ActionPose(Group.Score, Location.Reef, 0, Position.Lower, Action.Drop, null);
+    var pickupposition1 = new ActionPose(Group.Pickup, Location.Coral, 0, Position.Trough, Action.Pickup, null);
+    var scoreposition2 = new ActionPose(Group.Score, Location.Reef, 0, Position.Middle, Action.Pickup, null);
+    var scoreaction2 = new ActionPose(Group.Score, Location.Reef, 0, Position.Middle, Action.Drop, null);
 
     AutoEventTarget setScorePosition1 = new AutoEventTarget("Set Score Position 1", true, scoreposition1, AutoEvent.EventType.SetTarget, ac);
     AddEvent(setScorePosition1);

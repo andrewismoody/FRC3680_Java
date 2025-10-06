@@ -56,13 +56,17 @@ public class SingleActuatorModule implements RobotModule {
             }
             
             // determine what to do based on target pose - position X > 0 = forward, < 0 = reverse, 0 = off
-            var positionX = targetPose.pose.getX();
-            if (positionX > 0) {
-                ApplyValue(true);
-            } else if (positionX < 0) {
-                ApplyInverse(true);
-            } else { // off request, abandon immediately
+            var targetState = targetPose.target.State;
+            switch (targetState) {
+                case Off:
                 AbandonTarget();
+                break;
+                case Forward:
+                    ApplyValue(true);
+                    break;
+                case Reverse:
+                    ApplyInverse(true);
+                    break;
             }
         }
     }

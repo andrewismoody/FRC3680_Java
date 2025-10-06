@@ -1,7 +1,6 @@
 package frc.robot.z2025.Sequences;
 
-import edu.wpi.first.math.geometry.Pose3d;
-import edu.wpi.first.math.geometry.Rotation3d;
+import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.util.Units;
 import frc.robot.action.Action;
 import frc.robot.action.ActionPose;
@@ -13,6 +12,7 @@ import frc.robot.auto.AutoEvent;
 import frc.robot.auto.AutoEventTarget;
 import frc.robot.auto.AutoEventTime;
 import frc.robot.auto.AutoSequence;
+import frc.robot.auto.AutoTarget;
 import frc.robot.modules.ModuleController;
 import frc.robot.modules.SingleActuatorModule;
 import frc.robot.modules.SingleMotorModule;
@@ -32,11 +32,11 @@ public class SequenceRotateScoreReturn extends AutoSequence {
     var currentTrans = drive.GetPosition().getTranslation();
     ActionPose rotate90 = new ActionPose(
       Group.Any, Location.Any, 0, Position.Any, Action.Any,
-      new Pose3d(currentTrans, new Rotation3d(0, 0, Units.degreesToRadians(90)))
+      new AutoTarget(currentTrans, new Rotation2d(Units.degreesToRadians(90)))
     );
     ActionPose rotate0 = new ActionPose(
       Group.Any, Location.Any, 1, Position.Any, Action.Any,
-      new Pose3d(currentTrans, new Rotation3d(0, 0, Units.degreesToRadians(0)))
+      new AutoTarget(currentTrans, new Rotation2d(Units.degreesToRadians(0)))
     );
     drive.AddActionPose(rotate90);
     drive.AddActionPose(rotate0);

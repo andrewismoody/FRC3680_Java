@@ -118,14 +118,14 @@ public class DualMotorModule implements RobotModule {
     }
 
     public void EvaluateTargetPose(double rotationCount) {
-        // TODO: Detect button input and bypass
-        if (targetPose != null) {
+        // TODO: Detect button input and bypass - how would this ever get set to non-zero at this point?
+        if (targetPose != null && currentDriveSpeed == 0.0) {
             double angleTolerance = 0.00001; // 0.00001;
-            var target = targetPose.pose;
+            var target = targetPose.target;
     
             // we have a target and we're not manually applying a value, try to get to it.
             // the x axis of the position of the pose is the rotation count (distance along the motor axis)
-            var targetRotation = target.getX();
+            var targetRotation = target.Distance;
             var targetDistance = Math.abs(targetRotation - rotationCount);
             myTable.getEntry("targetDistance").setDouble(targetDistance);
             previousTargetDistance = targetDistance;

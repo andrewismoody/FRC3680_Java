@@ -374,49 +374,51 @@ public class SwerveDriveModule implements DriveModule {
     public void EvaluateTargetPose(double newAngleRad) {
         if (targetPose != null) {
             myTable.getEntry("newAngleRad").setDouble(newAngleRad);
-            var pose = targetPose.pose;
-            var targetPosition = pose.getTranslation();
-            var targetRotation = pose.getRotation();
-
-            var positionDelta = targetPosition.minus(currentPosition);
-            var rotationDelta = targetRotation.getZ() - newAngleRad;
-            myTable.getEntry("rotationTarget").setDouble(targetRotation.getZ());
-            myTable.getEntry("positionTarget").setString(targetPosition.toString());
-
-            myTable.getEntry("positionDelta").setString(positionDelta.toString());
-            myTable.getEntry("rotationDelta").setDouble(rotationDelta);
+            var pose = targetPose.target;
+            var targetPosition = pose.Position;
+            var targetRotation = pose.Orientation;
 
             var lateralReached = false;
             var forwardReached = false;
             var rotationReached = false;
             var positionerHealthy = isPositionerHealthy();
 
-            // limelight team-based origin is x forward positive, y left positive - same as FRC field
-            // why does this only work inverted'? - we must've confused coordinates somewhere else
-            if (!wroteLateralThisTick) { // allows game controller precedence
-                var lateralSpeed = -lateralPidController.calculate(currentPosition.getY(), targetPosition.getY());
-                if (Math.abs(lateralSpeed) < floatTolerance) {
-                    lateralReached = true;
-                    myTable.getEntry("lateralReached").setBoolean(lateralReached);
-                    ProcessLateralSpeed(0.0);
-                } else if (positionerHealthy) { // prevents sending wrong coordinates
-                    ProcessLateralSpeed(lateralSpeed);
+            if (pose.HasPosition) {
+                var positionDelta = targetPosition.minus(currentPosition);
+                myTable.getEntry("positionDelta").setString(positionDelta.toString());
+                myTable.getEntry("positionTarget").setString(targetPosition.toString());
+
+                // limelight team-based origin is x forward positive, y left positive - same as FRC field
+                // why does this only work inverted'? - we must've confused coordinates somewhere else
+                if (!wroteLateralThisTick) { // allows game controller precedence
+                    var lateralSpeed = -lateralPidController.calculate(currentPosition.getY(), targetPosition.getY());
+                    if (Math.abs(lateralSpeed) < floatTolerance) {
+                        lateralReached = true;
+                        myTable.getEntry("lateralReached").setBoolean(lateralReached);
+                        ProcessLateralSpeed(0.0);
+                    } else if (positionerHealthy) { // prevents sending wrong coordinates
+                        ProcessLateralSpeed(lateralSpeed);
+                    }
+                }
+
+                if (!wroteForwardThisTick) { // allows game controller precedence
+                    var forwardSpeed = -forwardPidController.calculate(currentPosition.getX(), targetPosition.getX());
+                    if (Math.abs(forwardSpeed) < floatTolerance) {
+                        forwardReached = true;
+                        myTable.getEntry("forwardReached").setBoolean(forwardReached);
+                        ProcessForwardSpeed(0.0);
+                    } else if (positionerHealthy) { // prevents sending wrong coordinates
+                        ProcessForwardSpeed(forwardSpeed);
+                    }
                 }
             }
 
-            if (!wroteForwardThisTick) { // allows game controller precedence
-                var forwardSpeed = -forwardPidController.calculate(currentPosition.getX(), targetPosition.getX());
-                if (Math.abs(forwardSpeed) < floatTolerance) {
-                    forwardReached = true;
-                    myTable.getEntry("forwardReached").setBoolean(forwardReached);
-                    ProcessForwardSpeed(0.0);
-                } else if (positionerHealthy) { // prevents sending wrong coordinates
-                    ProcessForwardSpeed(forwardSpeed);
-                }
-            }
+            if (pose.HasOrientation && !wroteRotationThisTick) { // allows game controller precedence
+                var rotationDelta = targetRotation.getRadians() - newAngleRad;
+                myTable.getEntry("rotationDelta").setDouble(rotationDelta);
+                myTable.getEntry("rotationTarget").setDouble(targetRotation.getRadians());
 
-            if (!wroteRotationThisTick) { // allows game controller precedence
-                var rotationSpeed = -rotationPidController.calculate(newAngleRad, targetRotation.getZ());
+                var rotationSpeed = -rotationPidController.calculate(newAngleRad, targetRotation.getRadians());
                 if (Math.abs(rotationSpeed) < floatTolerance) {
                     rotationReached = true;
                     myTable.getEntry("rotationReached").setBoolean(rotationReached);

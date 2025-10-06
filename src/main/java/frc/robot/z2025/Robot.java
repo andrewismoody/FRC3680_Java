@@ -7,8 +7,7 @@ package frc.robot.z2025;
 import java.util.Hashtable;
 
 import edu.wpi.first.cameraserver.CameraServer;
-import edu.wpi.first.math.geometry.Pose3d;
-import edu.wpi.first.math.geometry.Rotation3d;
+import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.geometry.Translation3d;
 import edu.wpi.first.wpilibj.DriverStation;
@@ -27,9 +26,11 @@ import frc.robot.GameController.ButtonName;
 import frc.robot.GameController.ControllerType;
 import frc.robot.action.*;
 import frc.robot.auto.AutoController;
+import frc.robot.auto.AutoTarget;
 import frc.robot.gyro.AHRSGyro;
 import frc.robot.gyro.Gyro;
 import frc.robot.modules.ModuleController;
+import frc.robot.modules.ModuleState;
 import frc.robot.modules.SingleActuatorModule;
 import frc.robot.modules.SingleMotorModule;
 import frc.robot.modules.SwerveDriveModule;
@@ -38,6 +39,7 @@ import frc.robot.positioner.LimeLightPositioner;
 import frc.robot.positioner.Positioner;
 import frc.robot.z2025.Sequences.SequenceControllerMoveToReef;
 import frc.robot.z2025.Sequences.SequenceControllerScoreReloadScore;
+import frc.robot.z2025.Sequences.SequenceControllerStartScoreReload;
 import frc.robot.z2025.Sequences.SequenceRotateScoreReturn;
 import frc.robot.encoder.Encoder;
 import frc.robot.encoder.REVEncoder;
@@ -352,16 +354,27 @@ public class Robot extends TimedRobot {
   }
 
   public void InitializeActionPoses() {
-    swerveDriveModule.AddActionPose(new ActionPose(Group.Score, Location.Reef, 0, Position.Any, Action.Any, new Pose3d(new Translation3d(2.65, 5.65, 0), new Rotation3d(0, 0, 5.495))));
-    swerveDriveModule.AddActionPose(new ActionPose(Group.Pickup, Location.Coral, 0, Position.Any, Action.Any, new Pose3d(new Translation3d(2.0, 0.0, 0), new Rotation3d(0, 0, 0))));
-    swerveDriveModule.AddActionPose(new ActionPose(Group.Pickup, Location.Coral, 1, Position.Any, Action.Any, new Pose3d(new Translation3d(2.0, 50.0, 0), new Rotation3d(0, 0, 315))));
+    // left start, 240
+    swerveDriveModule.AddActionPose(new ActionPose(Group.Start, Location.Barge, 1, Position.Any, Action.Any, new AutoTarget(new Translation3d(9.271, 7.79, 0), new Rotation2d(3.654))));
+    // waypoint 11, 240
+    swerveDriveModule.AddActionPose(new ActionPose(Group.Score, Location.AdHoc, 11, Position.Any, Action.Any, new AutoTarget(new Translation3d(5.8, 5.75, 0), new Rotation2d(3.654))));
+    // waypoint 12, 240
+    swerveDriveModule.AddActionPose(new ActionPose(Group.Score, Location.AdHoc, 12, Position.Any, Action.Any, new AutoTarget(new Translation3d(4.47, 6.45, 0), new Rotation2d(4.7))));
+    // waypoint 1, 300
+    swerveDriveModule.AddActionPose(new ActionPose(Group.Score, Location.AdHoc, 1, Position.Any, Action.Any, new AutoTarget(new Translation3d(3.15, 5.75, 0), new Rotation2d(5.22))));
+    // reef 1, 300
+    swerveDriveModule.AddActionPose(new ActionPose(Group.Score, Location.Reef, 1, Position.Any, Action.Any, new AutoTarget(new Translation3d(3.75, 5.05, 0), new Rotation2d(5.22))));
+    // waypoint 1, 126
+    swerveDriveModule.AddActionPose(new ActionPose(Group.Pickup, Location.AdHoc, 1, Position.Any, Action.Any, new AutoTarget(new Translation3d(3.15, 5.75, 0), new Rotation2d(2.1924))));
+    // loading 1, 126
+    swerveDriveModule.AddActionPose(new ActionPose(Group.Pickup, Location.Coral, 1, Position.Any, Action.Any, new AutoTarget(new Translation3d(1.15, 7.08, 0), new Rotation2d(2.1924))));
 
-    elevator.AddActionPose(new ActionPose(Group.Score, Location.Any, -1, Position.Lower, Action.Any, new Pose3d(new Translation3d(0.28, 0, 0), new Rotation3d())));
-    elevator.AddActionPose(new ActionPose(Group.Score, Location.Any, -1, Position.Middle, Action.Any, new Pose3d(new Translation3d(1.14, 0, 0), new Rotation3d())));
-    elevator.AddActionPose(new ActionPose(Group.Any, Location.Any, -1, Position.Trough, Action.Any, new Pose3d(new Translation3d(0.0, 0, 0), new Rotation3d())));
+    elevator.AddActionPose(new ActionPose(Group.Score, Location.Any, -1, Position.Lower, Action.Any, new AutoTarget(0.28)));
+    elevator.AddActionPose(new ActionPose(Group.Score, Location.Any, -1, Position.Middle, Action.Any, new AutoTarget(1.14)));
+    elevator.AddActionPose(new ActionPose(Group.Any, Location.Any, -1, Position.Trough, Action.Any, new AutoTarget(0.0)));
 
-    slide.AddActionPose(new ActionPose(Group.Any, Location.Any, -1, Position.Any, Action.Drop, new Pose3d(new Translation3d(1, 0, 0), new Rotation3d())));
-    slide.AddActionPose(new ActionPose(Group.Any, Location.Any, -1, Position.Any, Action.Pickup, new Pose3d(new Translation3d(-1, 0, 0), new Rotation3d())));
+    slide.AddActionPose(new ActionPose(Group.Any, Location.Any, -1, Position.Any, Action.Drop, new AutoTarget(ModuleState.Forward)));
+    slide.AddActionPose(new ActionPose(Group.Any, Location.Any, -1, Position.Any, Action.Pickup, new AutoTarget(ModuleState.Reverse)));
   }
 
   public void InitializeAutoModes() {
@@ -382,7 +395,7 @@ public class Robot extends TimedRobot {
     controllerMoveToReef.AddSequence(new SequenceControllerMoveToReef(controllerMoveToReef.GetLabel(), modules, controllerMoveToReef));
     AutoModes.put(controllerMoveToReef.GetLabel(), controllerMoveToReef);
 
-    AutoController controllerStartScoreReload = new AutoController("controllerStartScoreReload", m_controller);
+    AutoController controllerStartScoreReload = new AutoController("controllerStartScoreReload", m_controller, modules);
     controllerStartScoreReload.AddSequence(new SequenceControllerStartScoreReload(controllerStartScoreReload.GetLabel(), modules, controllerStartScoreReload));
     AutoModes.put(controllerStartScoreReload.GetLabel(), controllerStartScoreReload);
 

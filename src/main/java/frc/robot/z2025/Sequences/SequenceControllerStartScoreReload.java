@@ -5,7 +5,6 @@ import java.util.Collections;
 import java.util.Hashtable;
 import java.util.List;
 
-import edu.wpi.first.math.geometry.Pose3d;
 import frc.robot.modules.ModuleController;
 import frc.robot.action.Action;
 import frc.robot.action.ActionPose;
@@ -16,20 +15,19 @@ import frc.robot.auto.AutoController;
 import frc.robot.auto.AutoEvent;
 import frc.robot.auto.AutoEventTarget;
 import frc.robot.auto.AutoSequence;
-import frc.robot.auto.AutoEvent.EventType;
 
 public class SequenceControllerStartScoreReload extends AutoSequence {
   public SequenceControllerStartScoreReload(String label, ModuleController modules, AutoController ac) {
     super(label, modules, ac);
 
     // Target Poses
-    var start1 = new ActionPose(Group.Start, Location.Barge, 1, Position.Lower, Action.Pickup, new Pose3d());
-    var waypoint11_240 = new ActionPose(Group.Score, Location.AdHoc, 11, Position.Lower, Action.Pickup, new Pose3d());
-    var waypoint12_180 = new ActionPose(Group.Score, Location.AdHoc, 12, Position.Lower, Action.Pickup, new Pose3d());
-    var waypoint1_300 = new ActionPose(Group.Score, Location.AdHoc, 1, Position.Lower, Action.Pickup, new Pose3d());
-    var score1_300 = new ActionPose(Group.Score, Location.Reef, 1, Position.Lower, Action.Pickup, new Pose3d());
-    var waypoint1_126 = new ActionPose(Group.Pickup, Location.AdHoc, 1, Position.Lower, Action.Pickup, new Pose3d());
-    var loading1_126 = new ActionPose(Group.Pickup, Location.Coral, 1, Position.Lower, Action.Pickup, new Pose3d());
+    // var start1 = new ActionPose(Group.Start, Location.Barge, 1, Position.Lower, Action.Pickup, null);
+    var waypoint11_240 = new ActionPose(Group.Score, Location.AdHoc, 11, Position.Lower, Action.Pickup, null);
+    var waypoint12_180 = new ActionPose(Group.Score, Location.AdHoc, 12, Position.Lower, Action.Pickup, null);
+    var waypoint1_300 = new ActionPose(Group.Score, Location.AdHoc, 1, Position.Lower, Action.Pickup, null);
+    var score1_300 = new ActionPose(Group.Score, Location.Reef, 1, Position.Lower, Action.Pickup, null);
+    var waypoint1_126 = new ActionPose(Group.Pickup, Location.AdHoc, 1, Position.Lower, Action.Pickup, null);
+    var loading1_126 = new ActionPose(Group.Pickup, Location.Coral, 1, Position.Lower, Action.Pickup, null);
 
     var Poses = new Hashtable<String, ActionPose>();
     // Poses.put("1 Start 1", start1);
