@@ -8,6 +8,8 @@ import java.util.function.Consumer;
 
 import edu.wpi.first.wpilibj.PS4Controller;
 import edu.wpi.first.wpilibj.XboxController;
+import edu.wpi.first.wpilibj.DriverStation;
+import edu.wpi.first.wpilibj.GenericHID;
 import edu.wpi.first.wpilibj.Joystick;
 
 public class GameController {
@@ -458,5 +460,44 @@ public class GameController {
         }
 
         return false;
+    }
+    
+    public static GameController Initialize() {
+        GameController m_controller = null;
+
+        JoystickIndexLoop: for (int j = 0; j < 6; j++) {
+            System.out.printf("Checking for joystick on port %d\n", j);
+
+            if (DriverStation.isJoystickConnected(j)) {
+                var jtype = DriverStation.getJoystickType(j);
+                System.out.printf("Joystick is connected on port %d; found type %d\n", j, jtype);
+                switch (GenericHID.HIDType.of(jtype)) {
+                case kXInputFlightStick, kHIDFlight:
+                    System.out.printf("Joystick on port %d is a FlightStick\n", j);
+                    m_controller = new GameController(j, ControllerType.FlightStick);
+                    break JoystickIndexLoop;
+                default:
+                case kXInputGamepad, kHIDGamepad:
+                    if (DriverStation.getJoystickIsXbox(j)) {
+                    System.out.printf("Joystick on port %d is an Xbox controller\n", j);
+                    m_controller = new GameController(j, ControllerType.Xbox);
+                    break JoystickIndexLoop;
+                    } else {
+                    System.out.printf("Joystick on port %d is not an Xbox controller, assuming PS4\n", j);
+                    m_controller = new GameController(j, ControllerType.PS4);
+                    break JoystickIndexLoop;
+                    }
+                }
+            } else {
+                System.out.printf("Joystick is not connected on port %d\n", j);
+            }
+        }
+
+        if (m_controller == null) {
+            System.out.println("no joysticks detected!  Assuming XBox Controller on port 0");
+            m_controller = new GameController(0, ControllerType.Xbox);
+        }
+
+        return m_controller;
     }
 }

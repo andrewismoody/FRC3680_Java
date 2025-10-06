@@ -1,5 +1,6 @@
 package frc.robot.z2025.action;
 
+// Location is a 'helper' that names locations on the field for easier reading instead of translating the number to a value in your brain
 public enum Location {
     // Any should always be -1, which is the 'wildcard' value and matches any Location
     Any(-1),

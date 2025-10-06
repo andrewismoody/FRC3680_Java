@@ -7,44 +7,26 @@ package frc.robot.z2025;
 import java.util.Hashtable;
 
 import edu.wpi.first.cameraserver.CameraServer;
-import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Translation2d;
-import edu.wpi.first.math.geometry.Translation3d;
-import edu.wpi.first.wpilibj.DriverStation;
-import edu.wpi.first.wpilibj.GenericHID;
 import edu.wpi.first.wpilibj.Relay;
 import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj.Timer;
-import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 
 import com.revrobotics.spark.SparkLowLevel.MotorType;
 import com.revrobotics.spark.SparkMax;
 
-import frc.robot.action.Group;
-import frc.robot.action.Action;
-import frc.robot.action.ActionPose;
 import frc.robot.auto.AutoController;
-import frc.robot.auto.AutoTarget;
 import frc.robot.gyro.AHRSGyro;
 import frc.robot.gyro.Gyro;
 import frc.robot.misc.GameController;
-import frc.robot.misc.GameController.ButtonName;
-import frc.robot.misc.GameController.ControllerType;
 import frc.robot.modules.ModuleController;
-import frc.robot.modules.ModuleState;
 import frc.robot.modules.SingleActuatorModule;
 import frc.robot.modules.SingleMotorModule;
 import frc.robot.modules.SwerveDriveModule;
 import frc.robot.modules.SwerveMotorModule;
 import frc.robot.positioner.LimeLightPositioner;
 import frc.robot.positioner.Positioner;
-import frc.robot.z2025.Sequences.SequenceControllerMoveToReef;
-import frc.robot.z2025.Sequences.SequenceControllerScoreReloadScore;
-import frc.robot.z2025.Sequences.SequenceControllerStartScoreReload;
-import frc.robot.z2025.Sequences.SequenceRotateScoreReturn;
-import frc.robot.z2025.action.Location;
-import frc.robot.z2025.action.Position;
 import frc.robot.encoder.Encoder;
 import frc.robot.encoder.REVEncoder;
 
@@ -98,7 +80,7 @@ public class Robot extends TimedRobot {
 
   final Positioner m_positioner = new LimeLightPositioner(false);
 
-  GameController m_controller; // = new Controller(0, ControllerType.Xbox);
+  GameController m_controller = GameController.Initialize();
 
   final Timer m_timer = new Timer();
 
@@ -157,7 +139,7 @@ public class Robot extends TimedRobot {
 
   ModuleController modules;
 
-  Hashtable<String, AutoController> AutoModes = new Hashtable<String, AutoController>();
+  Hashtable<String, AutoController> autoModes = new Hashtable<String, AutoController>();
   AutoController currentAutoMode;
 
   public Robot() {
@@ -185,17 +167,17 @@ public class Robot extends TimedRobot {
     // modules.SetEnableSteer(true);
     // modules.SetEnableDriveTrain(true);
 
-    InitializeChoosers();
-    InitializeJoystick();
-    InitializeButtonMappings();
-    InitializeActionPoses();
-    InitializeAutoModes();
+    Dashboard.InitializeChoosers();
+    Joystick.InitializeButtonMappings(m_controller, modules, swerveDriveModule, slide, elevator); //, grabber);
+    ActionPoses.Initialize(swerveDriveModule, elevator, slide);
+    autoModes = AutoModes.Initialize(autoModes, m_controller, modules);
+    currentAutoMode = AutoModes.GetDefault(autoModes);
   }
 
   /** This function is run once each time the robot enters autonomous mode. */
   @Override
   public void autonomousInit() {
-    var selectedMode = AutoModes.get(SmartDashboard.getString("Auto Selector", AutoModes.keys().nextElement()));
+    var selectedMode = autoModes.get(SmartDashboard.getString("Auto Selector", autoModes.keys().nextElement()));
     if (selectedMode == null)
       selectedMode = currentAutoMode; 
     selectedMode.Initialize();
@@ -250,162 +232,5 @@ public class Robot extends TimedRobot {
   /** This function is called periodically during test mode. */
   @Override
   public void testPeriodic() {
-  }
-
-  public void InitializeChoosers() {
-    SendableChooser<Group> GroupChooser = new SendableChooser<>();
-    for (Group item : Group.class.getEnumConstants()) {
-      GroupChooser.addOption(item.toString(), item);
-    }
-    SmartDashboard.putData(GroupChooser);
-
-    SendableChooser<Location> LocationChooser = new SendableChooser<>();
-    for (Location item : Location.class.getEnumConstants()) {
-      LocationChooser.addOption(item.toString(), item);
-    }
-    SmartDashboard.putData(LocationChooser);
-
-    SendableChooser<Integer> IndexChooser = new SendableChooser<>();
-    for (int i = 0; i < 8; i++) {
-      IndexChooser.addOption(String.valueOf(i), i);
-    }
-    SmartDashboard.putData(IndexChooser);
-
-    SendableChooser<Position> PositionChooser = new SendableChooser<>();
-    for (Position item : Position.class.getEnumConstants()) {
-      PositionChooser.addOption(item.toString(), item);
-    }
-    SmartDashboard.putData(PositionChooser);
-
-    SendableChooser<Action> ActionChooser = new SendableChooser<>();
-    for (Action item : Action.class.getEnumConstants()) {
-      ActionChooser.addOption(item.toString(), item);
-    }
-    SmartDashboard.putData(ActionChooser);
-  }
-
-  public void InitializeJoystick() {
-    JoystickIndexLoop: for (int j = 0; j < 6; j++) {
-      System.out.printf("Checking for joystick on port %d\n", j);
-
-      if (DriverStation.isJoystickConnected(j)) {
-        var jtype = DriverStation.getJoystickType(j);
-        System.out.printf("Joystick is connected on port %d; found type %d\n", j, jtype);
-        switch (GenericHID.HIDType.of(jtype)) {
-          case kXInputFlightStick, kHIDFlight:
-            System.out.printf("Joystick on port %d is a FlightStick\n", j);
-            m_controller = new GameController(j, ControllerType.FlightStick);
-            break JoystickIndexLoop;
-          default:
-          case kXInputGamepad, kHIDGamepad:
-            if (DriverStation.getJoystickIsXbox(j)) {
-              System.out.printf("Joystick on port %d is an Xbox controller\n", j);
-              m_controller = new GameController(j, ControllerType.Xbox);
-              break JoystickIndexLoop;
-            } else {
-              System.out.printf("Joystick on port %d is not an Xbox controller, assuming PS4\n", j);
-              m_controller = new GameController(j, ControllerType.PS4);
-              break JoystickIndexLoop;
-            }
-        }
-      } else {
-        System.out.printf("Joystick is not connected on port %d\n", j);
-      }
-    }
-
-    if (m_controller == null) {
-      System.out.println("no joysticks detected!  Assuming XBox Controller on port 0");
-      m_controller = new GameController(0, ControllerType.Xbox);
-    }
-  }
-
-  public void InitializeButtonMappings() {
-    // TODO: need to move button mappings to preferences and initialize in game controller class
-    
-    m_controller.RegisterBinaryButtonConsumer(ButtonName.LeftShoulderButton, slide::ApplyValue);
-    m_controller.RegisterBinaryButtonConsumer(ButtonName.RightShoulderButton, slide::ApplyInverse);
-
-    m_controller.RegisterBinaryButtonConsumer(ButtonName.BottomButton, elevator::SetNoPose);
-    m_controller.RegisterBinaryButtonConsumer(ButtonName.TopButton, elevator::SetScoringPoseMiddle);
-    m_controller.RegisterBinaryButtonConsumer(ButtonName.LeftButton, elevator::SetScoringPoseLower);
-    m_controller.RegisterBinaryButtonConsumer(ButtonName.RightButton, elevator::SetScoringPoseTrough);
-
-    m_controller.RegisterBinaryButtonConsumer(ButtonName.POVDown, elevator::ApplyInverse);
-    m_controller.RegisterBinaryButtonConsumer(ButtonName.POVUp, elevator::ApplyValue);
-
-    // m_controller.RegisterBinaryButtonConsumer(ButtonName.POVLeft, grabber::ApplyInverse);
-    // m_controller.RegisterBinaryButtonConsumer(ButtonName.POVRight, grabber::ApplyValue);
-
-    // m_controller.RegisterBinaryButtonConsumer(ButtonName.LeftButton, swerveDriveModule::LockPosition);
-    m_controller.RegisterBinaryButtonConsumer(ButtonName.Select, swerveDriveModule::ReturnToZero);
-    m_controller.RegisterBinaryButtonConsumer(ButtonName.Select, elevator::SetScoringPoseTrough);
-
-    // m_controller.RegisterBinaryButtonConsumer(ButtonName.RightShoulderButton, modules::ProcessInverse);
-
-    m_controller.RegisterValueButtonConsumer(ButtonName.LeftTrigger, modules::ProcessDivider1);
-
-    m_controller.SetValueButtonInversion(ButtonName.RightTrigger, true);
-    m_controller.RegisterValueButtonConsumer(ButtonName.RightTrigger, modules::ProcessSpeedDilation);
-
-    m_controller.SetValueButtonInversion(ButtonName.LeftThumbstickY, false);
-    m_controller.RegisterValueButtonConsumer(ButtonName.LeftThumbstickY, swerveDriveModule::ProcessForwardSpeed);
-
-    m_controller.SetValueButtonInversion(ButtonName.LeftThumbstickX, false);
-    m_controller.RegisterValueButtonConsumer(ButtonName.LeftThumbstickX, swerveDriveModule::ProcessLateralSpeed);
-
-    m_controller.SetValueButtonInversion(ButtonName.RightThumbstickX, false);
-    m_controller.RegisterValueButtonConsumer(ButtonName.RightThumbstickX, swerveDriveModule::ProcessRotationAngle);
-  }
-
-  public void InitializeActionPoses() {
-    // left start, 240
-    swerveDriveModule.AddActionPose(new ActionPose(Group.Start, Location.Barge.getValue(), 1, Position.Any.getValue(), Action.Any, new AutoTarget(new Translation3d(9.271, 7.79, 0), new Rotation2d(3.654))));
-    // waypoint 11, 240
-    swerveDriveModule.AddActionPose(new ActionPose(Group.Score, Location.Waypoint.getValue(), 11, Position.Any.getValue(), Action.Any, new AutoTarget(new Translation3d(5.8, 5.75, 0), new Rotation2d(3.654))));
-    // waypoint 12, 240
-    swerveDriveModule.AddActionPose(new ActionPose(Group.Score, Location.Waypoint.getValue(), 12, Position.Any.getValue(), Action.Any, new AutoTarget(new Translation3d(4.47, 6.45, 0), new Rotation2d(4.7))));
-    // waypoint 1, 300
-    swerveDriveModule.AddActionPose(new ActionPose(Group.Score, Location.Waypoint.getValue(), 1, Position.Any.getValue(), Action.Any, new AutoTarget(new Translation3d(3.15, 5.75, 0), new Rotation2d(5.22))));
-    // reef 1, 300
-    swerveDriveModule.AddActionPose(new ActionPose(Group.Score, Location.Reef.getValue(), 1, Position.Any.getValue(), Action.Any, new AutoTarget(new Translation3d(3.75, 5.05, 0), new Rotation2d(5.22))));
-    // waypoint 1, 126
-    swerveDriveModule.AddActionPose(new ActionPose(Group.Pickup, Location.Waypoint.getValue(), 1, Position.Any.getValue(), Action.Any, new AutoTarget(new Translation3d(3.15, 5.75, 0), new Rotation2d(2.1924))));
-    // loading 1, 126
-    swerveDriveModule.AddActionPose(new ActionPose(Group.Pickup, Location.Coral.getValue(), 1, Position.Any.getValue(), Action.Any, new AutoTarget(new Translation3d(1.15, 7.08, 0), new Rotation2d(2.1924))));
-
-    elevator.AddActionPose(new ActionPose(Group.Score, Location.Any.getValue(), -1, Position.Lower.getValue(), Action.Any, new AutoTarget(0.28)));
-    elevator.AddActionPose(new ActionPose(Group.Score, Location.Any.getValue(), -1, Position.Middle.getValue(), Action.Any, new AutoTarget(1.14)));
-    elevator.AddActionPose(new ActionPose(Group.Any, Location.Any.getValue(), -1, Position.Trough.getValue(), Action.Any, new AutoTarget(0.0)));
-
-    slide.AddActionPose(new ActionPose(Group.Any, Location.Any.getValue(), -1, Position.Any.getValue(), Action.Drop, new AutoTarget(ModuleState.Forward)));
-    slide.AddActionPose(new ActionPose(Group.Any, Location.Any.getValue(), -1, Position.Any.getValue(), Action.Pickup, new AutoTarget(ModuleState.Reverse)));
-  }
-
-  public void InitializeAutoModes() {
-    // TODO: need to move this definition to preferences and initialize in automodes rather than hard coding
-    AutoController rotateScoreReturn = new AutoController("RotateScoreReturn", m_controller, modules);
-    rotateScoreReturn.AddSequence(new SequenceRotateScoreReturn(rotateScoreReturn.GetLabel(), modules, rotateScoreReturn));
-    AutoModes.put(rotateScoreReturn.GetLabel(), rotateScoreReturn);
-
-    AutoController rotateWaitReturn = new AutoController("RotateWaitReturn", m_controller, modules);
-    rotateWaitReturn.AddSequence(new SequenceRotateScoreReturn(rotateWaitReturn.GetLabel(), modules, rotateWaitReturn));
-    AutoModes.put(rotateWaitReturn.GetLabel(), rotateWaitReturn);
-
-    AutoController controllerScoreReloadScore = new AutoController("ControllerScoreReloadScore", m_controller, modules);
-    controllerScoreReloadScore.AddSequence(new SequenceControllerScoreReloadScore(controllerScoreReloadScore.GetLabel(), modules, controllerScoreReloadScore));
-    AutoModes.put(controllerScoreReloadScore.GetLabel(), controllerScoreReloadScore);
-
-    AutoController controllerMoveToReef = new AutoController("controllerMoveToReef", m_controller, modules);
-    controllerMoveToReef.AddSequence(new SequenceControllerMoveToReef(controllerMoveToReef.GetLabel(), modules, controllerMoveToReef));
-    AutoModes.put(controllerMoveToReef.GetLabel(), controllerMoveToReef);
-
-    AutoController controllerStartScoreReload = new AutoController("controllerStartScoreReload", m_controller, modules);
-    controllerStartScoreReload.AddSequence(new SequenceControllerStartScoreReload(controllerStartScoreReload.GetLabel(), modules, controllerStartScoreReload));
-    AutoModes.put(controllerStartScoreReload.GetLabel(), controllerStartScoreReload);
-
-    currentAutoMode = controllerStartScoreReload;
-
-    SmartDashboard.putStringArray("Auto List", new String[] {});
-    SmartDashboard.putStringArray("Auto List", AutoModes.keySet().toArray(new String[] {}));
   }
 }

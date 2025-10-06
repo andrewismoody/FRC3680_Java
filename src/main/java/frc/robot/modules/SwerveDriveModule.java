@@ -138,17 +138,6 @@ public class SwerveDriveModule implements DriveModule {
 
     public void ReturnToZero(boolean isPressed) {
         isZeroPressed = isPressed;
-
-        /*
-        if (isPressed) {
-            System.out.println("ReturnToZero");
-            for (SwerveMotorModule module : driveModules) {
-                var zero = new SwerveModuleState();
-                module.setAngle(zero);
-                module.setSpeed(zero);
-            }
-        }
-        */
     }
 
     public SwerveModuleState[] GetZeroStates() {
