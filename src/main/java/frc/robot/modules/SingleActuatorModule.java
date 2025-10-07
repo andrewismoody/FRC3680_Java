@@ -7,6 +7,7 @@ import edu.wpi.first.math.geometry.Rotation3d;
 import edu.wpi.first.math.geometry.Translation3d;
 import edu.wpi.first.networktables.NetworkTable;
 import edu.wpi.first.networktables.NetworkTableInstance;
+import edu.wpi.first.networktables.NetworkTableEntry; // added
 import edu.wpi.first.wpilibj.Relay;
 import edu.wpi.first.wpilibj.Relay.Value;
 import frc.robot.action.Action;
@@ -28,6 +29,10 @@ public class SingleActuatorModule implements RobotModule {
     double holdTime = 2000;
 
     NetworkTable myTable;
+    // Cached NT entries
+    private NetworkTableEntry invertEntry;
+    private NetworkTableEntry currentValueEntry;
+    private NetworkTableEntry targetPoseEntry;
 
     public SingleActuatorModule(String ModuleID, Relay Relay, Boolean Invert) {
         moduleID = ModuleID;
@@ -39,7 +44,13 @@ public class SingleActuatorModule implements RobotModule {
     public void Initialize() {
         myTable = NetworkTableInstance.getDefault().getTable(moduleID);
 
-        myTable.getEntry("invert").setBoolean(invert);
+        // instantiate entries
+        invertEntry = myTable.getEntry("invert");
+        currentValueEntry = myTable.getEntry("currentValue");
+        targetPoseEntry = myTable.getEntry("targetPose");
+
+        // set initial values
+        invertEntry.setBoolean(invert);
     }
 
     public void EvaluateTargetPose() {
@@ -74,7 +85,8 @@ public class SingleActuatorModule implements RobotModule {
         EvaluateTargetPose();
 
         relay.set(currentValue);
-        myTable.getEntry("currentValue").setString(currentValue.toString());
+        // myTable.getEntry("currentValue").setString(currentValue.toString());
+        currentValueEntry.setString(currentValue.toString());
         
         // reset to off after applying - this ensures that if not actively set, the module is off and doesn't stay on inadvertently
         // should we be always reverse (down) unless requested to be forward (up)? this would prevent accidental release of the game piece, but might incur battery usage
@@ -118,7 +130,8 @@ public class SingleActuatorModule implements RobotModule {
             Action Action) {
         var targetPose = GetActionPose(Group, Location, LocationIndex, Position, Action);
         if (targetPose != null) {
-            myTable.getEntry("targetPose").setString(String.format("%s %s %d %s %s", Group, Location, LocationIndex, Position, Action));
+            // myTable.getEntry("targetPose").setString(String.format(...));
+            targetPoseEntry.setString(String.format("%s %s %d %s %s", Group, Location, LocationIndex, Position, Action));
 
             this.targetPose = targetPose;
             startedAt = 0;
@@ -135,7 +148,8 @@ public class SingleActuatorModule implements RobotModule {
     }
 
     public void AbandonTarget() {
-        myTable.getEntry("targetPose").setString("none");
+        // myTable.getEntry("targetPose").setString("none");
+        targetPoseEntry.setString("none");
         targetPose = null;
     }
 

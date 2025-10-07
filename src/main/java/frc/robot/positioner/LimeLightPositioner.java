@@ -16,6 +16,7 @@ public class LimeLightPositioner implements Positioner {
     private long goodCountThreshold = 3;
     private long lastHealthCheckTs = 0L;
     private long lastValidCheckTs = 0L;
+    private long lastPositionGetTs = 0L;
 
     boolean positionerHealthy = false;
     boolean positionValid = false;
@@ -38,6 +39,11 @@ public class LimeLightPositioner implements Positioner {
     }
 
     public Translation3d GetPosition() {
+        long now = System.currentTimeMillis();
+
+        if (Math.abs(now - lastPositionGetTs) < 15)
+            return lastHealthPos; // don't check more than once per tick
+
         // only update position if we're healthy, otherwise return last good position
         if (positionerHealthy && goodCount >= goodCountThreshold) {
             if (DriverStation.getAlliance().get() == Alliance.Red)
@@ -79,7 +85,7 @@ public class LimeLightPositioner implements Positioner {
 
         positionValid = valid;
         lastValidCheckTs = now;
-        
+
         return positionValid;
     }
 

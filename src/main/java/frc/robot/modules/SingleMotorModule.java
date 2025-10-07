@@ -9,6 +9,7 @@ import edu.wpi.first.math.geometry.Rotation3d;
 import edu.wpi.first.math.geometry.Translation3d;
 import edu.wpi.first.networktables.NetworkTable;
 import edu.wpi.first.networktables.NetworkTableInstance;
+import edu.wpi.first.networktables.NetworkTableEntry; // added
 import edu.wpi.first.wpilibj.motorcontrol.MotorController;
 import frc.robot.action.Group;
 import frc.robot.auto.AutoTarget;
@@ -52,6 +53,17 @@ public class SingleMotorModule implements RobotModule {
     ArrayList<Consumer<Boolean>> buttonMappedPoses = new ArrayList<Consumer<Boolean>>();
 
     NetworkTable myTable;
+    // Cached NT entries
+    private NetworkTableEntry invertEntry;
+    private NetworkTableEntry encoderMultiplierEntry;
+    private NetworkTableEntry pidSetpointsEntry;
+    private NetworkTableEntry targetPoseEntry;
+    private NetworkTableEntry settleCountEntry;
+    private NetworkTableEntry lowerLimitEntry;
+    private NetworkTableEntry targetDistanceEntry;
+    private NetworkTableEntry driveDistanceEntry;
+    private NetworkTableEntry rotationCountEntry;
+    private NetworkTableEntry currentDriveSpeedEntry;
 
     public SingleMotorModule(String ModuleID, MotorController DriveMotor, double DriveSpeed, boolean Invert, Switch UpperLimit, Switch LowerLimit, Encoder Enc, double EncoderMultiplier, double ReverseMultiplier) {
         moduleID = ModuleID;
@@ -77,9 +89,22 @@ public class SingleMotorModule implements RobotModule {
     public void Initialize() {
         myTable = NetworkTableInstance.getDefault().getTable(moduleID);
 
-        myTable.getEntry("invert").setBoolean(invert);
-        myTable.getEntry("encoderMultiplier").setDouble(encoderMultiplier);
-        myTable.getEntry("pidSetpoints").setString(String.format("P: %f I: %f D: %f", pidController.getP(), pidController.getI(), pidController.getD()));
+        // instantiate entries
+        invertEntry = myTable.getEntry("invert");
+        encoderMultiplierEntry = myTable.getEntry("encoderMultiplier");
+        pidSetpointsEntry = myTable.getEntry("pidSetpoints");
+        targetPoseEntry = myTable.getEntry("targetPose");
+        settleCountEntry = myTable.getEntry("settleCount");
+        lowerLimitEntry = myTable.getEntry("lowerLimit");
+        targetDistanceEntry = myTable.getEntry("targetDistance");
+        driveDistanceEntry = myTable.getEntry("driveDistance");
+        rotationCountEntry = myTable.getEntry("rotationCount");
+        currentDriveSpeedEntry = myTable.getEntry("currentDriveSpeed");
+
+        // set initial values
+        invertEntry.setBoolean(invert);
+        encoderMultiplierEntry.setDouble(encoderMultiplier);
+        pidSetpointsEntry.setString(String.format("P: %f I: %f D: %f", pidController.getP(), pidController.getI(), pidController.getD()));
 
         if (enc != null) {
             enc.setMultiplier(encoderMultiplier);
@@ -120,13 +145,13 @@ public class SingleMotorModule implements RobotModule {
     public void SetTargetActionPose(Group group, int location, int locationIndex, int position, Action action) {
         var targetPose = GetActionPose(group, location, locationIndex, position, action);
         if (targetPose != null) {
-            myTable.getEntry("targetPose").setString(String.format("%s %s %d %s %s", group, location, locationIndex, position, action));
+            targetPoseEntry.setString(String.format("%s %s %d %s %s", group, location, locationIndex, position, action));
 
             this.targetPose = targetPose;
 
             // reset settle counter on new target
             settleCount = 0;
-            myTable.getEntry("settleCount").setNumber(settleCount);
+            settleCountEntry.setNumber(settleCount);
         }
     }
     
@@ -146,7 +171,7 @@ public class SingleMotorModule implements RobotModule {
         var delta = encVal - previousEncValue;
 
         if (lowerLimit != null && lowerLimit.GetState()) {
-            myTable.getEntry("lowerLimit").setString("hit");
+            lowerLimitEntry.setString("hit");
 
             System.out.printf("%s: limit hit, resetting rotationCount\n", moduleID);
             rotationCount = 0.0;
@@ -196,7 +221,7 @@ public class SingleMotorModule implements RobotModule {
             // the x axis of the position of the pose is the rotation count (distance along the motor axis)
             var targetRotation = target.Distance;
             var targetDistance = Math.abs(targetRotation - rotationCount);
-            myTable.getEntry("targetDistance").setDouble(targetDistance);
+            targetDistanceEntry.setDouble(targetDistance);
             previousTargetDistance = targetDistance;
 
             var shouldMove = (Math.abs(targetDistance) > angleTolerance);
@@ -204,7 +229,7 @@ public class SingleMotorModule implements RobotModule {
                 // increment global settle counter; do not abandon until threshold reached
                 if (settleCount < settleCyclesRequired) {
                     settleCount++;
-                    myTable.getEntry("settleCount").setNumber(settleCount);
+                    settleCountEntry.setNumber(settleCount);
                 }
 
                 if (settleCount >= settleCyclesRequired) {
@@ -216,7 +241,7 @@ public class SingleMotorModule implements RobotModule {
             }
 
             var driveDistance = Math.abs(rotationCount - previousRotationCount);
-            myTable.getEntry("driveDistance").setDouble(driveDistance);
+            driveDistanceEntry.setDouble(driveDistance);
         }
     }
     
@@ -227,12 +252,12 @@ public class SingleMotorModule implements RobotModule {
                 setRotationFromAbsolute();
             else
                 rotationCount = enc.getRawValue();
-            myTable.getEntry("rotationCount").setDouble(rotationCount);
+            rotationCountEntry.setDouble(rotationCount);
         }
 
         EvaluateTargetPose();
 
-        myTable.getEntry("currentDriveSpeed").setDouble(currentDriveSpeed);
+        currentDriveSpeedEntry.setDouble(currentDriveSpeed);
         previousDriveSpeed = currentDriveSpeed;
 
         if ((currentDriveSpeed > 0 && (upperLimit == null || !upperLimit.GetState())) ||
@@ -334,7 +359,7 @@ public class SingleMotorModule implements RobotModule {
 
     public void AbandonTarget() {
         targetPose = null;
-        myTable.getEntry("targetPose").setString("none");
+        targetPoseEntry.setString("none");
     }
 
     public Pose3d GetPosition() {

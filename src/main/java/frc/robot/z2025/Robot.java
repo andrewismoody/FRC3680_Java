@@ -8,6 +8,8 @@ import java.util.Hashtable;
 
 import edu.wpi.first.cameraserver.CameraServer;
 import edu.wpi.first.math.geometry.Translation2d;
+import edu.wpi.first.networktables.DoubleSubscriber;
+import edu.wpi.first.networktables.NetworkTableInstance;
 import edu.wpi.first.wpilibj.Relay;
 import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj.Timer;
@@ -142,6 +144,8 @@ public class Robot extends TimedRobot {
   Hashtable<String, AutoController> autoModes = new Hashtable<String, AutoController>();
   AutoController currentAutoMode;
 
+  private DoubleSubscriber slider0Sub;
+
   public Robot() {
     CameraServer.startAutomaticCapture();
   }
@@ -155,6 +159,8 @@ public class Robot extends TimedRobot {
   public void robotInit() {
     SmartDashboard.putString("DB/String 0", codeBuildVersion);
     SmartDashboard.putNumber("DB/Slider 0", m_speedMod);
+    var smartDash = NetworkTableInstance.getDefault().getTable("SmartDashboard");
+    slider0Sub= smartDash.getDoubleTopic("DB/Slider 0").subscribe(1.0);
 
     modules = new ModuleController(swerveDriveModule, m_divider, m_controller);
 
@@ -209,20 +215,11 @@ public class Robot extends TimedRobot {
   /** This function is called periodically during teleoperated mode. */
   @Override
   public void teleopPeriodic() {
-    SmartDashboard.putNumber("Gyro", m_gyro.getAngle());
-
     // get settings from dashboard
     // slider 0 is motor speed
-    modules.setSpeedMod(SmartDashboard.getNumber("DB/Slider 0", 1.0));
+    modules.setSpeedMod(slider0Sub.get());
 
     modules.ProcessState(false);
-
-    // TODO: figure out why these print blank values sometimes
-    SmartDashboard.putString("DB/String 5", "LF: " + String.valueOf(leftFrontMM.getPosition().angle.getDegrees()));
-    SmartDashboard.putString("DB/String 6", "RF: " + String.valueOf(rightFrontMM.getPosition().angle.getDegrees()));
-    SmartDashboard.putString("DB/String 7", "LR: " + String.valueOf(leftRearMM.getPosition().angle.getDegrees()));
-    SmartDashboard.putString("DB/String 8", "RR: " + String.valueOf(rightRearMM.getPosition().angle.getDegrees()));
-    SmartDashboard.putString("DB/String 9", "gyro: " + String.valueOf(m_gyro.getAngle()));
   }
 
   /** This function is called once each time the robot enters test mode. */

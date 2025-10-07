@@ -6,6 +6,8 @@ import com.studica.frc.AHRS.NavXComType;
 public class AHRSGyro implements Gyro {
 
     AHRS ahrs = new AHRS(NavXComType.kUSB1);
+    private long lastAngleGetTs = 0L;
+    private double lastAngle = 0.0;
     
     @Override
     public void calibrate() {
@@ -40,7 +42,12 @@ public class AHRSGyro implements Gyro {
 
     @Override
     public double getAngle() {
-        return ahrs.getAngle();
+        long now = System.currentTimeMillis();
+
+        if (Math.abs(now - lastAngleGetTs) > 15)
+            lastAngle = ahrs.getAngle(); // don't check more than once per tick
+
+        return lastAngle;
     }
 
     @Override

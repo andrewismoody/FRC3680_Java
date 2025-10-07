@@ -10,6 +10,7 @@ import edu.wpi.first.math.kinematics.SwerveModulePosition;
 import edu.wpi.first.math.kinematics.SwerveModuleState;
 import edu.wpi.first.networktables.NetworkTable;
 import edu.wpi.first.networktables.NetworkTableInstance;
+import edu.wpi.first.networktables.NetworkTableEntry; // added
 import frc.robot.encoder.Encoder;
 
 public class SwerveMotorModule {
@@ -66,6 +67,27 @@ public class SwerveMotorModule {
   SwerveDriveModule driveModule;
 
   NetworkTable myTable;
+  // Cached NT entries
+  private NetworkTableEntry startupAngleEntry;
+  private NetworkTableEntry zeroedAngleEntry;
+  private NetworkTableEntry encoderOffsetEntry;
+  private NetworkTableEntry floatToleranceEntry;
+  private NetworkTableEntry invertDriveEntry;
+  private NetworkTableEntry encoderMultiplierEntry;
+  private NetworkTableEntry invertRotationEntry;
+  private NetworkTableEntry enableDecelCompEntry;
+  private NetworkTableEntry enableGiveUpEntry;
+  private NetworkTableEntry pidSetpointsEntry;
+  private NetworkTableEntry currentAngleEntry;
+  private NetworkTableEntry elapsedTimeEntry;
+  private NetworkTableEntry targetRadiansEntry;
+  private NetworkTableEntry deltaAngleEntry;
+  private NetworkTableEntry decelDistanceEntry;
+  private NetworkTableEntry pidOutputEntry;
+  private NetworkTableEntry steerMotorSpeedEntry;
+  private NetworkTableEntry adjustmentFactorEntry;
+  private NetworkTableEntry accumulatedMotorSpeedEntry;
+  private NetworkTableEntry driveMotorSpeedEntry;
 
   boolean enableDecelComp = false;
   boolean enableGiveUp = false;
@@ -92,17 +114,41 @@ public class SwerveMotorModule {
   public void Initialize() {
     myTable.getEntry("startupAngle").setDouble(angleEncoder.getDistance());
     angleEncoder.setZeroPosition();
-    myTable.getEntry("zeroedAngle").setDouble(angleEncoder.getDistance());
-    //angleEncoder.setAngleOffsetRad(angleEncoder.getRawValue());
 
-    myTable.getEntry("encoderOffset").setDouble(angleEncoder.getAngleOffsetRad());
-    myTable.getEntry("floatTolerance").setDouble(floatTolerance);
-    myTable.getEntry("invertDrive").setBoolean(invertDrive);
-    myTable.getEntry("encoderMultiplier").setDouble(encoderMultiplier);
-    myTable.getEntry("invertRotation").setBoolean(invertRotation);
-    myTable.getEntry("enableDecelComp").setBoolean(enableDecelComp);
-    myTable.getEntry("enableGiveUp").setBoolean(enableGiveUp);
-    myTable.getEntry("pidSetpoints").setString("kp: " + pidController.getP() + "; ki: " + pidController.getI() + "; kd: " + pidController.getD());
+    // instantiate entries
+    startupAngleEntry = myTable.getEntry("startupAngle");
+    zeroedAngleEntry = myTable.getEntry("zeroedAngle");
+    encoderOffsetEntry = myTable.getEntry("encoderOffset");
+    floatToleranceEntry = myTable.getEntry("floatTolerance");
+    invertDriveEntry = myTable.getEntry("invertDrive");
+    encoderMultiplierEntry = myTable.getEntry("encoderMultiplier");
+    invertRotationEntry = myTable.getEntry("invertRotation");
+    enableDecelCompEntry = myTable.getEntry("enableDecelComp");
+    enableGiveUpEntry = myTable.getEntry("enableGiveUp");
+    pidSetpointsEntry = myTable.getEntry("pidSetpoints");
+    currentAngleEntry = myTable.getEntry("currentAngle");
+    elapsedTimeEntry = myTable.getEntry("elapsedTime");
+    targetRadiansEntry = myTable.getEntry("targetRadians");
+    deltaAngleEntry = myTable.getEntry("deltaAngle");
+    decelDistanceEntry = myTable.getEntry("decelDistance");
+    pidOutputEntry = myTable.getEntry("pidOutput");
+    steerMotorSpeedEntry = myTable.getEntry("steerMotorSpeed");
+    adjustmentFactorEntry = myTable.getEntry("adjustmentFactor");
+    accumulatedMotorSpeedEntry = myTable.getEntry("accumulatedMotorSpeed");
+    driveMotorSpeedEntry = myTable.getEntry("DriveMotorSpeed");
+
+    // initial values
+    startupAngleEntry.setDouble(angleEncoder.getDistance());
+    angleEncoder.setZeroPosition();
+    zeroedAngleEntry.setDouble(angleEncoder.getDistance());
+    encoderOffsetEntry.setDouble(angleEncoder.getAngleOffsetRad());
+    floatToleranceEntry.setDouble(floatTolerance);
+    invertDriveEntry.setBoolean(invertDrive);
+    encoderMultiplierEntry.setDouble(encoderMultiplier);
+    invertRotationEntry.setBoolean(invertRotation);
+    enableDecelCompEntry.setBoolean(enableDecelComp);
+    enableGiveUpEntry.setBoolean(enableGiveUp);
+    pidSetpointsEntry.setString("kp: " + pidController.getP() + "; ki: " + pidController.getI() + "; kd: " + pidController.getD());
   }
 
   public SwerveModulePosition getPosition() {
@@ -132,7 +178,7 @@ public class SwerveMotorModule {
     ;
 
     currentAngle = Rotation2d.fromDegrees(distance);
-    myTable.getEntry("currentAngle").setDouble(currentAngle.getRadians());
+    currentAngleEntry.setDouble(currentAngle.getRadians());
 
     if (optimize) {
       moduleState.optimize(currentAngle);
@@ -151,7 +197,7 @@ public class SwerveMotorModule {
       }
       previousTime = now;
       
-      myTable.getEntry("elapsedTime").setDouble(elapsedTime);
+      elapsedTimeEntry.setDouble(elapsedTime);
 
       if (driveModule.controller.enableSteer)
         setAngle(moduleState);
@@ -168,19 +214,19 @@ public class SwerveMotorModule {
 
     var tarAngle = state.angle;
     var tarRad = tarAngle.getRadians() + 0.0; // add 0 to prevent negative zero
-    myTable.getEntry("targetRadians").setDouble(tarRad);
+    targetRadiansEntry.setDouble(tarRad);
 
     var delAngle = tarAngle.minus(currentAngle).getRadians() + 0.0; // add 0 to prevent negative zero
-    myTable.getEntry("deltaAngle").setDouble(delAngle);
+    deltaAngleEntry.setDouble(delAngle);
 
     var decelDistance = primeDecelParams(currentRad);
-    myTable.getEntry("decelDistance").setDouble(decelDistance);
+    decelDistanceEntry.setDouble(decelDistance);
 
     primeGiveUpParams(delAngle);
 
     // start rotating wheel to the new optimized angle
     var motorSpeed = pidController.calculate(currentRad, tarRad);
-    myTable.getEntry("pidOutput").setDouble(motorSpeed);
+    pidOutputEntry.setDouble(motorSpeed);
 
     double sign = motorSpeed > 0 ? 1 : -1;
 
@@ -205,7 +251,7 @@ public class SwerveMotorModule {
         motorSpeed = 0.0;
     }
 
-    myTable.getEntry("steerMotorSpeed").setDouble(motorSpeed);
+    steerMotorSpeedEntry.setDouble(motorSpeed);
     rotatorMotor.set(motorSpeed);
 
     previousRotationSpeed = motorSpeed;
@@ -250,7 +296,7 @@ public class SwerveMotorModule {
       adjustmentFactor = (delAngle / maxDistance);
     }
 
-    myTable.getEntry("adjustmentFactor").setDouble(adjustmentFactor);
+    adjustmentFactorEntry.setDouble(adjustmentFactor);
 
     return adjustmentFactor;
 }
@@ -280,7 +326,7 @@ public class SwerveMotorModule {
       gaveUp = false;
     }
     
-    myTable.getEntry("accumulatedMotorSpeed").setDouble(accumulatedMotorSpeed);
+    accumulatedMotorSpeedEntry.setDouble(accumulatedMotorSpeed);
 
     return accumulatedMotorSpeed;
   }
@@ -295,7 +341,7 @@ public class SwerveMotorModule {
     motorSpeed = motorSpeed / driveModule.driveSpeed;
     if (invertDrive)
       motorSpeed *= -1;
-    myTable.getEntry("DriveMotorSpeed").setDouble(motorSpeed);
+    driveMotorSpeedEntry.setDouble(motorSpeed);
 
     if (Math.abs(previousDriveSpeed - motorSpeed) > floatTolerance && debugSpeed) {
       // System.out.printf("%s desired angle: %f; degrees %f\n", moduleID, optAngle.getRadians(), optAngle.getDegrees());

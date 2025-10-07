@@ -9,6 +9,7 @@ import java.util.function.Consumer;
 import edu.wpi.first.wpilibj.PS4Controller;
 import edu.wpi.first.wpilibj.XboxController;
 import edu.wpi.first.networktables.NetworkTable;
+import edu.wpi.first.networktables.NetworkTableEntry;
 import edu.wpi.first.networktables.NetworkTableInstance;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.GenericHID;
@@ -61,6 +62,27 @@ public class GameController {
     Hashtable<ButtonName, Boolean> ValueButtonInversion = new Hashtable<>();
 
     NetworkTable myTable;
+    NetworkTableEntry LeftButtonNTEntry;
+    NetworkTableEntry TopButtonNTEntry;
+    NetworkTableEntry RightButtonNTEntry;
+    NetworkTableEntry BottomButtonNTEntry;
+    NetworkTableEntry LeftShoulderButtonNTEntry;
+    NetworkTableEntry RightShoulderButtonNTEntry;
+    NetworkTableEntry LeftTriggerNTEntry;
+    NetworkTableEntry RightTriggerNTEntry;
+    NetworkTableEntry LeftThumbstickYNTEntry;
+    NetworkTableEntry LeftThumbstickXNTEntry;
+    NetworkTableEntry RightThumbstickYNTEntry;
+    NetworkTableEntry RightThumbstickXNTEntry;
+    NetworkTableEntry POVAngleNTEntry;
+    NetworkTableEntry POVUpNTEntry;
+    NetworkTableEntry POVDownNTEntry;
+    NetworkTableEntry POVLeftNTEntry;
+    NetworkTableEntry POVRightNTEntry;
+    NetworkTableEntry StartNTEntry;
+    NetworkTableEntry SelectNTEntry;
+    NetworkTableEntry LogoNTEntry;
+    NetworkTableEntry AnyButtonNTEntry;
 
     void RegisterBinaryButtonSupplier(ButtonName button, Supplier<Boolean> func) {
         BinaryButtonSuppliers.put(button, func);
@@ -189,6 +211,27 @@ public class GameController {
         RegisterBinaryButtonSupplier(ButtonName.Any, this::getAnyButton);
 
         myTable = NetworkTableInstance.getDefault().getTable("GameController");
+        LeftButtonNTEntry = myTable.getEntry(ButtonName.LeftButton.toString());
+        TopButtonNTEntry = myTable.getEntry(ButtonName.TopButton.toString());
+        RightButtonNTEntry = myTable.getEntry(ButtonName.RightButton.toString());
+        BottomButtonNTEntry = myTable.getEntry(ButtonName.BottomButton.toString());
+        LeftShoulderButtonNTEntry = myTable.getEntry(ButtonName.LeftShoulderButton.toString());
+        RightShoulderButtonNTEntry = myTable.getEntry(ButtonName.RightShoulderButton.toString());
+        LeftTriggerNTEntry = myTable.getEntry(ButtonName.LeftTrigger.toString());
+        RightTriggerNTEntry = myTable.getEntry(ButtonName.RightTrigger.toString());
+        LeftThumbstickYNTEntry = myTable.getEntry(ButtonName.LeftThumbstickY.toString());
+        LeftThumbstickXNTEntry = myTable.getEntry(ButtonName.LeftThumbstickX.toString());
+        RightThumbstickYNTEntry = myTable.getEntry(ButtonName.RightThumbstickY.toString());
+        RightThumbstickXNTEntry = myTable.getEntry(ButtonName.RightThumbstickX.toString());
+        POVAngleNTEntry = myTable.getEntry(ButtonName.POVAngle.toString());
+        POVUpNTEntry = myTable.getEntry(ButtonName.POVUp.toString());
+        POVDownNTEntry = myTable.getEntry(ButtonName.POVDown.toString());
+        POVLeftNTEntry = myTable.getEntry(ButtonName.POVLeft.toString());
+        POVRightNTEntry = myTable.getEntry(ButtonName.POVRight.toString());
+        StartNTEntry = myTable.getEntry(ButtonName.Start.toString());
+        SelectNTEntry = myTable.getEntry(ButtonName.Select.toString());
+        LogoNTEntry = myTable.getEntry(ButtonName.Logo.toString());
+        AnyButtonNTEntry = myTable.getEntry(ButtonName.Any.toString());
     }
 
    public boolean getAnyButton() {
@@ -227,7 +270,7 @@ public class GameController {
                 break;
         }
 
-        myTable.getEntry(ButtonName.LeftButton.toString()).setBoolean(value);
+        LeftButtonNTEntry.setBoolean(value);
 
         return value;
     }
@@ -247,7 +290,7 @@ public class GameController {
                 break;
         }
 
-        myTable.getEntry(ButtonName.TopButton.toString()).setBoolean(value);
+        TopButtonNTEntry.setBoolean(value);
 
         return value;
     }
@@ -267,7 +310,7 @@ public class GameController {
                 break;
         }
 
-        myTable.getEntry(ButtonName.RightButton.toString()).setBoolean(value);
+        RightButtonNTEntry.setBoolean(value);
 
         return value;
     }
@@ -287,7 +330,7 @@ public class GameController {
                 break;
         }
 
-        myTable.getEntry(ButtonName.BottomButton.toString()).setBoolean(value);
+        BottomButtonNTEntry.setBoolean(value);
 
         return value;
     }
@@ -307,7 +350,7 @@ public class GameController {
                 break;
         }
 
-        myTable.getEntry(ButtonName.LeftShoulderButton.toString()).setBoolean(value);
+        LeftShoulderButtonNTEntry.setBoolean(value);
 
         return value;
     }
@@ -327,7 +370,7 @@ public class GameController {
                 break;
         }
 
-        myTable.getEntry(ButtonName.LeftTrigger.toString()).setDouble(value);
+        LeftTriggerNTEntry.setDouble(value);
 
         return value;
     }
@@ -347,7 +390,7 @@ public class GameController {
                 break;
         }
 
-        myTable.getEntry(ButtonName.RightShoulderButton.toString()).setBoolean(value);
+        RightShoulderButtonNTEntry.setBoolean(value);
 
         return value;
     }
@@ -367,7 +410,7 @@ public class GameController {
                 break;
         }
 
-        myTable.getEntry(ButtonName.RightTrigger.toString()).setDouble(value);
+        RightTriggerNTEntry.setDouble(value);
 
         return value;
     }
@@ -389,7 +432,7 @@ public class GameController {
 
         value = Math.abs(value) > thumbstickDeadZone ? value : 0.0;
 
-        myTable.getEntry(ButtonName.RightThumbstickY.toString()).setDouble(value);
+        RightThumbstickYNTEntry.setDouble(value);
 
         return value;
     }
@@ -411,7 +454,7 @@ public class GameController {
 
         value = Math.abs(value) > thumbstickDeadZone ? value : 0.0;
 
-        myTable.getEntry(ButtonName.RightThumbstickX.toString()).setDouble(value);
+        RightThumbstickXNTEntry.setDouble(value);
 
         return value;
     }
@@ -433,7 +476,7 @@ public class GameController {
 
         value = Math.abs(value) > thumbstickDeadZone ? value : 0.0;
 
-        myTable.getEntry(ButtonName.LeftThumbstickY.toString()).setDouble(value);
+        LeftThumbstickYNTEntry.setDouble(value);
 
         return value;
     }
@@ -455,7 +498,7 @@ public class GameController {
 
         value = Math.abs(value) > thumbstickDeadZone ? value : 0.0;
 
-        myTable.getEntry(ButtonName.LeftThumbstickX.toString()).setDouble(value);
+        LeftThumbstickXNTEntry.setDouble(value);
 
         return value;
     }
@@ -475,7 +518,7 @@ public class GameController {
                 break;
         }
 
-        myTable.getEntry(ButtonName.POVAngle.toString()).setInteger(value);
+        POVAngleNTEntry.setInteger(value);
 
         return value;
     }
@@ -488,7 +531,7 @@ public class GameController {
             value = true;
         }
 
-        myTable.getEntry(ButtonName.POVUp.toString()).setBoolean(value);
+        POVUpNTEntry.setBoolean(value);
 
         return value;
     }
@@ -500,7 +543,7 @@ public class GameController {
             value = true;
         }
 
-        myTable.getEntry(ButtonName.POVDown.toString()).setBoolean(value);
+        POVDownNTEntry.setBoolean(value);
 
         return value;
     }
@@ -512,7 +555,7 @@ public class GameController {
             value = true;
         }
 
-        myTable.getEntry(ButtonName.POVRight.toString()).setBoolean(value);
+        POVRightNTEntry.setBoolean(value);
 
         return value;
     }
@@ -524,7 +567,7 @@ public class GameController {
             value = true;
         }
 
-        myTable.getEntry(ButtonName.POVLeft.toString()).setBoolean(value);
+        POVLeftNTEntry.setBoolean(value);
 
         return value;
     }
@@ -544,7 +587,7 @@ public class GameController {
                 break;
        }
 
-        myTable.getEntry(ButtonName.Start.toString()).setBoolean(value);
+        StartNTEntry.setBoolean(value);
 
         return value;
     }
@@ -564,7 +607,7 @@ public class GameController {
                 break;
         }
 
-        myTable.getEntry(ButtonName.Select.toString()).setBoolean(value);
+        SelectNTEntry.setBoolean(value);
 
         return value;
     }
@@ -582,7 +625,7 @@ public class GameController {
                 break;
         }
 
-        myTable.getEntry(ButtonName.Logo.toString()).setBoolean(value);
+        LogoNTEntry.setBoolean(value);
 
         return value;
     }
