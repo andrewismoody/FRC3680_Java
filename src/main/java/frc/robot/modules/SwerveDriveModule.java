@@ -35,6 +35,7 @@ public class SwerveDriveModule implements DriveModule {
     ModuleController controller;
     SwerveDriveKinematics kinematics;
     boolean isFieldOriented = false;
+    boolean wasFieldOriented = !isFieldOriented;
     Gyro gyro;
     Positioner positioner;
     SwerveDriveOdometry odometry;
@@ -250,12 +251,19 @@ public class SwerveDriveModule implements DriveModule {
     }
 
     public void SetFieldOriented(boolean value) {
-        this.isFieldOriented = value;
-        fieldOrientedEntry.setBoolean(value);
+        if (isFieldOriented != value) {
+            wasFieldOriented = isFieldOriented;
+            isFieldOriented = value;
+            fieldOrientedEntry.setBoolean(value);
+        }
     }
 
-    public void ToggleFieldOriented(boolean value) {
-        SetFieldOriented(!isFieldOriented);
+    public void ToggleFieldOriented(boolean pressed) {
+        // TODO: this was breaking driving because it toggles constantly with current logic.  Verify it's fixed
+        if (pressed) {
+            if (wasFieldOriented != isFieldOriented)
+                SetFieldOriented(!isFieldOriented);
+        }
     }
 
     public boolean IsFieldOriented() {

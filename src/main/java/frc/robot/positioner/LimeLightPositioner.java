@@ -14,11 +14,11 @@ public class LimeLightPositioner implements Positioner {
     private final long posStaleTimeoutMs = 300;    // treat stale samples as invalid
     private long goodCount = 0;
     private long goodCountThreshold = 3;
-    private long badCount = 0;
-    private long badCountThreshold = 3;
-    private long lastHealthCheckTs = 0L;
+    // private long badCount = 0;
+    // private long badCountThreshold = 3;
+    // private long lastHealthCheckTs = 0L;
     private long lastValidCheckTs = 0L;
-    private long lastPositionGetTs = 0L;
+    // private long lastPositionGetTs = 0L;
 
     boolean positionerHealthy = false;
     boolean positionValid = false;
@@ -52,6 +52,7 @@ public class LimeLightPositioner implements Positioner {
     double pitch, double pitchRate, 
     double roll, double rollRate) {
         // TODO: re-evalutate this according to red/blue alliance positioning
+        // Initial testing shows that it doesn't need to be adjusted - verify and test with Blue Origin
         // if (DriverStation.getAlliance().get() == Alliance.Red)
         //     yaw += 180 % 360;
 
@@ -133,7 +134,7 @@ public class LimeLightPositioner implements Positioner {
                 healthReason = "jump";
         }
 
-        lastHealthCheckTs = now;
+        // lastHealthCheckTs = now;
         positionerHealthy = !bad;
 
         return positionerHealthy;

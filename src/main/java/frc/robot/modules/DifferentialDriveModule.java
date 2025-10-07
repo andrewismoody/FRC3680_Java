@@ -32,6 +32,7 @@ public class DifferentialDriveModule implements DriveModule {
     double previousRotationAngle = 0.0;
 
     boolean isFieldOriented = false;
+    boolean wasFieldOriented = false;
 
     Translation3d currentPosition = Translation3d.kZero;
 
@@ -152,12 +153,17 @@ public class DifferentialDriveModule implements DriveModule {
     }
 
    public void SetFieldOriented(boolean value) {
-       this.isFieldOriented = value;
-       //myTable.getEntry("fieldOriented").setBoolean(value);
+        wasFieldOriented = isFieldOriented;
+        isFieldOriented = value;
+        //myTable.getEntry("fieldOriented").setBoolean(value);
    }
 
-   public void ToggleFieldOriented(boolean value) {
-        SetFieldOriented(!isFieldOriented);
+   public void ToggleFieldOriented(boolean pressed) {
+        // TODO: this is breaking driving because it toggles constantly with current logic. Verify it's fixed.
+        if (pressed) {
+            if (wasFieldOriented != isFieldOriented)
+                SetFieldOriented(!isFieldOriented);
+        }
    }
 
    public boolean IsFieldOriented() {

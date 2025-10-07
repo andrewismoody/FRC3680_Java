@@ -6,7 +6,7 @@ import com.studica.frc.AHRS.NavXComType;
 public class AHRSGyro implements Gyro {
 
     AHRS ahrs = new AHRS(NavXComType.kUSB1);
-    private long lastAngleGetTs = 0L;
+    // private long lastAngleGetTs = 0L;
     private double lastAngle = 0.0;
     
     @Override
