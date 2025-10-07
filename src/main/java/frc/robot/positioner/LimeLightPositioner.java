@@ -8,7 +8,7 @@ import edu.wpi.first.wpilibj.DriverStation.Alliance;
 public class LimeLightPositioner implements Positioner {
     boolean useMegatagTwo = true;
 
-    private Translation3d lastHealthPos = new Translation3d();
+    private Translation3d lastHealthPos = Translation3d.kZero;
     private long lastHealthTsMs = 0L;
     private final double posJumpLimitMeters = 2.0; // treat larger jumps as invalid
     private final long posStaleTimeoutMs = 300;    // treat stale samples as invalid
@@ -95,9 +95,10 @@ public class LimeLightPositioner implements Positioner {
             return positionerHealthy; // don't check more than once per tick
         
         Translation3d pos = GetPosition();
-        boolean bad = IsValid();
+        boolean bad = false;
         boolean wasBad = false;
 
+        //bad = IsValid();
         if (!bad) {
             bad = Double.isNaN(pos.getX()) || Double.isNaN(pos.getY()) || Double.isNaN(pos.getZ()) ||
             Double.isInfinite(pos.getX()) || Double.isInfinite(pos.getY()) || Double.isInfinite(pos.getZ());
@@ -107,7 +108,8 @@ public class LimeLightPositioner implements Positioner {
         }
 
         if (!bad) {
-            if (pos != new Translation3d()) {
+            // don't check for jump if we haven't found our position yet
+            if (pos.getNorm()> 0) {
                 double jump = lastHealthPos.minus(pos).getNorm();
                 if (lastHealthTsMs > 0 && jump > posJumpLimitMeters) bad = true;
                 if (lastHealthTsMs > 0 && (now - lastHealthTsMs) > posStaleTimeoutMs) bad = true;

@@ -34,7 +34,7 @@ public class Joystick {
 
     // m_controller.RegisterBinaryButtonConsumer(ButtonName.LeftButton, swerveDriveModule::LockPosition);
     m_controller.RegisterBinaryButtonConsumer(ButtonName.Select, swerveDriveModule::ReturnToZero);
-    m_controller.RegisterBinaryButtonConsumer(ButtonName.Select, elevator.GetButtonMappedTarget(0));
+    m_controller.RegisterBinaryButtonConsumer(ButtonName.Select, elevator.GetButtonMappedPose(0));
 
     // m_controller.RegisterBinaryButtonConsumer(ButtonName.RightShoulderButton, modules::ProcessInverse);
 

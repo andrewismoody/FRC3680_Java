@@ -33,7 +33,7 @@ public class DifferentialDriveModule implements DriveModule {
 
     boolean isFieldOriented = false;
 
-    Translation3d currentPosition = new Translation3d();
+    Translation3d currentPosition = Translation3d.kZero;
 
     ArrayList<ActionPose> actionPoses = new ArrayList<ActionPose>();
     ActionPose targetPose;

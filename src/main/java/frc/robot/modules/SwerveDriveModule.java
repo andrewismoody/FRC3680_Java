@@ -39,8 +39,8 @@ public class SwerveDriveModule implements DriveModule {
     Positioner positioner;
     SwerveDriveOdometry odometry;
 
-    Translation3d currentPosition = new Translation3d();
-    Translation3d previousPosition = new Translation3d();
+    Translation3d currentPosition = Translation3d.kZero;
+    Translation3d previousPosition = currentPosition;
 
     double forwardSpeed = 0.0;
     double lateralSpeed = 0.0;
@@ -405,36 +405,43 @@ public class SwerveDriveModule implements DriveModule {
             var forwardReached = false;
             var rotationReached = false;
             var positionerHealthy = isPositionerHealthy();
+            var posNorm = currentPosition.getNorm();
 
             // only process position if we have a target
             if (pose.HasPosition) {
                 var positionDelta = targetPosition.minus(currentPosition);
                 positionDeltaEntry.setString(positionDelta.toString());
                 positionTargetEntry.setString(targetPosition.toString());
+                myTable.getEntry("posNorm").setDouble(posNorm);
 
-                // limelight team-based origin is x forward positive, y left positive - same as FRC field
-                // why does this only work inverted'? - we must've confused coordinates somewhere else
-                // TODO: figure out how to allow target evaluation in teleop - game controller sends values for position constantly and overrides this, I think?
-                if (!wroteLateralThisTick) { // allows game controller precedence
-                    var lateralSpeed = -lateralPidController.calculate(currentPosition.getY(), targetPosition.getY());
-                    if (Math.abs(lateralSpeed) < floatTolerance) {
-                        lateralReached = true;
-                        lateralReachedEntry.setBoolean(lateralReached);
-                        ProcessLateralSpeed(0.0);
-                    } else if (positionerHealthy) { // prevents sending wrong coordinates
-                        ProcessLateralSpeed(lateralSpeed);
+                if (posNorm > 0.0) { // requires position to be initialized
+                    // limelight team-based origin is x forward positive, y left positive - same as FRC field
+                    // TODO: why does this only work inverted'? - we must've confused coordinates somewhere else
+                    // TODO: figure out how to allow target evaluation in teleop - game controller sends values for position constantly and overrides this, I think?
+                    if (!wroteLateralThisTick) { // allows game controller precedence
+                        var lateralSpeed = -lateralPidController.calculate(currentPosition.getY(), targetPosition.getY());
+                        if (Math.abs(lateralSpeed) < floatTolerance) {
+                            lateralReached = true;
+                            lateralReachedEntry.setBoolean(lateralReached);
+                            ProcessLateralSpeed(0.0);
+                        } else if (positionerHealthy) { // prevents sending wrong coordinates
+                            ProcessLateralSpeed(lateralSpeed);
+                        }
                     }
-                }
 
-                if (!wroteForwardThisTick) { // allows game controller precedence
-                    var forwardSpeed = -forwardPidController.calculate(currentPosition.getX(), targetPosition.getX());
-                    if (Math.abs(forwardSpeed) < floatTolerance) {
-                        forwardReached = true;
-                        forwardReachedEntry.setBoolean(forwardReached);
-                        ProcessForwardSpeed(0.0);
-                    } else if (positionerHealthy) { // prevents sending wrong coordinates
-                        ProcessForwardSpeed(forwardSpeed);
+                    if (!wroteForwardThisTick) { // allows game controller precedence
+                        var forwardSpeed = -forwardPidController.calculate(currentPosition.getX(), targetPosition.getX());
+                        if (Math.abs(forwardSpeed) < floatTolerance) {
+                            forwardReached = true;
+                            forwardReachedEntry.setBoolean(forwardReached);
+                            ProcessForwardSpeed(0.0);
+                        } else if (positionerHealthy) { // prevents sending wrong coordinates
+                            ProcessForwardSpeed(forwardSpeed);
+                        }
                     }
+                } else { // shut down any previous drive commands because we lost our position
+                    ProcessLateralSpeed(0.0);
+                    ProcessForwardSpeed(0.0);
                 }
             } else {
                 // avoid deadlock, if we don't have a position defined, short circuit
@@ -446,13 +453,16 @@ public class SwerveDriveModule implements DriveModule {
             if (pose.HasOrientation || pose.HasLookAt) {
                 if (!wroteRotationThisTick) { // allows game controller precedence
                     double targetValue = 0.0;
+                    boolean processAngle = false;
 
+                    // TODO: this doesn't seem to work if we're on the other side of zero?
                     if (pose.HasOrientation) {
                         var rotationDelta = targetRotation.getRadians() - newAngleRad;
                         rotationDeltaEntry.setDouble(rotationDelta);
                         rotationTargetEntry.setDouble(targetRotation.getRadians());
                         targetValue = targetRotation.getRadians();
-                    } else if (pose.HasLookAt) {
+                        processAngle = true;
+                    } else if (pose.HasLookAt && posNorm > 0.0) {
                         var lookAt = pose.LookAt;
                         // should this be X,Y or Y,X?
                         var lookTarget = Math.atan2(lookAt.getY() - currentPosition.getY(), lookAt.getX() - currentPosition.getX());
@@ -461,17 +471,20 @@ public class SwerveDriveModule implements DriveModule {
                         lookTargetAngEntry.setDouble(lookTarget);
                         lookTargetPosEntry.setString(lookAt.toString());
                         targetValue = lookTarget;
+                        processAngle = true;
                     }
 
-                    var rotationSpeed = -rotationPidController.calculate(newAngleRad, targetValue);
-                    if (Math.abs(rotationSpeed) < floatTolerance) {
-                        // only mark 'reached' if we don't have a lookat target or our position is also reached
-                        if (!pose.HasLookAt || (lateralReached && forwardReached))
-                            rotationReached = true;
-                        rotationReachedEntry.setBoolean(rotationReached);
-                        ProcessRotationAngle(0.0);
-                    } else {
-                        ProcessRotationAngle(rotationSpeed);
+                    if (processAngle) { // only try to process the angle if we've given it one
+                        var rotationSpeed = -rotationPidController.calculate(newAngleRad, targetValue);
+                        if (Math.abs(rotationSpeed) < floatTolerance) {
+                            // only mark 'reached' if we don't have a lookat target or our position is also reached
+                            if (!pose.HasLookAt || (lateralReached && forwardReached))
+                                rotationReached = true;
+                            rotationReachedEntry.setBoolean(rotationReached);
+                            ProcessRotationAngle(0.0);
+                        } else {
+                            ProcessRotationAngle(rotationSpeed);
+                        }
                     }
                 }
             } else {

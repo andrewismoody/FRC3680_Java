@@ -82,7 +82,7 @@ public class Robot extends TimedRobot {
 
   final Positioner m_positioner = new LimeLightPositioner(false);
 
-  GameController m_controller = GameController.Initialize();
+  GameController m_controller = null;
 
   final Timer m_timer = new Timer();
 
@@ -161,6 +161,10 @@ public class Robot extends TimedRobot {
     SmartDashboard.putNumber("DB/Slider 0", m_speedMod);
     var smartDash = NetworkTableInstance.getDefault().getTable("SmartDashboard");
     slider0Sub= smartDash.getDoubleTopic("DB/Slider 0").subscribe(1.0);
+
+    // initialize game controller first because other classes need it.
+    // can't initialize in declaration because of order of initialization issues
+    m_controller = GameController.Initialize();
 
     modules = new ModuleController(swerveDriveModule, m_divider, m_controller);
 
