@@ -14,6 +14,8 @@ public class LimeLightPositioner implements Positioner {
     private final long posStaleTimeoutMs = 300;    // treat stale samples as invalid
     private long goodCount = 0;
     private long goodCountThreshold = 3;
+    private long badCount = 0;
+    private long badCountThreshold = 3;
     private long lastHealthCheckTs = 0L;
     private long lastValidCheckTs = 0L;
     private long lastPositionGetTs = 0L;
@@ -28,8 +30,8 @@ public class LimeLightPositioner implements Positioner {
     }
 
     public void Initialize() {
-        // // set IMU mode to 2 which fusions the provided orientation with the calculated positions
-        // LimelightHelpers.SetIMUMode("", 2);
+        // IMU mode to 2 only works with LL4 and fusions the provided orientation with the calculated positions
+        LimelightHelpers.SetIMUMode("", 0);
 
         // Make sure you only configure port forwarding once in your robot code.
         // Do not place these function calls in any periodic functions
@@ -39,25 +41,20 @@ public class LimeLightPositioner implements Positioner {
     }
 
     public Translation3d GetPosition() {
-        long now = System.currentTimeMillis();
-
-        if (Math.abs(now - lastPositionGetTs) < 15)
-            return lastHealthPos; // don't check more than once per tick
-
-        // only update position if we're healthy, otherwise return last good position
-        if (positionerHealthy && goodCount >= goodCountThreshold) {
-            if (DriverStation.getAlliance().get() == Alliance.Red)
-                return LimelightHelpers.getBotPose3d_wpiRed("").getTranslation();
-            else
-                return LimelightHelpers.getBotPose3d_wpiBlue("").getTranslation();
-        } else
-            return lastHealthPos;
+        if (DriverStation.getAlliance().get() == Alliance.Red)
+            return LimelightHelpers.getBotPose3d_wpiRed("").getTranslation();
+        else
+            return LimelightHelpers.getBotPose3d_wpiBlue("").getTranslation();
     }
 
+    // SetRobotOrientation - yaw is in degrees
     public void SetRobotOrientation(String limelightName, double yaw, double yawRate, 
     double pitch, double pitchRate, 
     double roll, double rollRate) {
         // TODO: re-evalutate this according to red/blue alliance positioning
+        // if (DriverStation.getAlliance().get() == Alliance.Red)
+        //     yaw += 180 % 360;
+
         LimelightHelpers.SetRobotOrientation(limelightName, yaw, yawRate, pitch, pitchRate, roll, rollRate);
     }
 
@@ -91,25 +88,25 @@ public class LimeLightPositioner implements Positioner {
 
     public boolean IsHealthy() {
         long now = System.currentTimeMillis();
-        if (Math.abs(now - lastHealthCheckTs) < 15)
-            return positionerHealthy; // don't check more than once per tick
+        // if (Math.abs(now - lastHealthCheckTs) < 15)
+        //     return positionerHealthy; // don't check more than once per tick
         
         Translation3d pos = GetPosition();
         boolean bad = false;
         boolean wasBad = false;
 
         //bad = IsValid();
-        if (!bad) {
-            bad = Double.isNaN(pos.getX()) || Double.isNaN(pos.getY()) || Double.isNaN(pos.getZ()) ||
-            Double.isInfinite(pos.getX()) || Double.isInfinite(pos.getY()) || Double.isInfinite(pos.getZ());
-        } else {
-            healthReason = "Not Valid";
-            wasBad = true;
-        }
+        // if (!bad) {
+        //     bad = Double.isNaN(pos.getX()) || Double.isNaN(pos.getY()) || Double.isNaN(pos.getZ()) ||
+        //     Double.isInfinite(pos.getX()) || Double.isInfinite(pos.getY()) || Double.isInfinite(pos.getZ());
+        // } else {
+        //     healthReason = "Not Valid";
+        //     wasBad = true;
+        // }
 
         if (!bad) {
             // don't check for jump if we haven't found our position yet
-            if (pos.getNorm()> 0) {
+            if (pos.getNorm()> 0.0 && lastHealthPos.getNorm() > 0.0) {
                 double jump = lastHealthPos.minus(pos).getNorm();
                 if (lastHealthTsMs > 0 && jump > posJumpLimitMeters) bad = true;
                 if (lastHealthTsMs > 0 && (now - lastHealthTsMs) > posStaleTimeoutMs) bad = true;

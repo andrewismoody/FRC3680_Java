@@ -9,4 +9,5 @@ public interface DriveModule extends RobotModule {
     public void StopRotation();
     public void SetFieldOriented(boolean value);
     public boolean IsFieldOriented();
+    public void ToggleFieldOriented(boolean value);
 }

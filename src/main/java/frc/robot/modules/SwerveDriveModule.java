@@ -254,6 +254,10 @@ public class SwerveDriveModule implements DriveModule {
         fieldOrientedEntry.setBoolean(value);
     }
 
+    public void ToggleFieldOriented(boolean value) {
+        SetFieldOriented(!isFieldOriented);
+    }
+
     public boolean IsFieldOriented() {
         return this.isFieldOriented;
     }
@@ -406,6 +410,8 @@ public class SwerveDriveModule implements DriveModule {
             var rotationReached = false;
             var positionerHealthy = isPositionerHealthy();
             var posNorm = currentPosition.getNorm();
+            var seekTag = posNorm == 0.0;
+            myTable.getEntry("seekTag").setBoolean(seekTag);
 
             // only process position if we have a target
             if (pose.HasPosition) {
@@ -439,7 +445,9 @@ public class SwerveDriveModule implements DriveModule {
                             ProcessForwardSpeed(forwardSpeed);
                         }
                     }
-                } else { // shut down any previous drive commands because we lost our position
+                } else if (!wroteLateralThisTick && !wroteForwardThisTick) {
+                    // shut down any previous drive commands because we lost our position
+                    // TODO: need to smooth this out somehow, but keep it safe - jitters with limelight
                     ProcessLateralSpeed(0.0);
                     ProcessForwardSpeed(0.0);
                 }
@@ -450,13 +458,13 @@ public class SwerveDriveModule implements DriveModule {
             }
 
             // only process rotation if we have a target and haven't already been overridden this tick
-            if (pose.HasOrientation || pose.HasLookAt) {
+            if (pose.HasOrientation || pose.HasLookAt || seekTag) {
                 if (!wroteRotationThisTick) { // allows game controller precedence
                     double targetValue = 0.0;
                     boolean processAngle = false;
 
-                    // TODO: this doesn't seem to work if we're on the other side of zero?
                     if (pose.HasOrientation) {
+                        // TODO: this doesn't seem to work if we're on the other side of zero?
                         var rotationDelta = targetRotation.getRadians() - newAngleRad;
                         rotationDeltaEntry.setDouble(rotationDelta);
                         rotationTargetEntry.setDouble(targetRotation.getRadians());
@@ -466,7 +474,8 @@ public class SwerveDriveModule implements DriveModule {
                         var lookAt = pose.LookAt;
                         // should this be X,Y or Y,X?
                         var lookTarget = Math.atan2(lookAt.getY() - currentPosition.getY(), lookAt.getX() - currentPosition.getX());
-                        // add 90 deg to adjust for coordinate system, then wrap to positive and modulo
+                        // wrap to positive and modulo
+                        // TODO: not sure why we keep rethinking this - why is it wrong?
                         lookTarget = (lookTarget + (2 * Math.PI)) % (2 * Math.PI);
                         lookTargetAngEntry.setDouble(lookTarget);
                         lookTargetPosEntry.setString(lookAt.toString());
@@ -485,6 +494,9 @@ public class SwerveDriveModule implements DriveModule {
                         } else {
                             ProcessRotationAngle(rotationSpeed);
                         }
+                    } else if(seekTag) {
+                        // slowly turn right until we find our position
+                        ProcessRotationAngle(0.25);
                     }
                 }
             } else {
@@ -531,8 +543,9 @@ public class SwerveDriveModule implements DriveModule {
         double currentGyroAngle = getInvertedGyroValue();
         currentGyroAngleEntry.setDouble(currentGyroAngle);
 
-        // TODO: Identify if this is correct - does it really need inverse or does everything use normal?
-        positioner.SetRobotOrientation("", currentGyroAngle, 0,0,0,0,0);
+        // TODO: Identify if this is correct - does it need inverse or does everything use normal?
+        // yaw is in degrees
+        positioner.SetRobotOrientation("", currentGyroAngle / 0.174, 0,0,0,0,0);
 
         currentPosition = currentPose.getTranslation();
 

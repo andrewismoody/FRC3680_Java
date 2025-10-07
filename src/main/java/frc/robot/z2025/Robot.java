@@ -80,7 +80,7 @@ public class Robot extends TimedRobot {
 
   final Encoder enc_elev = new REVEncoder(can_elev.getEncoder());
 
-  final Positioner m_positioner = new LimeLightPositioner(false);
+  final Positioner m_positioner = new LimeLightPositioner(true);
 
   GameController m_controller = null;
 

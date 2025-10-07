@@ -42,10 +42,12 @@ public class AHRSGyro implements Gyro {
 
     @Override
     public double getAngle() {
-        long now = System.currentTimeMillis();
+        // long now = System.currentTimeMillis();
 
-        if (Math.abs(now - lastAngleGetTs) > 15)
-            lastAngle = ahrs.getAngle(); // don't check more than once per tick
+        // if (Math.abs(now - lastAngleGetTs) > 15) { // don't check more than once per tick
+        //     lastAngleGetTs = now;
+            lastAngle = ahrs.getAngle();
+        // }
 
         return lastAngle;
     }

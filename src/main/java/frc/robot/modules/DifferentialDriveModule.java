@@ -156,6 +156,10 @@ public class DifferentialDriveModule implements DriveModule {
        //myTable.getEntry("fieldOriented").setBoolean(value);
    }
 
+   public void ToggleFieldOriented(boolean value) {
+        SetFieldOriented(!isFieldOriented);
+   }
+
    public boolean IsFieldOriented() {
        return this.isFieldOriented;
    }
