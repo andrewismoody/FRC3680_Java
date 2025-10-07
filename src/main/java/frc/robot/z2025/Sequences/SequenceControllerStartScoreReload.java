@@ -5,7 +5,6 @@ import java.util.Collections;
 import java.util.Hashtable;
 import java.util.List;
 
-import frc.robot.modules.ModuleController;
 import frc.robot.action.Action;
 import frc.robot.action.ActionPose;
 import frc.robot.action.Group;
@@ -17,8 +16,8 @@ import frc.robot.auto.AutoEventTarget;
 import frc.robot.auto.AutoSequence;
 
 public class SequenceControllerStartScoreReload extends AutoSequence {
-  public SequenceControllerStartScoreReload(String label, ModuleController modules, AutoController ac) {
-    super(label, modules, ac);
+  public SequenceControllerStartScoreReload(String label, AutoController ac) {
+    super(label, ac);
 
     // Target Poses
     var start1 = new ActionPose(Group.Start, Location.Barge.getValue(), 1, Position.Trough.getValue(), Action.Pickup, null);

@@ -4,13 +4,13 @@ import frc.robot.auto.AutoController;
 import frc.robot.auto.AutoEventTime;
 import frc.robot.auto.AutoSequence;
 import frc.robot.auto.AutoEvent.EventType;
-import frc.robot.modules.ModuleController;
 import frc.robot.modules.RobotModule;
 
 // SequenceShoot is an autonomous sequence that demonstrates controlling a single module with timed events.
 public class SequenceShoot extends AutoSequence {
-    public SequenceShoot(String Label, ModuleController modules, AutoController MyController) {
-        super(Label, modules, MyController);
+    public SequenceShoot(String Label, AutoController MyController) {
+        super(Label, MyController);
+        var modules = MyController.GetModuleController();
 
         RobotModule ejector = modules.GetModule("ejector");
         if (ejector != null) {

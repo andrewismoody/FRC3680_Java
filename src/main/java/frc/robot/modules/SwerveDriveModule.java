@@ -73,12 +73,6 @@ public class SwerveDriveModule implements DriveModule {
     private boolean wroteRotationThisTick = false;
 
     NetworkTable myTable;
-
-    // private boolean positionerHealthy = true;
-    private Translation3d lastHealthPos = new Translation3d();
-    private long lastHealthTsMs = 0L;
-    private final double posJumpLimitMeters = 2.0; // treat larger jumps as invalid
-    private final long posStaleTimeoutMs = 300;    // treat stale samples as invalid
     
     public SwerveDriveModule(String ModuleID, Gyro Gyro, Positioner Positioner, double DriveSpeed, double RotationSpeed,
             double FloatTolerance, SwerveMotorModule ... modules) {
@@ -106,16 +100,14 @@ public class SwerveDriveModule implements DriveModule {
             i++;
         }
         
-        // TODO: might be mixing things here with drivespeed applying to drive motors and also drivespeed for the whole robot
         var posKp = 2.0; 
         var posKi = 0; //posKp * 0.10;
         var posKd = 0; //posKi * 3.0;
         lateralPidController = new PIDController(posKp, posKi, posKd);
         forwardPidController = new PIDController(posKp, posKi, posKd);
 
-        // bumping this up to 1.0 after removing the rotation multiplier from processrotation
-        // hoping this will offset the 5x multiplier but also dampen (not fully 3.3, but reduced down to 2.0)
-        var rotKp = 1.0; //0.333;
+        // bumping this up to 1.0 after adjusting the rotation multiplier from processrotation
+        var rotKp = 1.0;
         var rotKi = 0; // rotKp * 0.10;
         var rotKd = 0; //rotKi * 3.0;
         rotationPidController = new PIDController(rotKp, rotKi, rotKd);
@@ -265,11 +257,6 @@ public class SwerveDriveModule implements DriveModule {
     public double getCurrentGyroValue() {
         double gyroRaw = getGyroAngle();
         double newAngle = ((gyroRaw % 360.0) + 360.0) % 360.0;
-        double inverseAngle = ((-gyroRaw % 360.0) + 360.0) % 360.0;
-
-        // TODO: Identify if this is correct - does it really need inverse or does everything use normal?
-        // TODO: should probably set this discretely and not as part of gyro retrieval
-        positioner.SetRobotOrientation("", inverseAngle, 0,0,0,0,0);
 
         return Units.degreesToRadians(newAngle);  
     }
@@ -337,41 +324,13 @@ public class SwerveDriveModule implements DriveModule {
         }
     }
 
-    private boolean isPositionerHealthy() {
-        var positionerHealthy = false;
+    public boolean isPositionerHealthy() {
+        var healthy = positioner.IsHealthy();
 
-        var reason = "none";
-        long now = System.currentTimeMillis();
-        Translation3d pos = positioner.GetPosition();
-        boolean bad = positioner.IsValid();
+        myTable.getEntry("positionerHealthy").setBoolean(healthy);
+        myTable.getEntry("positionHealthReason").setString(positioner.GetHealthReason());
 
-        if (!bad) {
-            bad = Double.isNaN(pos.getX()) || Double.isNaN(pos.getY()) || Double.isNaN(pos.getZ()) ||
-            Double.isInfinite(pos.getX()) || Double.isInfinite(pos.getY()) || Double.isInfinite(pos.getZ());
-        } else
-            reason = "Not Valid";
-
-        if (!bad) {
-            if (pos != new Translation3d()) {
-                double jump = lastHealthPos.minus(pos).getNorm();
-                if (lastHealthTsMs > 0 && jump > posJumpLimitMeters) bad = true;
-                if (lastHealthTsMs > 0 && (now - lastHealthTsMs) > posStaleTimeoutMs) bad = true;
-            }
-        } else
-            reason = "NAN/Infinite";
-
-        if (!bad) {
-            lastHealthPos = pos;
-            lastHealthTsMs = now;
-        } else
-            reason = "jump";
-
-        positionerHealthy = !bad;
-
-        myTable.getEntry("positionerHealthy").setBoolean(positionerHealthy);
-        myTable.getEntry("positionHealthReason").setString(reason);
-
-        return positionerHealthy;
+        return healthy;
     }
 
     public void EvaluateTargetPose(double newAngleRad) {
@@ -394,6 +353,7 @@ public class SwerveDriveModule implements DriveModule {
 
                 // limelight team-based origin is x forward positive, y left positive - same as FRC field
                 // why does this only work inverted'? - we must've confused coordinates somewhere else
+                // TODO: figure out how to allow target evaluation in teleop - game controller sends values for position constantly and overrides this, I think?
                 if (!wroteLateralThisTick) { // allows game controller precedence
                     var lateralSpeed = -lateralPidController.calculate(currentPosition.getY(), targetPosition.getY());
                     if (Math.abs(lateralSpeed) < floatTolerance) {
@@ -493,10 +453,13 @@ public class SwerveDriveModule implements DriveModule {
         // https://docs.wpilib.org/en/stable/docs/software/hardware-apis/sensors/gyros-software.html
         // https://www.chiefdelphi.com/t/set-motor-position-with-encoder/152088/3
 
-        // Invert the Gyro angle because it rotates opposite of the robot steering, then wrap it to a positive value
         Pose3d currentPose = GetPosition();
+        // Invert the Gyro angle because it rotates opposite of the robot steering, then wrap it to a positive value
         double currentGyroAngle = getInvertedGyroValue();
         myTable.getEntry("currentGyroAngle").setDouble(currentGyroAngle);
+
+        // TODO: Identify if this is correct - does it really need inverse or does everything use normal?
+        positioner.SetRobotOrientation("", currentGyroAngle, 0,0,0,0,0);
 
         currentPosition = currentPose.getTranslation();
 
@@ -515,14 +478,13 @@ public class SwerveDriveModule implements DriveModule {
             zeroPositionCommands();
 
         // set the chassis speed object according to current controller values
+        // modifiers only affect open-loop values, not Auto values
         double forwardSpeed = this.forwardSpeed * controller.ApplyModifiers(driveSpeed);
         double lateralSpeed = this.lateralSpeed * controller.ApplyModifiers(driveSpeed);
-        // we were applying modifiers directly to rotation angle, but this seems ineffective.
-        // trying similar approach as linear speed - apply dilation to rotation multiplier
-        // this will only affect open-loop rotation, not PID-based rotation
         double thisRotationSpeed = rotationAngle * controller.ApplyModifiers(rotationMultiplier); //rotationAngle; // * controller.ApplyModifiers(this.rotationSpeed);
         myTable.getEntry("rotationSpeed").setDouble(thisRotationSpeed);
 
+        // TODO: comb through all coordinate systems and identify why we have to flip lateral and forward here
         ChassisSpeeds speeds = isFieldOriented ?
             ChassisSpeeds.fromFieldRelativeSpeeds(lateralSpeed, forwardSpeed, thisRotationSpeed, Rotation2d.fromRadians(getCurrentGyroValue()))
             : new ChassisSpeeds(lateralSpeed, forwardSpeed, thisRotationSpeed);

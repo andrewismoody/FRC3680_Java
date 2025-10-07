@@ -18,12 +18,10 @@ public class AutoSequence {
 
     boolean interrupt = false;
 
-    // TODO: move modulecontroller to autocontroller and reduce complexity
-
-    public AutoSequence(String Label, ModuleController Controller, AutoController MyController) {
+    public AutoSequence(String Label, AutoController MyController) {
         label = Label;
-        controller = Controller;
         autoController = MyController;
+        controller = autoController.GetModuleController();
     }
 
     public String GetLabel() {

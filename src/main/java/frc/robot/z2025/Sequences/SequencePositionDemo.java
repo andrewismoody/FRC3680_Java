@@ -6,13 +6,13 @@ import frc.robot.auto.AutoEventPosition;
 import frc.robot.auto.AutoEventTime;
 import frc.robot.auto.AutoSequence;
 import frc.robot.modules.DriveModule;
-import frc.robot.modules.ModuleController;
 import frc.robot.modules.SingleActuatorModule;
 
 // SequencePositionDemo is an example autonomous sequence that demonstrates using a position-based event to control a module.
 public class SequencePositionDemo extends AutoSequence {
-  public SequencePositionDemo(String label, ModuleController modules, AutoController ac) {
-    super(label, modules, ac);
+  public SequencePositionDemo(String label, AutoController ac) {
+    super(label, ac);
+    var modules = ac.GetModuleController();
 
     // Modules
     DriveModule drive = modules.GetDriveModule();

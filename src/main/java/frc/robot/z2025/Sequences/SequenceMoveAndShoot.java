@@ -5,12 +5,12 @@ import frc.robot.auto.AutoEventAuto;
 import frc.robot.auto.AutoEventTime;
 import frc.robot.auto.AutoSequence;
 import frc.robot.auto.AutoEvent.EventType;
-import frc.robot.modules.ModuleController;
 
 // SequenceMoveAndShoot is an example of using time events to move the robot and nested sequences.
 public class SequenceMoveAndShoot extends AutoSequence {
-    public SequenceMoveAndShoot(String Label, ModuleController modules, AutoController MyController) {
-        super(Label, modules, MyController);
+    public SequenceMoveAndShoot(String Label, AutoController MyController) {
+        super(Label, MyController);
+        var modules = MyController.GetModuleController();
 
         // adds an event to start driving the motors immediately
         AutoEventTime event0 = new AutoEventTime("Move Forward", true, 0, EventType.Double, MyController);
@@ -23,7 +23,7 @@ public class SequenceMoveAndShoot extends AutoSequence {
         AddEvent(event2);
 
         // adds an event to trigger the nested sequence at a particular time
-        AutoSequence ShootSequence = new SequenceShoot("Shoot", modules, MyController);
+        AutoSequence ShootSequence = new SequenceShoot("Shoot", MyController);
         AutoEventTime event4 = new AutoEventTime("Start Shoot", false, 2000, EventType.Auto, MyController);
         event4.SetAutoEvent(ShootSequence);
         AddEvent(event4);

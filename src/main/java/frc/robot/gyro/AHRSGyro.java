@@ -20,13 +20,11 @@ public class AHRSGyro implements Gyro {
 
     @Override
     public int readRegister(int reg) {
-        // TODO Auto-generated method stub
         throw new UnsupportedOperationException("Unimplemented method 'readRegister'");
     }
 
     @Override
     public void writeRegister(int reg, int val) {
-        // TODO Auto-generated method stub
         throw new UnsupportedOperationException("Unimplemented method 'writeRegister'");
     }
 
@@ -37,7 +35,6 @@ public class AHRSGyro implements Gyro {
 
     @Override
     public void acquire() {
-        // TODO Auto-generated method stub
         throw new UnsupportedOperationException("Unimplemented method 'acquire'");
     }
 

@@ -9,4 +9,6 @@ public interface Positioner {
     double pitch, double pitchRate, 
     double roll, double rollRate);
     public boolean IsValid();
+    public boolean IsHealthy();
+    public String GetHealthReason();
 }

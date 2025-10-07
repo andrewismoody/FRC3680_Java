@@ -7,8 +7,6 @@ import edu.wpi.first.wpilibj.DriverStation;
 import frc.robot.misc.GameController;
 import frc.robot.modules.ModuleController;
 
-//TODO: Set module controller here instead of inside events and reference to simplify construction
-
 // AutoController manages all AutoSequences, allowing for their addition, removal, initialization, updating, and shutdown.
 public class AutoController {
     HashMap<String, AutoSequence> sequences = new HashMap<String, AutoSequence>();

@@ -168,8 +168,9 @@ public class Robot extends TimedRobot {
     // modules.SetEnableDriveTrain(true);
 
     Dashboard.InitializeChoosers();
-    Joystick.InitializeButtonMappings(m_controller, modules, swerveDriveModule, slide, elevator); //, grabber);
+    // Add action poses before button mappings so buttons can drive action poses
     ActionPoses.Initialize(swerveDriveModule, elevator, slide);
+    Joystick.InitializeButtonMappings(m_controller, modules, swerveDriveModule, slide, elevator); //, grabber);
     autoModes = AutoModes.Initialize(autoModes, m_controller, modules);
     currentAutoMode = AutoModes.GetDefault(autoModes);
   }

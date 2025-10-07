@@ -13,15 +13,15 @@ import frc.robot.auto.AutoEventTarget;
 import frc.robot.auto.AutoEventTime;
 import frc.robot.auto.AutoSequence;
 import frc.robot.auto.AutoTarget;
-import frc.robot.modules.ModuleController;
 import frc.robot.modules.SingleActuatorModule;
 import frc.robot.modules.SingleMotorModule;
 import frc.robot.modules.SwerveDriveModule;
 
 // SequenceRotateScoreReturn is an example auto sequence that uses target events mixed with timed events to control multiple modules.
 public class SequenceRotateScoreReturn extends AutoSequence {
-  public SequenceRotateScoreReturn(String label, ModuleController modules, AutoController ac) {
-    super(label, modules, ac);
+  public SequenceRotateScoreReturn(String label, AutoController ac) {
+    super(label, ac);
+    var modules = ac.GetModuleController();
 
     // Modules
     var drive = (SwerveDriveModule) modules.GetDriveModule();

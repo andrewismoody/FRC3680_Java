@@ -16,23 +16,23 @@ public class AutoModes {
         // TODO: need to move this definition to preferences and initialize in automodes rather than hard coding
 
         AutoController rotateScoreReturn = new AutoController("RotateScoreReturn", m_controller, modules);
-        rotateScoreReturn.AddSequence(new SequenceRotateScoreReturn(rotateScoreReturn.GetLabel(), modules, rotateScoreReturn));
+        rotateScoreReturn.AddSequence(new SequenceRotateScoreReturn(rotateScoreReturn.GetLabel(), rotateScoreReturn));
         AutoModes.put(rotateScoreReturn.GetLabel(), rotateScoreReturn);
 
         AutoController rotateWaitReturn = new AutoController("RotateWaitReturn", m_controller, modules);
-        rotateWaitReturn.AddSequence(new SequenceRotateScoreReturn(rotateWaitReturn.GetLabel(), modules, rotateWaitReturn));
+        rotateWaitReturn.AddSequence(new SequenceRotateScoreReturn(rotateWaitReturn.GetLabel(), rotateWaitReturn));
         AutoModes.put(rotateWaitReturn.GetLabel(), rotateWaitReturn);
 
         AutoController controllerScoreReloadScore = new AutoController("ControllerScoreReloadScore", m_controller, modules);
-        controllerScoreReloadScore.AddSequence(new SequenceControllerScoreReloadScore(controllerScoreReloadScore.GetLabel(), modules, controllerScoreReloadScore));
+        controllerScoreReloadScore.AddSequence(new SequenceControllerScoreReloadScore(controllerScoreReloadScore.GetLabel(), controllerScoreReloadScore));
         AutoModes.put(controllerScoreReloadScore.GetLabel(), controllerScoreReloadScore);
 
         AutoController controllerMoveToReef = new AutoController("controllerMoveToReef", m_controller, modules);
-        controllerMoveToReef.AddSequence(new SequenceControllerMoveToReef(controllerMoveToReef.GetLabel(), modules, controllerMoveToReef));
+        controllerMoveToReef.AddSequence(new SequenceControllerMoveToReef(controllerMoveToReef.GetLabel(), controllerMoveToReef));
         AutoModes.put(controllerMoveToReef.GetLabel(), controllerMoveToReef);
 
         AutoController controllerStartScoreReload = new AutoController("controllerStartScoreReload", m_controller, modules);
-        controllerStartScoreReload.AddSequence(new SequenceControllerStartScoreReload(controllerStartScoreReload.GetLabel(), modules, controllerStartScoreReload));
+        controllerStartScoreReload.AddSequence(new SequenceControllerStartScoreReload(controllerStartScoreReload.GetLabel(), controllerStartScoreReload));
         AutoModes.put(controllerStartScoreReload.GetLabel(), controllerStartScoreReload);
 
         SmartDashboard.putStringArray("Auto List", new String[] {});

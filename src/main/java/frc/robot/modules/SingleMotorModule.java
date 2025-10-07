@@ -1,6 +1,7 @@
 package frc.robot.modules;
 
 import java.util.ArrayList;
+import java.util.function.Consumer;
 
 import edu.wpi.first.math.controller.PIDController;
 import edu.wpi.first.math.geometry.Pose3d;
@@ -10,6 +11,7 @@ import edu.wpi.first.networktables.NetworkTable;
 import edu.wpi.first.networktables.NetworkTableInstance;
 import edu.wpi.first.wpilibj.motorcontrol.MotorController;
 import frc.robot.action.Group;
+import frc.robot.auto.AutoTarget;
 import frc.robot.action.Action;
 import frc.robot.action.ActionPose;
 import frc.robot.encoder.Encoder;
@@ -46,6 +48,8 @@ public class SingleMotorModule implements RobotModule {
 
     ArrayList<ActionPose> actionPoses = new ArrayList<ActionPose>();
     ActionPose targetPose;
+    ArrayList<Consumer<Boolean>> buttonMappedTargets = new ArrayList<Consumer<Boolean>>();
+    ArrayList<Consumer<Boolean>> buttonMappedPoses = new ArrayList<Consumer<Boolean>>();
 
     NetworkTable myTable;
 
@@ -257,24 +261,70 @@ public class SingleMotorModule implements RobotModule {
         return moduleID;
     }
 
-    public void SetScoringPoseMiddle(boolean isPressed) {
-        // TODO: This shouldn't be game-specific, need to make this more generic
-        if (isPressed) {
-            SetTargetActionPose(Group.Score, -1, -1, 2, Action.Any);
-        }
+    // AddButtonMappedPose adds a position to the array and returns a reference to the function
+    public Consumer<Boolean> AddButtonMappedPose(ActionPose pose) {
+        var setTarget = new Consumer<Boolean>() {
+            @Override
+            public void accept(Boolean pressed) {
+                if (pressed)
+                    SetTargetActionPose(pose);;
+            }
+        };
+        buttonMappedPoses.add(setTarget);
+
+        return setTarget;
     }
-    public void SetScoringPoseLower(boolean isPressed) {
-        // TODO: This shouldn't be game-specific, need to make this more generic
-        if (isPressed) {
-            SetTargetActionPose(Group.Score, -1, -1, 1, Action.Any);
+
+    // GetButtonMappedPose finds the function by index and returns it. Returns null if not found.
+    public Consumer<Boolean> GetButtonMappedPose(int index) {
+        if (index >= 0 && index < buttonMappedPoses.size()) {
+            return buttonMappedPoses.get(index);
         }
+
+        return null;
     }
-    public void SetScoringPoseTrough(boolean isPressed) {
-        // TODO: This shouldn't be game-specific, need to make this more generic
-        if (isPressed) {
-            SetTargetActionPose(Group.Score, -1, -1, 0, Action.Any);
+
+    // AddButtonMappedTarget adds a position to the array and returns a reference to the function
+    public Consumer<Boolean> AddButtonMappedTarget(double position) {
+        var setTarget = new Consumer<Boolean>() {
+            @Override
+            public void accept(Boolean pressed) {
+                if (pressed)
+                    targetPose = new ActionPose(Group.Any, -1, -1, -1, Action.Any, new AutoTarget(position));
+            }
+        };
+        buttonMappedTargets.add(setTarget);
+
+        return setTarget;
+    }
+
+    // GetButtonMappedTarget finds the function by index and returns it. Returns null if not found.
+    public Consumer<Boolean> GetButtonMappedTarget(int index) {
+        if (index >= 0 && index < buttonMappedTargets.size()) {
+            return buttonMappedTargets.get(index);
         }
+
+        return null;
     }
+
+    // public void SetScoringPoseMiddle(boolean isPressed) {
+    //     // TODO: This shouldn't be game-specific, need to make this more generic
+    //     if (isPressed) {
+    //         SetTargetActionPose(Group.Score, -1, -1, 2, Action.Any);
+    //     }
+    // }
+    // public void SetScoringPoseLower(boolean isPressed) {
+    //     // TODO: This shouldn't be game-specific, need to make this more generic
+    //     if (isPressed) {
+    //         SetTargetActionPose(Group.Score, -1, -1, 1, Action.Any);
+    //     }
+    // }
+    // public void SetScoringPoseTrough(boolean isPressed) {
+    //     // TODO: This shouldn't be game-specific, need to make this more generic
+    //     if (isPressed) {
+    //         SetTargetActionPose(Group.Score, -1, -1, 0, Action.Any);
+    //     }
+    // }
 
     public void SetNoPose(boolean isPressed) {
         if (isPressed) {

@@ -1,11 +1,16 @@
 package frc.robot.z2025;
 
+import frc.robot.action.Action;
+import frc.robot.action.ActionPose;
+import frc.robot.action.Group;
 import frc.robot.misc.GameController;
 import frc.robot.misc.GameController.ButtonName;
 import frc.robot.modules.ModuleController;
 import frc.robot.modules.SingleActuatorModule;
 import frc.robot.modules.SingleMotorModule;
 import frc.robot.modules.SwerveDriveModule;
+import frc.robot.z2025.action.Location;
+import frc.robot.z2025.action.Position;
 
 public class Joystick {
   public static void InitializeButtonMappings(GameController m_controller,
@@ -17,9 +22,9 @@ public class Joystick {
     m_controller.RegisterBinaryButtonConsumer(ButtonName.RightShoulderButton, slide::ApplyInverse);
 
     m_controller.RegisterBinaryButtonConsumer(ButtonName.BottomButton, elevator::SetNoPose);
-    m_controller.RegisterBinaryButtonConsumer(ButtonName.TopButton, elevator::SetScoringPoseMiddle);
-    m_controller.RegisterBinaryButtonConsumer(ButtonName.LeftButton, elevator::SetScoringPoseLower);
-    m_controller.RegisterBinaryButtonConsumer(ButtonName.RightButton, elevator::SetScoringPoseTrough);
+    m_controller.RegisterBinaryButtonConsumer(ButtonName.RightButton, elevator.AddButtonMappedPose(new ActionPose(Group.Any, Location.Any.getValue(), -1, Position.Trough.getValue(), Action.Any, null)));
+    m_controller.RegisterBinaryButtonConsumer(ButtonName.LeftButton, elevator.AddButtonMappedPose(new ActionPose(Group.Score, Location.Any.getValue(), -1, Position.Lower.getValue(), Action.Any, null)));
+    m_controller.RegisterBinaryButtonConsumer(ButtonName.TopButton, elevator.AddButtonMappedPose(new ActionPose(Group.Score, Location.Any.getValue(), -1, Position.Middle.getValue(), Action.Any, null)));
 
     m_controller.RegisterBinaryButtonConsumer(ButtonName.POVDown, elevator::ApplyInverse);
     m_controller.RegisterBinaryButtonConsumer(ButtonName.POVUp, elevator::ApplyValue);
@@ -29,7 +34,7 @@ public class Joystick {
 
     // m_controller.RegisterBinaryButtonConsumer(ButtonName.LeftButton, swerveDriveModule::LockPosition);
     m_controller.RegisterBinaryButtonConsumer(ButtonName.Select, swerveDriveModule::ReturnToZero);
-    m_controller.RegisterBinaryButtonConsumer(ButtonName.Select, elevator::SetScoringPoseTrough);
+    m_controller.RegisterBinaryButtonConsumer(ButtonName.Select, elevator.GetButtonMappedTarget(0));
 
     // m_controller.RegisterBinaryButtonConsumer(ButtonName.RightShoulderButton, modules::ProcessInverse);
 

@@ -13,13 +13,13 @@ import frc.robot.auto.AutoEventTarget;
 import frc.robot.auto.AutoEventTime;
 import frc.robot.auto.AutoSequence;
 import frc.robot.auto.AutoTarget;
-import frc.robot.modules.ModuleController;
 import frc.robot.modules.SwerveDriveModule;
 
 // SequenceRotateWaitReturn is a simple example auto sequence that uses target events mixed with timed events to move the robot.
 public class SequenceRotateWaitReturn extends AutoSequence {
-  public SequenceRotateWaitReturn(String label, ModuleController modules, AutoController ac) {
-    super(label, modules, ac);
+  public SequenceRotateWaitReturn(String label, AutoController ac) {
+    super(label, ac);
+    var modules = ac.GetModuleController();
 
     // Modules
     var drive = (SwerveDriveModule) modules.GetDriveModule();

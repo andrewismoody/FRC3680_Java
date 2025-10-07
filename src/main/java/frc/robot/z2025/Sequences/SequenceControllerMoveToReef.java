@@ -9,11 +9,10 @@ import frc.robot.auto.AutoController;
 import frc.robot.auto.AutoEvent;
 import frc.robot.auto.AutoEventTarget;
 import frc.robot.auto.AutoSequence;
-import frc.robot.modules.ModuleController;
 
 public class SequenceControllerMoveToReef extends AutoSequence {
-  public SequenceControllerMoveToReef(String label, ModuleController modules, AutoController ac) {
-    super(label, modules, ac);
+  public SequenceControllerMoveToReef(String label, AutoController ac) {
+    super(label, ac);
 
 
     // Target Poses
