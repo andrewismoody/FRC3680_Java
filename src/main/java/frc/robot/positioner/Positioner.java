@@ -1,5 +1,6 @@
 package frc.robot.positioner;
 
+import edu.wpi.first.math.geometry.Pose3d;
 import edu.wpi.first.math.geometry.Translation3d;
 
 public interface Positioner {
@@ -11,4 +12,5 @@ public interface Positioner {
     public boolean IsValid();
     public boolean IsHealthy();
     public String GetHealthReason();
+    public Translation3d GetOffset();
 }

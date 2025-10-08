@@ -479,9 +479,13 @@ public class SwerveDriveModule implements DriveModule {
                         targetValue = targetRotation.getRadians();
                         processAngle = true;
                     } else if (pose.HasLookAt && posNorm > 0.0) {
+                        // trying to rotat from the camera's vantage point to ensure that the april tags are always in the center
+                        // TODO: keep working on look at angle
+                        var adjustedPos = positioner.GetOffset();
+                        myTable.getEntry("adjustedPos").setString(adjustedPos.toString());
                         var lookAt = pose.LookAt;
                         // should this be X,Y or Y,X?
-                        var lookTarget = Math.atan2(lookAt.getY() - currentPosition.getY(), lookAt.getX() - currentPosition.getX());
+                        var lookTarget = Math.atan2(lookAt.getY() - adjustedPos.getY(), lookAt.getX() - adjustedPos.getX());
                         // wrap to positive and modulo
                         // TODO: not sure why we keep rethinking this - why is it wrong?
                         lookTarget = (lookTarget + (2 * Math.PI)) % (2 * Math.PI);

@@ -1,5 +1,7 @@
 package frc.robot.positioner;
 
+import edu.wpi.first.math.geometry.Pose3d;
+import edu.wpi.first.math.geometry.Transform3d;
 import edu.wpi.first.math.geometry.Translation3d;
 import edu.wpi.first.net.PortForwarder;
 import edu.wpi.first.wpilibj.DriverStation;
@@ -41,10 +43,24 @@ public class LimeLightPositioner implements Positioner {
     }
 
     public Translation3d GetPosition() {
+        return GetPose().getTranslation();
+    }
+
+    public Pose3d GetPose() {
         if (DriverStation.getAlliance().get() == Alliance.Red)
-            return LimelightHelpers.getBotPose3d_wpiRed("").getTranslation();
+            return new Pose3d(LimelightHelpers.getBotPoseEstimate_wpiRed_MegaTag2("").pose);
         else
-            return LimelightHelpers.getBotPose3d_wpiBlue("").getTranslation();
+            return new Pose3d(LimelightHelpers.getBotPoseEstimate_wpiBlue_MegaTag2("").pose);
+    }
+
+    public Translation3d GetOffset() {
+        Pose3d robotPose = GetPose();
+        Pose3d cameraPose = LimelightHelpers.getCameraPose3d_RobotSpace("");
+        // this looks backwards?
+        Transform3d cameraTransform = new Transform3d(robotPose.getTranslation(), robotPose.getRotation());
+        cameraPose = cameraPose.transformBy(cameraTransform);
+
+        return cameraPose.getTranslation();
     }
 
     // SetRobotOrientation - yaw is in degrees
