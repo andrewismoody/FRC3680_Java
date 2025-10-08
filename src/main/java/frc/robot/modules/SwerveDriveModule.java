@@ -35,13 +35,14 @@ public class SwerveDriveModule implements DriveModule {
     ModuleController controller;
     SwerveDriveKinematics kinematics;
     boolean isFieldOriented = false;
-    boolean wasFieldOriented = !isFieldOriented;
     Gyro gyro;
     Positioner positioner;
     SwerveDriveOdometry odometry;
 
     Translation3d currentPosition = Translation3d.kZero;
     Translation3d previousPosition = currentPosition;
+    double previousRotationSpeed = 0.0;
+    double seekRotation = 0.0;
 
     double forwardSpeed = 0.0;
     double lateralSpeed = 0.0;
@@ -58,6 +59,7 @@ public class SwerveDriveModule implements DriveModule {
 
     boolean isZeroPressed = false;
     boolean isLockPressed = false;
+    boolean wasFieldOrientedPressed = false;
 
     ArrayList<ActionPose> actionPoses = new ArrayList<ActionPose>();
     ActionPose targetPose;
@@ -233,7 +235,7 @@ public class SwerveDriveModule implements DriveModule {
 
         // set initial values
         startupAngleEntry.setDouble(startupAngle);
-        var startupPosition = positioner.GetPosition();
+        var startupPosition = positioner.GetPose().getTranslation();
         startupPositionEntry.setString(startupPosition.toString());
         useFakeGyroEntry.setBoolean(useFakeGyro);
         rotationSpeedEntry.setDouble(rotationSpeed);
@@ -252,7 +254,6 @@ public class SwerveDriveModule implements DriveModule {
 
     public void SetFieldOriented(boolean value) {
         if (isFieldOriented != value) {
-            wasFieldOriented = isFieldOriented;
             isFieldOriented = value;
             fieldOrientedEntry.setBoolean(value);
         }
@@ -260,14 +261,14 @@ public class SwerveDriveModule implements DriveModule {
 
     public void ToggleFieldOriented(boolean pressed) {
         // TODO: this was breaking driving because it toggles constantly with current logic.  Verify it's fixed
-        if (pressed) {
-            if (wasFieldOriented != isFieldOriented)
-                SetFieldOriented(!isFieldOriented);
-        }
+        if (pressed && !wasFieldOrientedPressed)
+            SetFieldOriented(!isFieldOriented);
+
+        wasFieldOrientedPressed = pressed;
     }
 
     public boolean IsFieldOriented() {
-        return this.isFieldOriented;
+        return isFieldOriented;
     }
 
     // Zero all commanded outputs and optionally push zeros to hardware
@@ -421,6 +422,9 @@ public class SwerveDriveModule implements DriveModule {
             var seekTag = posNorm == 0.0;
             myTable.getEntry("seekTag").setBoolean(seekTag);
 
+            if (!seekTag)
+                seekRotation = 0.0;
+
             // only process position if we have a target
             if (pose.HasPosition) {
                 var positionDelta = targetPosition.minus(currentPosition);
@@ -456,8 +460,7 @@ public class SwerveDriveModule implements DriveModule {
                 } else if (!wroteLateralThisTick && !wroteForwardThisTick) {
                     // shut down any previous drive commands because we lost our position
                     // TODO: need to smooth this out somehow, but keep it safe - jitters with limelight
-                    ProcessLateralSpeed(0.0);
-                    ProcessForwardSpeed(0.0);
+                    zeroPositionCommands();
                 }
             } else {
                 // avoid deadlock, if we don't have a position defined, short circuit
@@ -476,18 +479,20 @@ public class SwerveDriveModule implements DriveModule {
                         var rotationDelta = targetRotation.getRadians() - newAngleRad;
                         rotationDeltaEntry.setDouble(rotationDelta);
                         rotationTargetEntry.setDouble(targetRotation.getRadians());
-                        targetValue = targetRotation.getRadians();
+                        targetValue = rotationDelta;
                         processAngle = true;
                     } else if (pose.HasLookAt && posNorm > 0.0) {
                         // trying to rotat from the camera's vantage point to ensure that the april tags are always in the center
                         // TODO: keep working on look at angle
-                        var adjustedPos = positioner.GetOffset();
+                        var adjustedPos = positioner.GetReferenceInFieldCoords();
                         myTable.getEntry("adjustedPos").setString(adjustedPos.toString());
                         var lookAt = pose.LookAt;
                         // should this be X,Y or Y,X?
+                        // TODO: not sure why we keep rethinking this
                         var lookTarget = Math.atan2(lookAt.getY() - adjustedPos.getY(), lookAt.getX() - adjustedPos.getX());
+                        // adjust rotation for camera rotation offset
+                        lookTarget = lookTarget - positioner.GetReferenceInRobotCoords().getRotation().getZ();
                         // wrap to positive and modulo
-                        // TODO: not sure why we keep rethinking this - why is it wrong?
                         lookTarget = (lookTarget + (2 * Math.PI)) % (2 * Math.PI);
                         lookTargetAngEntry.setDouble(lookTarget);
                         lookTargetPosEntry.setString(lookAt.toString());
@@ -507,8 +512,12 @@ public class SwerveDriveModule implements DriveModule {
                             ProcessRotationAngle(rotationSpeed);
                         }
                     } else if(seekTag) {
-                        // slowly turn right until we find our position
-                        ProcessRotationAngle(0.25);
+                        if (seekRotation == 0.0) {
+                            double sign = previousRotationSpeed >= 0.0 ? -1.0 : 1.0;
+                            seekRotation = sign * 0.25;
+                        }
+                        // slowly turn the opposite direction until we find our position
+                        ProcessRotationAngle(seekRotation);
                     }
                 }
             } else {
@@ -629,6 +638,7 @@ public class SwerveDriveModule implements DriveModule {
         currentAngle += thisRotationSpeed * fakeGyroRate;
         fakeAngleEntry.setDouble(currentAngle);
         previousAngle = currentAngle;
+        previousRotationSpeed = thisRotationSpeed;
 
         // update dashboard
         SmartDashboard.putNumberArray("RobotDrive Motors", new double[] {driveModules.get(0).getSpeed(), driveModules.get(1).getSpeed(), 0.0, 0.0});
@@ -646,8 +656,8 @@ public class SwerveDriveModule implements DriveModule {
 
     @Override
     public Pose3d GetPosition() {
-        var newPosition = isPositionerHealthy() ? positioner.GetPosition() : currentPosition;
-        return new Pose3d(newPosition, new Rotation3d(0, 0, getCurrentGyroValue()));
+        return isPositionerHealthy() ? positioner.GetPose() : new Pose3d(currentPosition, new Rotation3d(0, 0, getCurrentGyroValue()));
+        // return new Pose3d(newPosition, new Rotation3d(0, 0, getCurrentGyroValue()));
         // return new Translation3d(currentPosition.getX(), currentPosition.getY(), currentAngle);
     }
 }

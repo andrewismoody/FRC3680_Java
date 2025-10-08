@@ -128,7 +128,7 @@ public class GameController {
 
     public void GetValueButtonValue(ButtonName button) {
         var value = GetValueButtonSupplier(button);
-        if (ValueButtonInversion.get(button) != null && ValueButtonInversion.get(button))
+        if (ValueButtonInversion.getOrDefault(button, false))
             value *= -1;
 
         for (Consumer<Double> consumer : ValueButtonConsumers.get(button))

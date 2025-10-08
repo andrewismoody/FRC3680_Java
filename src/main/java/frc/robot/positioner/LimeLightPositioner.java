@@ -42,25 +42,34 @@ public class LimeLightPositioner implements Positioner {
         };
     }
 
-    public Translation3d GetPosition() {
-        return GetPose().getTranslation();
-    }
-
     public Pose3d GetPose() {
-        if (DriverStation.getAlliance().get() == Alliance.Red)
-            return new Pose3d(LimelightHelpers.getBotPoseEstimate_wpiRed_MegaTag2("").pose);
-        else
-            return new Pose3d(LimelightHelpers.getBotPoseEstimate_wpiBlue_MegaTag2("").pose);
+        if (useMegatagTwo) {
+            if (DriverStation.getAlliance().get() == Alliance.Red)
+                return new Pose3d(LimelightHelpers.getBotPoseEstimate_wpiRed_MegaTag2("").pose);
+            else
+                return new Pose3d(LimelightHelpers.getBotPoseEstimate_wpiBlue_MegaTag2("").pose);
+        } else {
+            if (DriverStation.getAlliance().get() == Alliance.Red)
+                return LimelightHelpers.getBotPose3d_wpiRed("");
+            else
+                return LimelightHelpers.getBotPose3d_wpiBlue("");
+        }
     }
 
-    public Translation3d GetOffset() {
+    public Pose3d GetReferenceInFieldCoords() {
         Pose3d robotPose = GetPose();
         Pose3d cameraPose = LimelightHelpers.getCameraPose3d_RobotSpace("");
         // this looks backwards?
-        Transform3d cameraTransform = new Transform3d(robotPose.getTranslation(), robotPose.getRotation());
-        cameraPose = cameraPose.transformBy(cameraTransform);
+        Transform3d cameraTransform = new Transform3d(cameraPose.getTranslation(), cameraPose.getRotation());
+        cameraPose = robotPose.transformBy(cameraTransform);
 
-        return cameraPose.getTranslation();
+        return cameraPose;
+    }
+
+    public Pose3d GetReferenceInRobotCoords() {
+        Pose3d cameraPose = LimelightHelpers.getCameraPose3d_RobotSpace("");
+
+        return cameraPose;
     }
 
     // SetRobotOrientation - yaw is in degrees
@@ -108,7 +117,7 @@ public class LimeLightPositioner implements Positioner {
         // if (Math.abs(now - lastHealthCheckTs) < 15)
         //     return positionerHealthy; // don't check more than once per tick
         
-        Translation3d pos = GetPosition();
+        Translation3d pos = GetPose().getTranslation();
         boolean bad = false;
         boolean wasBad = false;
 
