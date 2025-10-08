@@ -16,10 +16,10 @@ import frc.robot.z2025.action.Position;
 public class ActionPoses {
     public static void Initialize(SwerveDriveModule swerveDriveModule, SingleMotorModule elevator, SingleActuatorModule slide) {
         // Position Targets
-        var Waypoint1 = new Translation3d(3.15, 5.75, 0);
-        var Waypoint11 = new Translation3d(5.8, 5.75, 0);
-        var Waypoint12 = new Translation3d(4.47, 6.45, 0);
-        var Scoring1 = new Translation3d(3.75, 5.55, 0);
+        var Waypoint1 = new Translation3d(2.65, 6.45, 0);
+        var Waypoint11 = new Translation3d(6.35, 6.65, 0);
+        var Waypoint12 = new Translation3d(4.47, 7.45, 0);
+        var Scoring1 = new Translation3d(3.25, 6.35, 0);
         var Loading1 = new Translation3d(1.15, 7.08, 0);
 
         // Lookat Targets
@@ -27,7 +27,7 @@ public class ActionPoses {
         var ReefCenter = new Translation3d(4.49, 4.03, 0);
 
         // start, 240 (we don't know where we are yet, so rotate a specific angle to face a tag)
-        swerveDriveModule.AddActionPose(new ActionPose(Group.Start, Location.Barge.getValue(), 1, Position.Any.getValue(), Action.Any, new AutoTarget(new Rotation2d(4.24))));
+        swerveDriveModule.AddActionPose(new ActionPose(Group.Start, Location.Barge.getValue(), 1, Position.Any.getValue(), Action.Any, new AutoTarget(new Rotation2d(2.75))));
         // waypoint 11, Lookta reef
         swerveDriveModule.AddActionPose(new ActionPose(Group.Score, Location.Waypoint.getValue(), 11, Position.Any.getValue(), Action.Any, new AutoTarget(Waypoint11, ReefCenter)));
         // waypoint 12, Lookat reef
@@ -36,13 +36,15 @@ public class ActionPoses {
         swerveDriveModule.AddActionPose(new ActionPose(Group.Score, Location.Waypoint.getValue(), 1, Position.Any.getValue(), Action.Any, new AutoTarget(Waypoint1, ReefCenter)));
         // scoring 1, Lookat reef
         swerveDriveModule.AddActionPose(new ActionPose(Group.Score, Location.Reef.getValue(), 1, Position.Any.getValue(), Action.Any, new AutoTarget(Scoring1, ReefCenter)));
+
+        // TODO: seek tag breaks this - will have to hard code a rotation like start to switch lookat targets - or fix seek tag
         // waypoint 1, 126 -- should this be hard-coded to a rotation or will LookAt work as long as we don't "clear" our position?
         swerveDriveModule.AddActionPose(new ActionPose(Group.Pickup, Location.Waypoint.getValue(), 1, Position.Any.getValue(), Action.Any, new AutoTarget(Waypoint1, Tag1)));
         // loading 1, 126
         swerveDriveModule.AddActionPose(new ActionPose(Group.Pickup, Location.Coral.getValue(), 1, Position.Any.getValue(), Action.Any, new AutoTarget(Loading1, Tag1)));
 
-        elevator.AddActionPose(new ActionPose(Group.Score, Location.Any.getValue(), -1, Position.Lower.getValue(), Action.Any, new AutoTarget(0.28)));
-        elevator.AddActionPose(new ActionPose(Group.Score, Location.Any.getValue(), -1, Position.Middle.getValue(), Action.Any, new AutoTarget(1.14)));
+        elevator.AddActionPose(new ActionPose(Group.Score, Location.Any.getValue(), -1, Position.Middle.getValue(), Action.Any, new AutoTarget(1.36)));
+        elevator.AddActionPose(new ActionPose(Group.Score, Location.Any.getValue(), -1, Position.Lower.getValue(), Action.Any, new AutoTarget(0.55)));
         elevator.AddActionPose(new ActionPose(Group.Any, Location.Any.getValue(), -1, Position.Trough.getValue(), Action.Any, new AutoTarget(0.0)));
 
         slide.AddActionPose(new ActionPose(Group.Any, Location.Any.getValue(), -1, Position.Any.getValue(), Action.Drop, new AutoTarget(ModuleState.Forward)));

@@ -213,7 +213,7 @@ public class SingleMotorModule implements RobotModule {
 
     public void EvaluateTargetPose() {
         // TODO: detect button input and bypass - how would this ever get set to non-zero at this point?
-        if (targetPose != null && currentDriveSpeed != 0.0) {
+        if (targetPose != null) { //} && currentDriveSpeed != 0.0) {
             double angleTolerance = 0.00001; // 0.00001;
             var target = targetPose.target;
     
@@ -289,10 +289,14 @@ public class SingleMotorModule implements RobotModule {
     // AddButtonMappedPose adds a position to the array and returns a reference to the function
     public Consumer<Boolean> AddButtonMappedPose(ActionPose pose) {
         var setTarget = new Consumer<Boolean>() {
+            boolean wasPressed = false;
             @Override
             public void accept(Boolean pressed) {
-                if (pressed)
-                    SetTargetActionPose(pose);;
+                if (pressed && !wasPressed) {
+                    SetTargetActionPose(pose);
+                    System.out.printf("pose button pressed; %s\n", targetPose.toString());
+                }
+                wasPressed = pressed;
             }
         };
         buttonMappedPoses.add(setTarget);
@@ -312,10 +316,14 @@ public class SingleMotorModule implements RobotModule {
     // AddButtonMappedTarget adds a position to the array and returns a reference to the function
     public Consumer<Boolean> AddButtonMappedTarget(double position) {
         var setTarget = new Consumer<Boolean>() {
+            boolean wasPressed = false;
             @Override
             public void accept(Boolean pressed) {
-                if (pressed)
+                if (pressed && !wasPressed) {
                     targetPose = new ActionPose(Group.Any, -1, -1, -1, Action.Any, new AutoTarget(position));
+                    System.out.printf("target button pressed; %s\n", targetPose.toString());
+                }
+                wasPressed = pressed;
             }
         };
         buttonMappedTargets.add(setTarget);

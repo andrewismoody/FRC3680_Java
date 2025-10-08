@@ -260,7 +260,6 @@ public class SwerveDriveModule implements DriveModule {
     }
 
     public void ToggleFieldOriented(boolean pressed) {
-        // TODO: this was breaking driving because it toggles constantly with current logic.  Verify it's fixed
         if (pressed && !wasFieldOrientedPressed)
             SetFieldOriented(!isFieldOriented);
 
@@ -425,6 +424,10 @@ public class SwerveDriveModule implements DriveModule {
             if (!seekTag)
                 seekRotation = 0.0;
 
+            rotationReachedEntry.setBoolean(rotationReached);
+            lateralReachedEntry.setBoolean(lateralReached);
+            forwardReachedEntry.setBoolean(forwardReached);
+
             // only process position if we have a target
             if (pose.HasPosition) {
                 var positionDelta = targetPosition.minus(currentPosition);
@@ -468,8 +471,14 @@ public class SwerveDriveModule implements DriveModule {
                 forwardReached = true;
             }
 
+            // TOD: why isn't this called consistently?
+            // if we have a lookat and we've reached our position, don't keep trying to find the lookat
+            myTable.getEntry("HasLookAt").setBoolean(pose.HasLookAt);
+            if (pose.HasLookAt && lateralReached && forwardReached)
+                rotationReached = true;
+
             // only process rotation if we have a target and haven't already been overridden this tick
-            if (pose.HasOrientation || pose.HasLookAt || seekTag) {
+            if (!rotationReached && (pose.HasOrientation || pose.HasLookAt || seekTag)) {
                 if (!wroteRotationThisTick) { // allows game controller precedence
                     double targetValue = 0.0;
                     boolean processAngle = false;
@@ -479,19 +488,19 @@ public class SwerveDriveModule implements DriveModule {
                         var rotationDelta = targetRotation.getRadians() - newAngleRad;
                         rotationDeltaEntry.setDouble(rotationDelta);
                         rotationTargetEntry.setDouble(targetRotation.getRadians());
-                        targetValue = rotationDelta;
+                        targetValue = targetRotation.getRadians();
                         processAngle = true;
                     } else if (pose.HasLookAt && posNorm > 0.0) {
-                        // trying to rotat from the camera's vantage point to ensure that the april tags are always in the center
-                        // TODO: keep working on look at angle
+                        // trying to rotate from the camera's vantage point to ensure that the april tags are always in the center
                         var adjustedPos = positioner.GetReferenceInFieldCoords();
                         myTable.getEntry("adjustedPos").setString(adjustedPos.toString());
                         var lookAt = pose.LookAt;
-                        // should this be X,Y or Y,X?
-                        // TODO: not sure why we keep rethinking this
-                        var lookTarget = Math.atan2(lookAt.getY() - adjustedPos.getY(), lookAt.getX() - adjustedPos.getX());
+                        // currently, this gets the atan with axes flipped and then subtracts from negative field orientation
+                        var lookTarget = -1.566 - Math.atan2(lookAt.getX() - adjustedPos.getX(), lookAt.getY() - adjustedPos.getY());
+                        myTable.getEntry("lookTargetRaw").setDouble(lookTarget);
                         // adjust rotation for camera rotation offset
                         lookTarget = lookTarget - positioner.GetReferenceInRobotCoords().getRotation().getZ();
+                        myTable.getEntry("lookTargetAdj").setDouble(lookTarget);
                         // wrap to positive and modulo
                         lookTarget = (lookTarget + (2 * Math.PI)) % (2 * Math.PI);
                         lookTargetAngEntry.setDouble(lookTarget);
@@ -502,7 +511,7 @@ public class SwerveDriveModule implements DriveModule {
 
                     if (processAngle) { // only try to process the angle if we've given it one
                         var rotationSpeed = -rotationPidController.calculate(newAngleRad, targetValue);
-                        if (Math.abs(rotationSpeed) < floatTolerance) {
+                        if (Math.abs(newAngleRad - targetValue) < floatTolerance) {
                             // only mark 'reached' if we don't have a lookat target or our position is also reached
                             if (!pose.HasLookAt || (lateralReached && forwardReached))
                                 rotationReached = true;
@@ -566,7 +575,10 @@ public class SwerveDriveModule implements DriveModule {
 
         // TODO: Identify if this is correct - does it need inverse or does everything use normal?
         // yaw is in degrees
-        positioner.SetRobotOrientation("", currentGyroAngle / 0.174, 0,0,0,0,0);
+        var limelightAngle = currentGyroAngle / ((Math.PI * 2) / 360);
+        myTable.getEntry("limelightAngleRaw").setDouble(limelightAngle);
+        myTable.getEntry("limelightAngleRedAdj").setDouble((limelightAngle + 180) % 360);
+        positioner.SetRobotOrientation("", limelightAngle, 0,0,0,0,0);
 
         currentPosition = currentPose.getTranslation();
 
@@ -656,7 +668,7 @@ public class SwerveDriveModule implements DriveModule {
 
     @Override
     public Pose3d GetPosition() {
-        return isPositionerHealthy() ? positioner.GetPose() : new Pose3d(currentPosition, new Rotation3d(0, 0, getCurrentGyroValue()));
+        return isPositionerHealthy() ? positioner.GetPose() : new Pose3d(positioner.GetPose().getTranslation(), new Rotation3d(0, 0, getCurrentGyroValue()));
         // return new Pose3d(newPosition, new Rotation3d(0, 0, getCurrentGyroValue()));
         // return new Translation3d(currentPosition.getX(), currentPosition.getY(), currentAngle);
     }

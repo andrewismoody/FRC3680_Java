@@ -6,7 +6,7 @@ package frc.robot.z2025;
 
 import java.util.Hashtable;
 
-import edu.wpi.first.cameraserver.CameraServer;
+// import edu.wpi.first.cameraserver.CameraServer;
 import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.networktables.DoubleSubscriber;
 import edu.wpi.first.networktables.NetworkTableInstance;
@@ -85,6 +85,7 @@ public class Robot extends TimedRobot {
   GameController m_controller = null;
 
   final Timer m_timer = new Timer();
+  final Timer gc_timer = new Timer();
 
   final boolean isFieldOriented = true;
 
@@ -147,7 +148,10 @@ public class Robot extends TimedRobot {
   private DoubleSubscriber slider0Sub;
 
   public Robot() {
-    CameraServer.startAutomaticCapture();
+    gc_timer.start();
+
+    // TODO: figure out if we actually need this - clogs up the log - for raspi?
+    // CameraServer.startAutomaticCapture();
   }
 
   /**
@@ -175,7 +179,7 @@ public class Robot extends TimedRobot {
 
     // modules.SetEnableDrive(true);
     // modules.SetEnableSteer(true);
-    // modules.SetEnableDriveTrain(true);
+    // modules.SetEnableDriveTrain(false);
 
     Dashboard.InitializeChoosers();
     // Add action poses before button mappings so buttons can drive action poses
@@ -202,6 +206,10 @@ public class Robot extends TimedRobot {
   /** This function is called periodically during autonomous. */
   @Override
   public void autonomousPeriodic() {
+    // run the garbage collector every 5 seconds
+    if (gc_timer.advanceIfElapsed(5))
+      System.gc();
+
     currentAutoMode.Update();
     
     modules.ProcessState(true);

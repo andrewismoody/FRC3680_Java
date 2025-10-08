@@ -78,8 +78,8 @@ public class LimeLightPositioner implements Positioner {
     double roll, double rollRate) {
         // TODO: re-evalutate this according to red/blue alliance positioning
         // Initial testing shows that it doesn't need to be adjusted - verify and test with Blue Origin
-        // if (DriverStation.getAlliance().get() == Alliance.Red)
-        //     yaw += 180 % 360;
+        if (DriverStation.getAlliance().get() == Alliance.Red)
+            yaw = (yaw + 180) % 360;
 
         LimelightHelpers.SetRobotOrientation(limelightName, yaw, yawRate, pitch, pitchRate, roll, rollRate);
     }
@@ -130,17 +130,17 @@ public class LimeLightPositioner implements Positioner {
         //     wasBad = true;
         // }
 
-        if (!bad) {
-            // don't check for jump if we haven't found our position yet
-            if (pos.getNorm()> 0.0 && lastHealthPos.getNorm() > 0.0) {
-                double jump = lastHealthPos.minus(pos).getNorm();
-                if (lastHealthTsMs > 0 && jump > posJumpLimitMeters) bad = true;
-                if (lastHealthTsMs > 0 && (now - lastHealthTsMs) > posStaleTimeoutMs) bad = true;
-            }
-        } else if (!wasBad) {
-            healthReason = "NAN/Infinite";
-            wasBad = true;
-        }
+        // if (!bad) {
+        //     // don't check for jump if we haven't found our position yet
+        //     if (pos.getNorm()> 0.0 && lastHealthPos.getNorm() > 0.0) {
+        //         double jump = lastHealthPos.minus(pos).getNorm();
+        //         if (lastHealthTsMs > 0 && jump > posJumpLimitMeters) bad = true;
+        //         if (lastHealthTsMs > 0 && (now - lastHealthTsMs) > posStaleTimeoutMs) bad = true;
+        //     }
+        // } else if (!wasBad) {
+        //     healthReason = "NAN/Infinite";
+        //     wasBad = true;
+        // }
 
         if (!bad) {
             lastHealthPos = pos;
