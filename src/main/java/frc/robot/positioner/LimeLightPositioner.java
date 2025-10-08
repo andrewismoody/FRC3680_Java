@@ -6,6 +6,7 @@ import edu.wpi.first.math.geometry.Translation3d;
 import edu.wpi.first.net.PortForwarder;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.DriverStation.Alliance;
+import frc.robot.positioner.LimelightHelpers.PoseEstimate;
 
 public class LimeLightPositioner implements Positioner {
     boolean useMegatagTwo = true;
@@ -43,16 +44,20 @@ public class LimeLightPositioner implements Positioner {
     }
 
     public Pose3d GetPose() {
+        return new Pose3d(GetPoseEstimate().pose);
+    }
+
+    public PoseEstimate GetPoseEstimate() {
         if (useMegatagTwo) {
             if (DriverStation.getAlliance().get() == Alliance.Red)
-                return new Pose3d(LimelightHelpers.getBotPoseEstimate_wpiRed_MegaTag2("").pose);
+                return LimelightHelpers.getBotPoseEstimate_wpiRed_MegaTag2("");
             else
-                return new Pose3d(LimelightHelpers.getBotPoseEstimate_wpiBlue_MegaTag2("").pose);
+                return LimelightHelpers.getBotPoseEstimate_wpiBlue_MegaTag2("");
         } else {
             if (DriverStation.getAlliance().get() == Alliance.Red)
-                return LimelightHelpers.getBotPose3d_wpiRed("");
+                return LimelightHelpers.getBotPoseEstimate_wpiRed("");
             else
-                return LimelightHelpers.getBotPose3d_wpiBlue("");
+                return LimelightHelpers.getBotPoseEstimate_wpiBlue("");
         }
     }
 

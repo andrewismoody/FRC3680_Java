@@ -16,11 +16,14 @@ import edu.wpi.first.networktables.NetworkTable;
 import edu.wpi.first.networktables.NetworkTableInstance;
 import edu.wpi.first.networktables.NetworkTableEntry;
 import edu.wpi.first.math.controller.PIDController;
+import edu.wpi.first.math.estimator.SwerveDrivePoseEstimator;
+import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Pose3d;
 import edu.wpi.first.wpilibj.RobotBase;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 
 import frc.robot.positioner.Positioner;
+import frc.robot.positioner.LimelightHelpers.PoseEstimate;
 import frc.robot.action.Group;
 import frc.robot.action.Action;
 import frc.robot.action.ActionPose;
@@ -45,6 +48,7 @@ public class SwerveDriveModule implements DriveModule {
     double seekRotation = 0.0;
     double seekStart = 0.0;
     boolean seekReversed = false;
+    boolean positionInitialized = false;
 
     double forwardSpeed = 0.0;
     double lateralSpeed = 0.0;
@@ -77,6 +81,8 @@ public class SwerveDriveModule implements DriveModule {
     private boolean wroteForwardThisTick = false;
     private boolean wroteLateralThisTick = false;
     private boolean wroteRotationThisTick = false;
+
+    SwerveDrivePoseEstimator poseEstimator;
 
     NetworkTable myTable;
 
@@ -127,7 +133,6 @@ public class SwerveDriveModule implements DriveModule {
         gyro = Gyro;
         positioner = Positioner;
         floatTolerance = FloatTolerance;
-
         // initialize modules after setting values, as modules lookup values from controller
         // TODO: maybe make this a little less brittle
         for (SwerveMotorModule module : modules) {
@@ -154,6 +159,8 @@ public class SwerveDriveModule implements DriveModule {
     
         kinematics = new SwerveDriveKinematics(translations);
         odometry = new SwerveDriveOdometry(kinematics, new Rotation2d(gyro.getGyroAngleZ()), positions);
+
+        poseEstimator = new SwerveDrivePoseEstimator(kinematics, new Rotation2d(getInvertedGyroValue()), positions, Pose2d.kZero);
     }
 
     public String GetModuleID() {
@@ -420,7 +427,9 @@ public class SwerveDriveModule implements DriveModule {
             var rotationReached = false;
             var positionerHealthy = isPositionerHealthy();
             var posNorm = currentPosition.getNorm();
-            var seekTag = posNorm == 0.0;
+
+            // TODO: re-evaluate if this is needed with estimator
+            var seekTag = false; // posNorm == 0.0;
             myTable.getEntry("seekTag").setBoolean(seekTag);
 
             if (!seekTag) {
@@ -583,16 +592,27 @@ public class SwerveDriveModule implements DriveModule {
         // https://docs.wpilib.org/en/stable/docs/software/hardware-apis/sensors/gyros-software.html
         // https://www.chiefdelphi.com/t/set-motor-position-with-encoder/152088/3
 
-        Pose3d currentPose = GetPosition();
+        PoseEstimate visionEstimate = positioner.GetPoseEstimate();
+        poseEstimator.addVisionMeasurement(visionEstimate.pose, visionEstimate.latency);
+
         // Invert the Gyro angle because it rotates opposite of the robot steering, then wrap it to a positive value
         double currentGyroAngle = getInvertedGyroValue();
         currentGyroAngleEntry.setDouble(currentGyroAngle);
+
+        if (!positionInitialized && visionEstimate.pose.getTranslation().getNorm() > 0.0) {
+            positionInitialized = true;
+            myTable.getEntry("positionInitialized").setBoolean(positionInitialized);
+
+            poseEstimator.resetPose(visionEstimate.pose);
+        }
+
+        Pose3d currentPose = new Pose3d(poseEstimator.getEstimatedPosition());
 
         // TODO: Identify if this is correct - does it need inverse or does everything use normal?
         // yaw is in degrees
         var limelightAngle = currentGyroAngle / ((Math.PI * 2) / 360);
         myTable.getEntry("limelightAngleRaw").setDouble(limelightAngle);
-        myTable.getEntry("limelightAngleRedAdj").setDouble((limelightAngle + 180) % 360);
+        myTable.getEntry("limelightAngleRadAdj").setDouble((limelightAngle + 180) % 360);
         positioner.SetRobotOrientation("", limelightAngle, 0,0,0,0,0);
 
         currentPosition = currentPose.getTranslation();
@@ -618,9 +638,10 @@ public class SwerveDriveModule implements DriveModule {
         double thisRotationSpeed = rotationAngle * controller.ApplyModifiers(rotationMultiplier); //rotationAngle; // * controller.ApplyModifiers(this.rotationSpeed);
         rotationSpeedEntry.setDouble(thisRotationSpeed);
 
+        var currentRotation = Rotation2d.fromRadians(getCurrentGyroValue());
         // TODO: comb through all coordinate systems and identify why we have to flip lateral and forward here
         ChassisSpeeds speeds = isFieldOriented ?
-            ChassisSpeeds.fromFieldRelativeSpeeds(lateralSpeed, forwardSpeed, thisRotationSpeed, Rotation2d.fromRadians(getCurrentGyroValue()))
+            ChassisSpeeds.fromFieldRelativeSpeeds(lateralSpeed, forwardSpeed, thisRotationSpeed, currentRotation)
             : new ChassisSpeeds(lateralSpeed, forwardSpeed, thisRotationSpeed);
 
         SwerveModuleState[] moduleStates;
@@ -641,12 +662,14 @@ public class SwerveDriveModule implements DriveModule {
         for (int i = 0; i < driveModules.size(); i++) {
             SwerveMotorModule module = driveModules.get(i);
             module.updateModuleValues(moduleStates[i], optimize);
+            // TODO: this becomes critical with pose estimator - make sure it's right - maybe add drive wheel encoder values
             positions[i] = module.getPosition();
             if (i < driveSpeeds.length)
                 driveSpeeds[i] = module.getSpeed();
         }
 
-        odometry.update(Rotation2d.fromRadians(currentGyroAngle), positions);
+        odometry.update(currentRotation, positions);
+        poseEstimator.update(currentRotation, positions);
 
         var primaryModule = driveModules.get(0);
         if (primaryModule != null) {

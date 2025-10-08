@@ -1,6 +1,7 @@
 package frc.robot.positioner;
 
 import edu.wpi.first.math.geometry.Pose3d;
+import frc.robot.positioner.LimelightHelpers.PoseEstimate;
 
 public interface Positioner {
     public void Initialize();
@@ -13,4 +14,5 @@ public interface Positioner {
     public String GetHealthReason();
     public Pose3d GetReferenceInFieldCoords();
     public Pose3d GetReferenceInRobotCoords();
+    public PoseEstimate GetPoseEstimate();
 }
