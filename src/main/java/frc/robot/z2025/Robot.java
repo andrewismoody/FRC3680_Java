@@ -89,7 +89,7 @@ public class Robot extends TimedRobot {
 
   final boolean isFieldOriented = true;
 
-  final double m_floatTolerance = 0.08; // 0.2;
+  final double m_floatTolerance = 0.04; // 0.2;
   // Rev NEO empirical motor speed = 5676 rotations per minute; 5676 / 60 = 94.6 rotations per second
   // 100:1 gearbox on 94.6 rps = 0.946 rps shaft output
   final double m_elevatorSpeed = (5676.0 / 60.0) / 100.0;
@@ -197,6 +197,9 @@ public class Robot extends TimedRobot {
       selectedMode = currentAutoMode; 
     selectedMode.Initialize();
 
+    // TODO: evaluate whether this is good or not - rezeroes on enable
+    modules.Initialize();
+
     // default to field oriented for Auto
     modules.GetDriveModule().SetFieldOriented(true);
 
@@ -220,6 +223,9 @@ public class Robot extends TimedRobot {
    */
   @Override
   public void teleopInit() {
+    // TODO: evaluate whether this is good or not - rezeroes on enable
+    modules.Initialize();
+
     // switch back to defined field oriented mode when we start up tele-op; prevents bleedover from auto
     modules.GetDriveModule().SetFieldOriented(isFieldOriented);
   }

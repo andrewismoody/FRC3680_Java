@@ -19,7 +19,7 @@ public class ActionPoses {
         var Waypoint1 = new Translation3d(2.65, 6.45, 0);
         var Waypoint11 = new Translation3d(6.35, 6.65, 0);
         var Waypoint12 = new Translation3d(4.47, 7.45, 0);
-        var Scoring1 = new Translation3d(3.25, 6.35, 0);
+        var Scoring1 = new Translation3d(2.63, 5.66, 0);
         var Loading1 = new Translation3d(1.15, 7.08, 0);
 
         // Lookat Targets
