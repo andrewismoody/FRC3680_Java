@@ -39,16 +39,20 @@ public class SequenceControllerStartScoreReload extends AutoSequence {
     AutoEventTime driveLeft = new AutoEventTime("Drive Left", false, 2000, AutoEvent.EventType.Double, ac);
     driveLeft.SetDoubleEvent(-0.5, drive::ProcessLateralSpeed); // negative = left
 
-    AutoEventTime toggleFieldOriented = new AutoEventTime("Unset Field Oriented", false, 1, AutoEvent.EventType.Boolean, ac);
-    toggleFieldOriented.SetBoolEvent(true, drive::ToggleFieldOriented); // true means 'do it'
+    // TODO: this didn't seem to fire
+    AutoEventTime enableFieldOriented = new AutoEventTime("Enable Field Oriented", false, 1, AutoEvent.EventType.Boolean, ac);
+    enableFieldOriented.SetBoolEvent(true, drive::SetFieldOriented);
+
+    AutoEventTime disableFieldOriented = new AutoEventTime("Disable Field Oriented", false, 1, AutoEvent.EventType.Boolean, ac);
+    disableFieldOriented.SetBoolEvent(false, drive::SetFieldOriented);
 
     AutoEventTarget ElevatorToLower = new AutoEventTarget("Elevator to Lower", false, elevator.GetActionPose(Group.Score, Location.Any.getValue(), -1, Position.Lower.getValue(), Action.Any), AutoEvent.EventType.AwaitTarget, ac);
     AutoEventTarget ElevatorToTrough = new AutoEventTarget("Elevator to Trough", false, elevator.GetActionPose(Group.Score, Location.Any.getValue(), -1, Position.Trough.getValue(), Action.Any), AutoEvent.EventType.AwaitTarget, ac);
 
-    AutoEventTime openLatch = new AutoEventTime("Open Latch", false, 0, AutoEvent.EventType.Boolean, ac);
+    AutoEventTime openLatch = new AutoEventTime("Open Latch", false, 2000, AutoEvent.EventType.Boolean, ac);
     openLatch.SetBoolEvent(true, slide::ApplyValue);
 
-    AutoEventTime closeLatchAfter = new AutoEventTime("Close Latch (after 2s)", false, 2000, AutoEvent.EventType.Boolean, ac);
+    AutoEventTime closeLatchAfter = new AutoEventTime("Close Latch (after 2s)", false, 1, AutoEvent.EventType.Boolean, ac);
     closeLatchAfter.SetBoolEvent(true, slide::ApplyInverse); // true => reverse/close
 
     var Poses = new Hashtable<String, ActionPose>();
@@ -68,12 +72,12 @@ public class SequenceControllerStartScoreReload extends AutoSequence {
       AddEvent(awaitPose);
     }
 
-    AddEvent(toggleFieldOriented);
+    AddEvent(disableFieldOriented);
     AddEvent(driveLeft);
     AddEvent(ElevatorToLower);
     AddEvent(openLatch);
     AddEvent(closeLatchAfter);
     AddEvent(ElevatorToTrough);
-    AddEvent(toggleFieldOriented);
+    AddEvent(enableFieldOriented);
   }
 }

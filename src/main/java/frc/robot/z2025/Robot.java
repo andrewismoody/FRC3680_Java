@@ -198,7 +198,8 @@ public class Robot extends TimedRobot {
     selectedMode.Initialize();
 
     // TODO: evaluate whether this is good or not - rezeroes on enable
-    modules.Initialize();
+    // causes more trouble than it solves
+    // modules.Initialize();
 
     // default to field oriented for Auto
     modules.GetDriveModule().SetFieldOriented(true);
@@ -224,7 +225,8 @@ public class Robot extends TimedRobot {
   @Override
   public void teleopInit() {
     // TODO: evaluate whether this is good or not - rezeroes on enable
-    modules.Initialize();
+    // causes more trouble than it solves
+    // modules.Initialize();
 
     // switch back to defined field oriented mode when we start up tele-op; prevents bleedover from auto
     modules.GetDriveModule().SetFieldOriented(isFieldOriented);

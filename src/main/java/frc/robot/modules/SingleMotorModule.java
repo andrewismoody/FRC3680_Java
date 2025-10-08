@@ -294,7 +294,7 @@ public class SingleMotorModule implements RobotModule {
             public void accept(Boolean pressed) {
                 if (pressed && !wasPressed) {
                     SetTargetActionPose(pose);
-                    System.out.printf("pose button pressed; %s\n", targetPose.toString());
+                    System.out.printf("pose button pressed; %f\n", targetPose.target.Distance);
                 }
                 wasPressed = pressed;
             }
@@ -321,7 +321,7 @@ public class SingleMotorModule implements RobotModule {
             public void accept(Boolean pressed) {
                 if (pressed && !wasPressed) {
                     targetPose = new ActionPose(Group.Any, -1, -1, -1, Action.Any, new AutoTarget(position));
-                    System.out.printf("target button pressed; %s\n", targetPose.toString());
+                    System.out.printf("target button pressed; %f\n", position);
                 }
                 wasPressed = pressed;
             }

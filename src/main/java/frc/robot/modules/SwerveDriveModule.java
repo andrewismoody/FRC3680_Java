@@ -43,6 +43,8 @@ public class SwerveDriveModule implements DriveModule {
     Translation3d previousPosition = currentPosition;
     double previousRotationSpeed = 0.0;
     double seekRotation = 0.0;
+    double seekStart = 0.0;
+    boolean seekReversed = false;
 
     double forwardSpeed = 0.0;
     double lateralSpeed = 0.0;
@@ -421,8 +423,11 @@ public class SwerveDriveModule implements DriveModule {
             var seekTag = posNorm == 0.0;
             myTable.getEntry("seekTag").setBoolean(seekTag);
 
-            if (!seekTag)
+            if (!seekTag) {
                 seekRotation = 0.0;
+                seekStart = 0.0;
+                seekReversed = false;
+            }
 
             rotationReachedEntry.setBoolean(rotationReached);
             lateralReachedEntry.setBoolean(lateralReached);
@@ -521,10 +526,20 @@ public class SwerveDriveModule implements DriveModule {
                             ProcessRotationAngle(rotationSpeed);
                         }
                     } else if(seekTag) {
+                        // TODO: should not run in teleop mode
                         if (seekRotation == 0.0) {
                             double sign = previousRotationSpeed >= 0.0 ? -1.0 : 1.0;
                             seekRotation = sign * 0.25;
+                            seekStart = newAngleRad;
+                            seekReversed = false;
                         }
+
+                        if (!seekReversed && Math.abs(seekStart - newAngleRad) > 1.57) {
+                            // if we've turned 90 degrees from our starting point, flip direction
+                            seekRotation = -seekRotation;
+                            seekReversed = true;
+                        }
+
                         // slowly turn the opposite direction until we find our position
                         ProcessRotationAngle(seekRotation);
                     }
