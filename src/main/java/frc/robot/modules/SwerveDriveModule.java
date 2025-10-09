@@ -63,7 +63,7 @@ public class SwerveDriveModule implements DriveModule {
     public boolean useFakeGyro = !RobotBase.isReal();
     double currentAngle = 0.0;
     double previousAngle = 0.0;
-    double fakeGyroRate = 0.3;
+    double fakeGyroRate = 0.6;
 
     boolean isZeroPressed = false;
     boolean isLockPressed = false;
@@ -269,13 +269,14 @@ public class SwerveDriveModule implements DriveModule {
             positions[i] = module.getPosition();
         }
 
-        poseEstimator.resetPosition(newPose.getRotation().toRotation2d(), positions, newPose.toPose2d());
+        poseEstimator.resetPose(newPose.toPose2d());
 
         positionInitialized = true;
         myTable.getEntry("positionInitialized").setBoolean(positionInitialized);
     }
 
     public void SetFieldOriented(boolean value) {
+        System.out.printf("SetFieldOriented: %b\n", value);
         if (isFieldOriented != value) {
             isFieldOriented = value;
             fieldOrientedEntry.setBoolean(value);
@@ -421,7 +422,10 @@ public class SwerveDriveModule implements DriveModule {
     }
 
     public boolean isPositionerHealthy() {
-        var healthy = positioner.IsHealthy();
+        var healthy = true;
+
+        if (Robot.isReal())
+            healthy = positioner.IsHealthy();
 
         positionerHealthyEntry.setBoolean(healthy);
         positionHealthReasonEntry.setString(positioner.GetHealthReason());
@@ -429,7 +433,7 @@ public class SwerveDriveModule implements DriveModule {
         return healthy;
     }
 
-    public void EvaluateTargetPose(double newAngleRad) {
+    public void EvaluateTargetPose(Pose3d currentPose, double newAngleRad) {
         if (targetPose != null) {
             newAngleRadEntry.setDouble(newAngleRad);
             var pose = targetPose.target;
@@ -468,7 +472,9 @@ public class SwerveDriveModule implements DriveModule {
                     // TODO: why does this only work inverted'? - we must've confused coordinates somewhere else
                     // TODO: figure out how to allow target evaluation in teleop - game controller sends values for position constantly and overrides this, I think?
                     if (!wroteLateralThisTick) { // allows game controller precedence
-                        var lateralSpeed = -lateralPidController.calculate(currentPosition.getY(), targetPosition.getY());
+                        var lateralSpeed = lateralPidController.calculate(currentPosition.getY(), targetPosition.getY());
+                        // clamp to real values
+                        lateralSpeed = Math.max(-driveSpeed, Math.min(driveSpeed, lateralSpeed));
                         if (Math.abs(lateralSpeed) < floatTolerance) {
                             lateralReached = true;
                             lateralReachedEntry.setBoolean(lateralReached);
@@ -479,7 +485,9 @@ public class SwerveDriveModule implements DriveModule {
                     }
 
                     if (!wroteForwardThisTick) { // allows game controller precedence
-                        var forwardSpeed = -forwardPidController.calculate(currentPosition.getX(), targetPosition.getX());
+                        var forwardSpeed = forwardPidController.calculate(currentPosition.getX(), targetPosition.getX());
+                        // clamp to real values
+                        forwardSpeed = Math.max(-driveSpeed, Math.min(driveSpeed, forwardSpeed));
                         if (Math.abs(forwardSpeed) < floatTolerance) {
                             forwardReached = true;
                             forwardReachedEntry.setBoolean(forwardReached);
@@ -519,15 +527,19 @@ public class SwerveDriveModule implements DriveModule {
                         targetValue = targetRotation.getRadians();
                         processAngle = true;
                     } else if (pose.HasLookAt && posNorm > 0.0) {
+                        // TODO 1: recalculate according to coordinate system updates
                         // trying to rotate from the camera's vantage point to ensure that the april tags are always in the center
-                        var adjustedPos = positioner.GetReferenceInFieldCoords();
+                        var adjustedPos = Robot.isReal() ? positioner.GetReferenceInFieldCoords() : currentPose;
                         myTable.getEntry("adjustedPos").setString(adjustedPos.toString());
                         var lookAt = pose.LookAt;
                         // currently, this gets the atan with axes flipped and then subtracts from negative field orientation
-                        var lookTarget = -1.566 - Math.atan2(lookAt.getX() - adjustedPos.getX(), lookAt.getY() - adjustedPos.getY());
+                        // var lookTarget = -1.566 - Math.atan2(lookAt.getX() - adjustedPos.getX(), lookAt.getY() - adjustedPos.getY());
+                        var lookTarget = Math.atan2(lookAt.getY() - adjustedPos.getY(), lookAt.getX() - adjustedPos.getX());
                         myTable.getEntry("lookTargetRaw").setDouble(lookTarget);
                         // adjust rotation for camera rotation offset
-                        lookTarget = lookTarget - positioner.GetReferenceInRobotCoords().getRotation().getZ();
+                        // TODO 1: make sure limelight rotation is positive for real
+                        var referenceAngle = Robot.isReal() ? positioner.GetReferenceInRobotCoords().getRotation().getZ() : 1.566;
+                        lookTarget = lookTarget - referenceAngle;
                         myTable.getEntry("lookTargetAdj").setDouble(lookTarget);
                         // wrap to positive and modulo
                         lookTarget = (lookTarget + (2 * Math.PI)) % (2 * Math.PI);
@@ -538,7 +550,10 @@ public class SwerveDriveModule implements DriveModule {
                     }
 
                     if (processAngle) { // only try to process the angle if we've given it one
-                        var rotationSpeed = -rotationPidController.calculate(newAngleRad, targetValue);
+                        // TODO 1: make sure we're rotating the right direction for real - positive values here result in negative navx values, I think.
+                        var rotationSpeed = rotationPidController.calculate(newAngleRad, targetValue);
+                        // clamp to real values
+                        rotationSpeed = Math.max(-this.rotationSpeed, Math.min(this.rotationSpeed, rotationSpeed));
                         if (Math.abs(newAngleRad - targetValue) < floatTolerance) {
                             // only mark 'reached' if we don't have a lookat target or our position is also reached
                             if (!pose.HasLookAt || (lateralReached && forwardReached))
@@ -607,6 +622,7 @@ public class SwerveDriveModule implements DriveModule {
         // https://www.chiefdelphi.com/t/set-motor-position-with-encoder/152088/3
 
         // Invert the Gyro angle because it rotates opposite of the robot steering, then wrap it to a positive value
+        // TODO 1: check this after adjusting coordinate systems
         double currentGyroAngle = getInvertedGyroValue();
         currentGyroAngleEntry.setDouble(currentGyroAngle);
 
@@ -637,7 +653,7 @@ public class SwerveDriveModule implements DriveModule {
 
         currentPosition = currentPose.getTranslation();
 
-        EvaluateTargetPose(currentGyroAngle);
+        EvaluateTargetPose(currentPose, currentGyroAngle);
 
         // prevents bleedover between target poses
         if (isAuto && targetPose == null
@@ -658,11 +674,11 @@ public class SwerveDriveModule implements DriveModule {
         double thisRotationSpeed = rotationAngle * controller.ApplyModifiers(rotationMultiplier); //rotationAngle; // * controller.ApplyModifiers(this.rotationSpeed);
         rotationSpeedEntry.setDouble(thisRotationSpeed);
 
-        var currentRotation = Rotation2d.fromRadians(getCurrentGyroValue());
+        var currentRotation = Rotation2d.fromRadians(currentGyroAngle);
         // TODO: comb through all coordinate systems and identify why we have to flip lateral and forward here
         ChassisSpeeds speeds = isFieldOriented ?
-            ChassisSpeeds.fromFieldRelativeSpeeds(lateralSpeed, forwardSpeed, thisRotationSpeed, currentRotation)
-            : new ChassisSpeeds(lateralSpeed, forwardSpeed, thisRotationSpeed);
+            ChassisSpeeds.fromFieldRelativeSpeeds(forwardSpeed, lateralSpeed, thisRotationSpeed, currentRotation)
+            : new ChassisSpeeds(forwardSpeed, lateralSpeed, thisRotationSpeed);
 
         SwerveModuleState[] moduleStates;
 
@@ -705,6 +721,7 @@ public class SwerveDriveModule implements DriveModule {
         }
 
         // update fake gyro angle
+        // TODO 1: fake gyro is CW+ instead of CCW+ - fix this
         currentAngle += -thisRotationSpeed * fakeGyroRate;
         fakeAngleEntry.setDouble(currentAngle);
         previousAngle = currentAngle;

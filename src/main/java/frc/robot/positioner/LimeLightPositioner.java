@@ -49,6 +49,7 @@ public class LimeLightPositioner implements Positioner {
 
     public PoseEstimate GetPoseEstimate() {
         PoseEstimate poseEstimate = null;
+        // TODO 1: evaluate red/blue origin after adjusting coordinate systems
         if (useMegatagTwo) {
             if (DriverStation.getAlliance().isPresent() && DriverStation.getAlliance().get() == Alliance.Red)
                 poseEstimate = LimelightHelpers.getBotPoseEstimate_wpiRed_MegaTag2("");
@@ -84,8 +85,7 @@ public class LimeLightPositioner implements Positioner {
     public void SetRobotOrientation(String limelightName, double yaw, double yawRate, 
     double pitch, double pitchRate, 
     double roll, double rollRate) {
-        // TODO: re-evalutate this according to red/blue alliance positioning
-        // Initial testing shows that it doesn't need to be adjusted - verify and test with Blue Origin
+        // TODO 1: evaluate red/blue origin after adjusting coordinate systems
         if (DriverStation.getAlliance().isPresent() && DriverStation.getAlliance().get() == Alliance.Red)
             yaw = (yaw + 180) % 360;
 

@@ -37,13 +37,12 @@ public class SequenceControllerStartScoreReload extends AutoSequence {
     var slide = (SingleActuatorModule) modules.GetModule("slide");
 
     AutoEventTime driveLeft = new AutoEventTime("Drive Left", false, 2000, AutoEvent.EventType.Double, ac);
-    driveLeft.SetDoubleEvent(-0.5, drive::ProcessLateralSpeed); // negative = left
+    driveLeft.SetDoubleEvent(0.5, drive::ProcessLateralSpeed); // positive = left because orientation of robot is x forward, y left
 
-    // TODO: this didn't seem to fire
-    AutoEventTime enableFieldOriented = new AutoEventTime("Enable Field Oriented", false, 1, AutoEvent.EventType.Boolean, ac);
+    AutoEventTime enableFieldOriented = new AutoEventTime("Enable Field Oriented", false, 60, AutoEvent.EventType.Boolean, ac);
     enableFieldOriented.SetBoolEvent(true, drive::SetFieldOriented);
 
-    AutoEventTime disableFieldOriented = new AutoEventTime("Disable Field Oriented", false, 1, AutoEvent.EventType.Boolean, ac);
+    AutoEventTime disableFieldOriented = new AutoEventTime("Disable Field Oriented", false, 60, AutoEvent.EventType.Boolean, ac);
     disableFieldOriented.SetBoolEvent(false, drive::SetFieldOriented);
 
     AutoEventTarget ElevatorToLower = new AutoEventTarget("Elevator to Lower", false, elevator.GetActionPose(Group.Score, Location.Any.getValue(), -1, Position.Lower.getValue(), Action.Any), AutoEvent.EventType.AwaitTarget, ac);
@@ -52,11 +51,11 @@ public class SequenceControllerStartScoreReload extends AutoSequence {
     AutoEventTime openLatch = new AutoEventTime("Open Latch", false, 2000, AutoEvent.EventType.Boolean, ac);
     openLatch.SetBoolEvent(true, slide::ApplyValue);
 
-    AutoEventTime closeLatchAfter = new AutoEventTime("Close Latch (after 2s)", false, 1, AutoEvent.EventType.Boolean, ac);
+    AutoEventTime closeLatchAfter = new AutoEventTime("Close Latch (after 2s)", false, 60, AutoEvent.EventType.Boolean, ac);
     closeLatchAfter.SetBoolEvent(true, slide::ApplyInverse); // true => reverse/close
 
     var Poses = new Hashtable<String, ActionPose>();
-    Poses.put("1 Start 1", start1);
+    // Poses.put("1 Start 1", start1);
     // Poses.put("1 Waypoint 11 240", waypoint11_240);
     Poses.put("2 Waypoint 12 Reef", waypoint12_Reef);
     Poses.put("3 Waypoint 1 Reef", waypoint1_Reef);
@@ -66,6 +65,8 @@ public class SequenceControllerStartScoreReload extends AutoSequence {
 
     List<String> poseKeys = new ArrayList<String>(Poses.keySet());
     Collections.sort(poseKeys);
+
+    AddEvent(new AutoEventTarget("Await Pose Start 1", false, start1, AutoEvent.EventType.AwaitTarget, ac));
 
     for (var key : poseKeys) {
       AutoEventTarget awaitPose = new AutoEventTarget("Await Pose " + key, false, Poses.get(key), AutoEvent.EventType.AwaitTarget, ac);

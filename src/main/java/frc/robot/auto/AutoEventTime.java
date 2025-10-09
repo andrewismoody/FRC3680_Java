@@ -27,7 +27,8 @@ public class AutoEventTime implements AutoEvent {
     public AutoEventTime(String Label, boolean Parallel, long Milliseconds, EventType EventType, AutoController AutoController) {
         label = Label;
         parallel = Parallel;
-        milliseconds = Milliseconds;
+        // make 60 the minimum to ensure it always fires
+        milliseconds = Milliseconds < 60 ? 60 : Milliseconds;
         autoController = AutoController;
 
         eventType = EventType;

@@ -39,10 +39,13 @@
   },
   "NetworkTables": {
     "transitory": {
+      "elevator": {
+        "open": true
+      },
+      "slide": {
+        "open": true
+      },
       "swerveDrive": {
-        "leftFront": {
-          "open": true
-        },
         "open": true
       }
     }

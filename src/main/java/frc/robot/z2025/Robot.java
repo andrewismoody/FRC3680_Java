@@ -13,9 +13,11 @@ import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.geometry.Translation3d;
 import edu.wpi.first.networktables.DoubleSubscriber;
 import edu.wpi.first.networktables.NetworkTableInstance;
+import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.Relay;
 import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj.Timer;
+import edu.wpi.first.wpilibj.DriverStation.Alliance;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 
 import com.revrobotics.spark.SparkLowLevel.MotorType;
@@ -129,10 +131,10 @@ public class Robot extends TimedRobot {
   SingleActuatorModule slide = new SingleActuatorModule("slide", pwm_slide, false);
   
   // total length of robot is 32.375", width is 27.5", centerline is 16.1875" from edge.  Drive axle center is 4" from edge - 12.1875" from center which is 309.56mm or 0.30956 meters
-  SwerveMotorModule leftFrontMM = new SwerveMotorModule("leftFront", new Translation2d(-0.276225, -0.238125), can_drive_lf, can_steer_lf, enc_lf, steeringEncoderMultiplier, m_floatTolerance, false, true);
+  SwerveMotorModule leftFrontMM = new SwerveMotorModule("leftFront", new Translation2d(0.276225, 0.238125), can_drive_lf, can_steer_lf, enc_lf, steeringEncoderMultiplier, m_floatTolerance, false, false);
   SwerveMotorModule rightFrontMM = new SwerveMotorModule("rightFront", new Translation2d(0.276225, -0.238125), can_drive_rf, can_steer_rf, enc_rf, steeringEncoderMultiplier, m_floatTolerance, false, false);
   SwerveMotorModule leftRearMM = new SwerveMotorModule("leftRear", new Translation2d(-0.276225, 0.238125), can_drive_lr, can_steer_lr, enc_lr, steeringEncoderMultiplier, m_floatTolerance, false, false);
-  SwerveMotorModule rightRearMM = new SwerveMotorModule("rightRear", new Translation2d(0.276225, 0.238125), can_drive_rr, can_steer_rr, enc_rr, steeringEncoderMultiplier, m_floatTolerance, false, false);
+  SwerveMotorModule rightRearMM = new SwerveMotorModule("rightRear", new Translation2d(-0.276225, -0.238125), can_drive_rr, can_steer_rr, enc_rr, steeringEncoderMultiplier, m_floatTolerance, false, false);
 
   SwerveDriveModule swerveDriveModule = new SwerveDriveModule("swerveDrive", m_gyro, m_positioner, m_driveSpeed, steerMotorSpeed, m_floatTolerance
     , leftFrontMM
@@ -192,9 +194,29 @@ public class Robot extends TimedRobot {
     currentAutoMode = AutoModes.GetDefault(autoModes);
   }
 
+  void commonInit() {
+    if (Robot.isSimulation()) {
+      if (DriverStation.getAlliance().isPresent() && DriverStation.getAlliance().get() == Alliance.Red)
+        modules.GetDriveModule().SetCurrentPose(new Pose3d(new Translation3d(10, 0.75, 0), Rotation3d.kZero));
+      else
+        modules.GetDriveModule().SetCurrentPose(new Pose3d(new Translation3d(7.5, 8.25, 0), Rotation3d.kZero));
+    } else {
+      // TODO 1: evaluate whether we should reset pose on teleop start
+      modules.GetDriveModule().SetCurrentPose(Pose3d.kZero);
+    }
+  }
+
+  void commonPeriodic() {
+    // run the garbage collector every 5 seconds
+    if (gc_timer.advanceIfElapsed(5))
+      System.gc();
+  }
+
   /** This function is run once each time the robot enters autonomous mode. */
   @Override
   public void autonomousInit() {
+    commonInit();
+
     var selectedMode = autoModes.get(SmartDashboard.getString("Auto Selector", autoModes.keys().nextElement()));
     if (selectedMode == null)
       selectedMode = currentAutoMode; 
@@ -213,9 +235,7 @@ public class Robot extends TimedRobot {
   /** This function is called periodically during autonomous. */
   @Override
   public void autonomousPeriodic() {
-    // run the garbage collector every 5 seconds
-    if (gc_timer.advanceIfElapsed(5))
-      System.gc();
+    commonPeriodic();
 
     currentAutoMode.Update();
     
@@ -227,21 +247,21 @@ public class Robot extends TimedRobot {
    */
   @Override
   public void teleopInit() {
+    commonInit();
+
     // TODO: evaluate whether this is good or not - rezeroes on enable
     // causes more trouble than it solves
     // modules.Initialize();
 
     // switch back to defined field oriented mode when we start up tele-op; prevents bleedover from auto
     modules.GetDriveModule().SetFieldOriented(isFieldOriented);
-
-    if (Robot.isSimulation()) {
-      modules.GetDriveModule().SetCurrentPose(new Pose3d(new Translation3d(7.5, 7.5, 0), Rotation3d.kZero));
-    }
   }
 
   /** This function is called periodically during teleoperated mode. */
   @Override
   public void teleopPeriodic() {
+    commonPeriodic();
+
     // get settings from dashboard
     // slider 0 is motor speed
     modules.setSpeedMod(slider0Sub.get());
