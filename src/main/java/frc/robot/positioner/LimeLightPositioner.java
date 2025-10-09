@@ -48,17 +48,20 @@ public class LimeLightPositioner implements Positioner {
     }
 
     public PoseEstimate GetPoseEstimate() {
+        PoseEstimate poseEstimate = null;
         if (useMegatagTwo) {
-            if (DriverStation.getAlliance().get() == Alliance.Red)
-                return LimelightHelpers.getBotPoseEstimate_wpiRed_MegaTag2("");
+            if (DriverStation.getAlliance().isPresent() && DriverStation.getAlliance().get() == Alliance.Red)
+                poseEstimate = LimelightHelpers.getBotPoseEstimate_wpiRed_MegaTag2("");
             else
-                return LimelightHelpers.getBotPoseEstimate_wpiBlue_MegaTag2("");
+                poseEstimate = LimelightHelpers.getBotPoseEstimate_wpiBlue_MegaTag2("");
         } else {
-            if (DriverStation.getAlliance().get() == Alliance.Red)
-                return LimelightHelpers.getBotPoseEstimate_wpiRed("");
+            if (DriverStation.getAlliance().isPresent() && DriverStation.getAlliance().get() == Alliance.Red)
+                poseEstimate = LimelightHelpers.getBotPoseEstimate_wpiRed("");
             else
-                return LimelightHelpers.getBotPoseEstimate_wpiBlue("");
+                poseEstimate = LimelightHelpers.getBotPoseEstimate_wpiBlue("");
         }
+
+        return poseEstimate != null ? poseEstimate : new PoseEstimate();
     }
 
     public Pose3d GetReferenceInFieldCoords() {
@@ -83,7 +86,7 @@ public class LimeLightPositioner implements Positioner {
     double roll, double rollRate) {
         // TODO: re-evalutate this according to red/blue alliance positioning
         // Initial testing shows that it doesn't need to be adjusted - verify and test with Blue Origin
-        if (DriverStation.getAlliance().get() == Alliance.Red)
+        if (DriverStation.getAlliance().isPresent() && DriverStation.getAlliance().get() == Alliance.Red)
             yaw = (yaw + 180) % 360;
 
         LimelightHelpers.SetRobotOrientation(limelightName, yaw, yawRate, pitch, pitchRate, roll, rollRate);
@@ -100,12 +103,12 @@ public class LimeLightPositioner implements Positioner {
         boolean valid = false;
         
         if (useMegatagTwo) {
-            if (DriverStation.getAlliance().get() == Alliance.Red)
+            if (DriverStation.getAlliance().isPresent() && DriverStation.getAlliance().get() == Alliance.Red)
                 valid = LimelightHelpers.getBotPoseEstimate_wpiRed_MegaTag2("").tagCount > 0;
             else 
                 valid = LimelightHelpers.getBotPoseEstimate_wpiBlue_MegaTag2("").tagCount > 0;
         } else {
-            if (DriverStation.getAlliance().get() == Alliance.Red)
+            if (DriverStation.getAlliance().isPresent() && DriverStation.getAlliance().get() == Alliance.Red)
                 valid = LimelightHelpers.getBotPoseEstimate_wpiRed("").tagCount > 0;
             else
                 valid = LimelightHelpers.getBotPoseEstimate_wpiBlue("").tagCount > 0;

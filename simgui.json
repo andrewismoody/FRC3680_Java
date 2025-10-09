@@ -15,7 +15,12 @@
   },
   "NTProvider": {
     "types": {
-      "/FMSInfo": "FMSInfo"
+      "/FMSInfo": "FMSInfo",
+      "/SmartDashboard/SendableChooser[0]": "String Chooser",
+      "/SmartDashboard/SendableChooser[1]": "String Chooser",
+      "/SmartDashboard/SendableChooser[2]": "String Chooser",
+      "/SmartDashboard/SendableChooser[3]": "String Chooser",
+      "/SmartDashboard/SendableChooser[4]": "String Chooser"
     }
   },
   "NetworkTables Info": {

@@ -353,6 +353,7 @@ public class SwerveMotorModule {
 
     driveMotor.set(motorSpeed);
 
+    // TODO: look at using encoders to get shaft rotation converted to actual wheel motion
     currentDistance = rawMotorSpeed * elapsedTime;
 
     // set fake position

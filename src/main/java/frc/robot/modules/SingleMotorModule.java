@@ -9,7 +9,7 @@ import edu.wpi.first.math.geometry.Rotation3d;
 import edu.wpi.first.math.geometry.Translation3d;
 import edu.wpi.first.networktables.NetworkTable;
 import edu.wpi.first.networktables.NetworkTableInstance;
-import edu.wpi.first.networktables.NetworkTableEntry; // added
+import edu.wpi.first.networktables.NetworkTableEntry;
 import edu.wpi.first.wpilibj.motorcontrol.MotorController;
 import frc.robot.action.Group;
 import frc.robot.auto.AutoTarget;
@@ -287,14 +287,15 @@ public class SingleMotorModule implements RobotModule {
     }
 
     // AddButtonMappedPose adds a position to the array and returns a reference to the function
-    public Consumer<Boolean> AddButtonMappedPose(ActionPose pose) {
+    // always make a new instance, don't reuse button mappings as they will stomp on each other
+    public Consumer<Boolean> AddButtonMappedPose(ActionPose pose) {        
         var setTarget = new Consumer<Boolean>() {
             boolean wasPressed = false;
+
             @Override
             public void accept(Boolean pressed) {
                 if (pressed && !wasPressed) {
                     SetTargetActionPose(pose);
-                    System.out.printf("pose button pressed; %f\n", targetPose.target.Distance);
                 }
                 wasPressed = pressed;
             }
@@ -305,6 +306,7 @@ public class SingleMotorModule implements RobotModule {
     }
 
     // GetButtonMappedPose finds the function by index and returns it. Returns null if not found.
+    // always make a new instance, don't reuse button mappings as they will stomp on each other
     public Consumer<Boolean> GetButtonMappedPose(int index) {
         if (index >= 0 && index < buttonMappedPoses.size()) {
             return buttonMappedPoses.get(index);
@@ -314,16 +316,18 @@ public class SingleMotorModule implements RobotModule {
     }
 
     // AddButtonMappedTarget adds a position to the array and returns a reference to the function
+    // always make a new instance, don't reuse button mappings as they will stomp on each other
     public Consumer<Boolean> AddButtonMappedTarget(double position) {
         var setTarget = new Consumer<Boolean>() {
             boolean wasPressed = false;
+
             @Override
             public void accept(Boolean pressed) {
-                if (pressed && !wasPressed) {
+                // multiple mapped consumers defeat this logic as one is pressed and one is not.
+                if (pressed && !this.wasPressed) {
                     targetPose = new ActionPose(Group.Any, -1, -1, -1, Action.Any, new AutoTarget(position));
-                    System.out.printf("target button pressed; %f\n", position);
                 }
-                wasPressed = pressed;
+                this.wasPressed = pressed;
             }
         };
         buttonMappedTargets.add(setTarget);
