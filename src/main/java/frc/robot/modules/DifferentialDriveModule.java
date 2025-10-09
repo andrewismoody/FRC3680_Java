@@ -97,6 +97,22 @@ public class DifferentialDriveModule implements DriveModule {
 
     }
 
+    public void SetCurrentPose(Pose3d newPose) {
+        // TODO: Implement differential drive.
+
+        // SwerveModulePosition[] positions = new SwerveModulePosition[driveModules.size()];
+
+        // for (int i = 0; i < driveModules.size(); i++) {
+        //     SwerveMotorModule module = driveModules.get(i);
+        //     positions[i] = module.getPosition();
+        // }
+
+        // poseEstimator.resetPosition(newPose.getRotation().toRotation2d(), positions, newPose.toPose2d());
+
+        // positionInitialized = true;
+        // myTable.getEntry("positionInitialized").setBoolean(positionInitialized);
+    }
+
     public void ProcessForwardSpeed(double value) {
         forwardSpeed = value;
     }

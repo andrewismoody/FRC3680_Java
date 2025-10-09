@@ -3,11 +3,11 @@
     "Other Devices": {
       "AnalogGyro[0]": {
         "header": {
-          "open": true
+          "open": false
         }
       }
     },
-    "PWM Outputs": {
+    "RoboRIO": {
       "window": {
         "visible": true
       }
@@ -16,11 +16,35 @@
   "NTProvider": {
     "types": {
       "/FMSInfo": "FMSInfo",
+      "/SmartDashboard/Field": "Field2d",
       "/SmartDashboard/SendableChooser[0]": "String Chooser",
       "/SmartDashboard/SendableChooser[1]": "String Chooser",
       "/SmartDashboard/SendableChooser[2]": "String Chooser",
       "/SmartDashboard/SendableChooser[3]": "String Chooser",
       "/SmartDashboard/SendableChooser[4]": "String Chooser"
+    },
+    "windows": {
+      "/SmartDashboard/Field": {
+        "bottom": 1476,
+        "height": 8.210550308227539,
+        "left": 150,
+        "right": 2961,
+        "top": 79,
+        "width": 16.541748046875,
+        "window": {
+          "visible": true
+        }
+      }
+    }
+  },
+  "NetworkTables": {
+    "transitory": {
+      "swerveDrive": {
+        "leftFront": {
+          "open": true
+        },
+        "open": true
+      }
     }
   },
   "NetworkTables Info": {

@@ -41,6 +41,7 @@ public class SwerveMotorModule {
   Encoder angleEncoder;
   public boolean useFakeEncoder = !RobotBase.isReal();
   double encoderSimRate = 3.0;
+  double encoderSimFactor = 0.03;
   double encoderMultiplier = 1.0;
 
   double floatTolerance;
@@ -152,13 +153,15 @@ public class SwerveMotorModule {
   }
 
   public SwerveModulePosition getPosition() {
+    // TODO: this is reporting in field coordinates and currently doesn't match the actual drive direction of the robot
+    // TODO: We have to correct coordinate systems
     return new SwerveModulePosition(currentDistance, currentAngle);
   }
 
   // setDriveModule happens before Initialize
   public void setDriveModule(SwerveDriveModule DriveModule) {
     driveModule = DriveModule;
-    encoderSimRate = driveModule.rotationSpeed;
+    encoderSimRate = driveModule.rotationSpeed * encoderSimFactor;
 
     var kp = 0.333;
     var ki = 0; //kp * 0.1; // ki = 10% of kp
@@ -178,7 +181,7 @@ public class SwerveMotorModule {
     ;
 
     currentAngle = Rotation2d.fromDegrees(distance);
-    currentAngleEntry.setDouble(currentAngle.getRadians());
+    currentAngleEntry.setDouble(Math.round(currentAngle.getRadians() * 100) / 100.0);
 
     if (optimize) {
       moduleState.optimize(currentAngle);
@@ -354,7 +357,9 @@ public class SwerveMotorModule {
     driveMotor.set(motorSpeed);
 
     // TODO: look at using encoders to get shaft rotation converted to actual wheel motion
-    currentDistance = rawMotorSpeed * elapsedTime;
+    currentDistance += rawMotorSpeed * (elapsedTime / 1000);
+    myTable.getEntry("rawMotorSpeed").setDouble(rawMotorSpeed);
+    myTable.getEntry("currentDistance").setDouble(currentDistance);
 
     // set fake position
     var delta = new Translation2d(Math.cos(optAngle.getRadians()) * rawMotorSpeed * elapsedTime, Math.sin(optAngle.getRadians()) * rawMotorSpeed * elapsedTime);

@@ -61,7 +61,7 @@ public class LimeLightPositioner implements Positioner {
                 poseEstimate = LimelightHelpers.getBotPoseEstimate_wpiBlue("");
         }
 
-        return poseEstimate != null ? poseEstimate : new PoseEstimate();
+        return poseEstimate;
     }
 
     public Pose3d GetReferenceInFieldCoords() {

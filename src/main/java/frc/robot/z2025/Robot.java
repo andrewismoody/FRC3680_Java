@@ -6,8 +6,11 @@ package frc.robot.z2025;
 
 import java.util.Hashtable;
 
+import edu.wpi.first.math.geometry.Pose3d;
+import edu.wpi.first.math.geometry.Rotation3d;
 // import edu.wpi.first.cameraserver.CameraServer;
 import edu.wpi.first.math.geometry.Translation2d;
+import edu.wpi.first.math.geometry.Translation3d;
 import edu.wpi.first.networktables.DoubleSubscriber;
 import edu.wpi.first.networktables.NetworkTableInstance;
 import edu.wpi.first.wpilibj.Relay;
@@ -230,6 +233,10 @@ public class Robot extends TimedRobot {
 
     // switch back to defined field oriented mode when we start up tele-op; prevents bleedover from auto
     modules.GetDriveModule().SetFieldOriented(isFieldOriented);
+
+    if (Robot.isSimulation()) {
+      modules.GetDriveModule().SetCurrentPose(new Pose3d(new Translation3d(7.5, 7.5, 0), Rotation3d.kZero));
+    }
   }
 
   /** This function is called periodically during teleoperated mode. */

@@ -20,10 +20,12 @@ import edu.wpi.first.math.estimator.SwerveDrivePoseEstimator;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Pose3d;
 import edu.wpi.first.wpilibj.RobotBase;
+import edu.wpi.first.wpilibj.smartdashboard.Field2d;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 
 import frc.robot.positioner.Positioner;
 import frc.robot.positioner.LimelightHelpers.PoseEstimate;
+import frc.robot.z2025.Robot;
 import frc.robot.action.Group;
 import frc.robot.action.Action;
 import frc.robot.action.ActionPose;
@@ -83,12 +85,12 @@ public class SwerveDriveModule implements DriveModule {
     private boolean wroteRotationThisTick = false;
 
     SwerveDrivePoseEstimator poseEstimator;
+    Field2d fieldPosition;
 
     NetworkTable myTable;
 
     // Cached NT entries
     private NetworkTableEntry startupAngleEntry;
-    private NetworkTableEntry startupPositionEntry;
     private NetworkTableEntry useFakeGyroEntry;
     private NetworkTableEntry rotationSpeedEntry;
     private NetworkTableEntry driveSpeedEntry;
@@ -159,6 +161,7 @@ public class SwerveDriveModule implements DriveModule {
     
         kinematics = new SwerveDriveKinematics(translations);
         odometry = new SwerveDriveOdometry(kinematics, new Rotation2d(gyro.getGyroAngleZ()), positions);
+        fieldPosition = new Field2d();
 
         poseEstimator = new SwerveDrivePoseEstimator(kinematics, new Rotation2d(getInvertedGyroValue()), positions, Pose2d.kZero);
     }
@@ -212,7 +215,6 @@ public class SwerveDriveModule implements DriveModule {
         
         // instantiate entries
         startupAngleEntry = myTable.getEntry("startupAngle");
-        startupPositionEntry = myTable.getEntry("startupPosition");
         useFakeGyroEntry = myTable.getEntry("useFakeGyro");
         rotationSpeedEntry = myTable.getEntry("rotationSpeed");
         driveSpeedEntry = myTable.getEntry("driveSpeed");
@@ -244,8 +246,6 @@ public class SwerveDriveModule implements DriveModule {
 
         // set initial values
         startupAngleEntry.setDouble(startupAngle);
-        var startupPosition = positioner.GetPose().getTranslation();
-        startupPositionEntry.setString(startupPosition.toString());
         useFakeGyroEntry.setBoolean(useFakeGyro);
         rotationSpeedEntry.setDouble(rotationSpeed);
         driveSpeedEntry.setDouble(driveSpeed);
@@ -259,6 +259,20 @@ public class SwerveDriveModule implements DriveModule {
         for (SwerveMotorModule module : driveModules) {
             module.Initialize();
         }
+    }
+
+    public void SetCurrentPose(Pose3d newPose) {
+        SwerveModulePosition[] positions = new SwerveModulePosition[driveModules.size()];
+
+        for (int i = 0; i < driveModules.size(); i++) {
+            SwerveMotorModule module = driveModules.get(i);
+            positions[i] = module.getPosition();
+        }
+
+        poseEstimator.resetPosition(newPose.getRotation().toRotation2d(), positions, newPose.toPose2d());
+
+        positionInitialized = true;
+        myTable.getEntry("positionInitialized").setBoolean(positionInitialized);
     }
 
     public void SetFieldOriented(boolean value) {
@@ -592,21 +606,27 @@ public class SwerveDriveModule implements DriveModule {
         // https://docs.wpilib.org/en/stable/docs/software/hardware-apis/sensors/gyros-software.html
         // https://www.chiefdelphi.com/t/set-motor-position-with-encoder/152088/3
 
-        PoseEstimate visionEstimate = positioner.GetPoseEstimate();
-        poseEstimator.addVisionMeasurement(visionEstimate.pose, visionEstimate.latency);
-
         // Invert the Gyro angle because it rotates opposite of the robot steering, then wrap it to a positive value
         double currentGyroAngle = getInvertedGyroValue();
         currentGyroAngleEntry.setDouble(currentGyroAngle);
 
-        if (!positionInitialized && visionEstimate.pose.getTranslation().getNorm() > 0.0) {
-            positionInitialized = true;
-            myTable.getEntry("positionInitialized").setBoolean(positionInitialized);
+        if (Robot.isReal()) {
+            PoseEstimate visionEstimate = positioner.GetPoseEstimate();
+            poseEstimator.addVisionMeasurement(visionEstimate.pose, visionEstimate.latency);
 
-            poseEstimator.resetPose(visionEstimate.pose);
+            if (!positionInitialized && visionEstimate.pose.getTranslation().getNorm() > 0.0) {
+                positionInitialized = true;
+                myTable.getEntry("positionInitialized").setBoolean(positionInitialized);
+
+                poseEstimator.resetPose(visionEstimate.pose);
+            }
         }
 
         Pose3d currentPose = new Pose3d(poseEstimator.getEstimatedPosition());
+
+        // update simulator field position
+        fieldPosition.setRobotPose(currentPose.toPose2d());
+        SmartDashboard.putData("Field", fieldPosition);
 
         // TODO: Identify if this is correct - does it need inverse or does everything use normal?
         // yaw is in degrees
@@ -685,7 +705,7 @@ public class SwerveDriveModule implements DriveModule {
         }
 
         // update fake gyro angle
-        currentAngle += thisRotationSpeed * fakeGyroRate;
+        currentAngle += -thisRotationSpeed * fakeGyroRate;
         fakeAngleEntry.setDouble(currentAngle);
         previousAngle = currentAngle;
         previousRotationSpeed = thisRotationSpeed;

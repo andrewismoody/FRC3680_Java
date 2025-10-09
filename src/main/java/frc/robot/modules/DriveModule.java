@@ -1,5 +1,7 @@
 package frc.robot.modules;
 
+import edu.wpi.first.math.geometry.Pose3d;
+
 public interface DriveModule extends RobotModule {
     public void Initialize();
     public void SetController(ModuleController controller);
@@ -10,4 +12,5 @@ public interface DriveModule extends RobotModule {
     public void SetFieldOriented(boolean value);
     public boolean IsFieldOriented();
     public void ToggleFieldOriented(boolean value);
+    public void SetCurrentPose(Pose3d newPose);
 }
