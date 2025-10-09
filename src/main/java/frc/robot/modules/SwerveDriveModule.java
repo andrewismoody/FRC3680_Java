@@ -681,13 +681,17 @@ public class SwerveDriveModule implements DriveModule {
 
         var currentRotation = Rotation2d.fromRadians(currentGyroAngle);
 
+        // TODO 1: temporary hacks to make it drivable for now.  Need to figure out why hardware doesn't agree with software.
+        // TODO 1: This hack doesn't work for odometry, lateral is always inverted - how do we invert only certain hardware outputs and leave everything else as-is?
         ChassisSpeeds speeds = isFieldOriented ?
             ChassisSpeeds.fromFieldRelativeSpeeds(
                 // invert directions if we're red and manually controlling
-                Utility.IsRedAlliance() && DriverStation.isTeleop() ? -forwardSpeed : forwardSpeed,
-                Utility.IsRedAlliance() && DriverStation.isTeleop() ? -lateralSpeed : lateralSpeed,
+                Utility.IsRedAlliance() && DriverStation.isTeleop() ? -forwardSpeed : forwardSpeed, // negate for red teleop
+                !Utility.IsRedAlliance() && DriverStation.isTeleop() ? -lateralSpeed : lateralSpeed, // negate for blue teleop
                 thisRotationSpeed, currentRotation)
-            : new ChassisSpeeds(forwardSpeed, lateralSpeed, thisRotationSpeed);
+            : new ChassisSpeeds(forwardSpeed,
+                DriverStation.isTeleop() ? -lateralSpeed : lateralSpeed,
+                thisRotationSpeed);
 
         SwerveModuleState[] moduleStates;
 
