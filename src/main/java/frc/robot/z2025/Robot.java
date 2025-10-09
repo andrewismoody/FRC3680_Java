@@ -7,17 +7,17 @@ package frc.robot.z2025;
 import java.util.Hashtable;
 
 import edu.wpi.first.math.geometry.Pose3d;
+import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Rotation3d;
+import edu.wpi.first.math.geometry.Transform3d;
 // import edu.wpi.first.cameraserver.CameraServer;
 import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.geometry.Translation3d;
 import edu.wpi.first.networktables.DoubleSubscriber;
 import edu.wpi.first.networktables.NetworkTableInstance;
-import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.Relay;
 import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj.Timer;
-import edu.wpi.first.wpilibj.DriverStation.Alliance;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 
 import com.revrobotics.spark.SparkLowLevel.MotorType;
@@ -27,6 +27,7 @@ import frc.robot.auto.AutoController;
 import frc.robot.gyro.AHRSGyro;
 import frc.robot.gyro.Gyro;
 import frc.robot.misc.GameController;
+import frc.robot.misc.Utility;
 import frc.robot.modules.ModuleController;
 import frc.robot.modules.SingleActuatorModule;
 import frc.robot.modules.SingleMotorModule;
@@ -187,19 +188,30 @@ public class Robot extends TimedRobot {
     // modules.SetEnableDriveTrain(false);
 
     Dashboard.InitializeChoosers();
+
     // Add action poses before button mappings so buttons can drive action poses
     ActionPoses.Initialize(swerveDriveModule, elevator, slide);
+
+    // even tho this runs on every init, it only happens once so we don't mess up
     Joystick.InitializeButtonMappings(m_controller, modules, swerveDriveModule, slide, elevator); //, grabber);
+
+    // initialize again after action poses
     autoModes = AutoModes.Initialize(autoModes, m_controller, modules);
+
     currentAutoMode = AutoModes.GetDefault(autoModes);
   }
 
   void commonInit() {
+    var redStartTransform = new Transform3d(new Translation3d(new Translation2d(8.775, 4.025)), new Rotation3d(new Rotation2d(Math.PI)));
+
     if (Robot.isSimulation()) {
-      if (DriverStation.getAlliance().isPresent() && DriverStation.getAlliance().get() == Alliance.Red)
-        modules.GetDriveModule().SetCurrentPose(new Pose3d(new Translation3d(10, 0.75, 0), Rotation3d.kZero));
-      else
-        modules.GetDriveModule().SetCurrentPose(new Pose3d(new Translation3d(7.5, 8.25, 0), Rotation3d.kZero));
+      Pose3d startPose = new Pose3d(new Translation3d(new Translation2d(7.5, 6.55)), Rotation3d.kZero);
+      if (Utility.IsRedAlliance()) {
+        // Y = 8.05, X = 17.55; 
+        //startPose = new Pose3d(startPose.rotateAround(redStartTransform.getTranslation(), redStartTransform.getRotation()).getTranslation(), redStartTransform.getRotation());
+        startPose = new Pose3d(startPose.rotateAround(redStartTransform.getTranslation(), redStartTransform.getRotation()).getTranslation(), Rotation3d.kZero);
+      }
+      modules.GetDriveModule().SetCurrentPose(startPose);
     } else {
       // TODO 1: evaluate whether we should reset pose on teleop start
       modules.GetDriveModule().SetCurrentPose(Pose3d.kZero);

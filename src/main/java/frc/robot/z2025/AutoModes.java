@@ -15,6 +15,8 @@ public class AutoModes {
     public static Hashtable<String, AutoController> Initialize(Hashtable<String, AutoController> AutoModes, GameController m_controller, ModuleController modules) {
         // TODO: need to move this definition to preferences and initialize in automodes rather than hard coding
 
+        AutoModes.clear();
+        
         AutoController rotateScoreReturn = new AutoController("RotateScoreReturn", m_controller, modules);
         rotateScoreReturn.AddSequence(new SequenceRotateScoreReturn(rotateScoreReturn.GetLabel(), rotateScoreReturn));
         AutoModes.put(rotateScoreReturn.GetLabel(), rotateScoreReturn);

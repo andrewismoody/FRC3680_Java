@@ -256,6 +256,12 @@ public class GameController {
        return false;
    }
 
+    public void ClearAllRegistrations() {
+        BinaryButtonConsumers.clear();
+        ValueButtonConsumers.clear();
+        POVButtonConsumers.clear();
+   }
+
     boolean getLeftButton() {
         var value = false;
 

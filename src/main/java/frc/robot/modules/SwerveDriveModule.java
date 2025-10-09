@@ -19,6 +19,7 @@ import edu.wpi.first.math.controller.PIDController;
 import edu.wpi.first.math.estimator.SwerveDrivePoseEstimator;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Pose3d;
+import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.RobotBase;
 import edu.wpi.first.wpilibj.smartdashboard.Field2d;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
@@ -30,6 +31,7 @@ import frc.robot.action.Group;
 import frc.robot.action.Action;
 import frc.robot.action.ActionPose;
 import frc.robot.gyro.Gyro;
+import frc.robot.misc.Utility;
 
 public class SwerveDriveModule implements DriveModule {
     String moduleID;
@@ -158,9 +160,9 @@ public class SwerveDriveModule implements DriveModule {
         rotationPidController = new PIDController(rotKp, rotKi, rotKd);
         rotationPidController.enableContinuousInput(-Math.PI, Math.PI);
         rotationPidController.setTolerance(floatTolerance);
-    
+
         kinematics = new SwerveDriveKinematics(translations);
-        odometry = new SwerveDriveOdometry(kinematics, new Rotation2d(gyro.getGyroAngleZ()), positions);
+        odometry = new SwerveDriveOdometry(kinematics, new Rotation2d(getInvertedGyroValue()), positions);
         fieldPosition = new Field2d();
 
         poseEstimator = new SwerveDrivePoseEstimator(kinematics, new Rotation2d(getInvertedGyroValue()), positions, Pose2d.kZero);
@@ -270,6 +272,7 @@ public class SwerveDriveModule implements DriveModule {
         }
 
         poseEstimator.resetPose(newPose.toPose2d());
+        //currentAngle = newPose.getRotation().getZ();
 
         positionInitialized = true;
         myTable.getEntry("positionInitialized").setBoolean(positionInitialized);
@@ -521,7 +524,8 @@ public class SwerveDriveModule implements DriveModule {
 
                     if (pose.HasOrientation) {
                         // TODO: this doesn't seem to work if we're on the other side of zero?
-                        var rotationDelta = targetRotation.getRadians() - newAngleRad;
+                        var targetRad = (targetRotation.getRadians() + (2 * Math.PI)) % (2 * Math.PI); // wrap to positive angles
+                        var rotationDelta = targetRad - newAngleRad;
                         rotationDeltaEntry.setDouble(rotationDelta);
                         rotationTargetEntry.setDouble(targetRotation.getRadians());
                         targetValue = targetRotation.getRadians();
@@ -554,7 +558,8 @@ public class SwerveDriveModule implements DriveModule {
                         var rotationSpeed = rotationPidController.calculate(newAngleRad, targetValue);
                         // clamp to real values
                         rotationSpeed = Math.max(-this.rotationSpeed, Math.min(this.rotationSpeed, rotationSpeed));
-                        if (Math.abs(newAngleRad - targetValue) < floatTolerance) {
+                        // check angle by rotation to avoid mismatched signs and other things from preventing target matching
+                        if (Math.abs(new Rotation2d(newAngleRad).minus(new Rotation2d(targetValue)).getRadians()) < floatTolerance) {
                             // only mark 'reached' if we don't have a lookat target or our position is also reached
                             if (!pose.HasLookAt || (lateralReached && forwardReached))
                                 rotationReached = true;
@@ -675,9 +680,13 @@ public class SwerveDriveModule implements DriveModule {
         rotationSpeedEntry.setDouble(thisRotationSpeed);
 
         var currentRotation = Rotation2d.fromRadians(currentGyroAngle);
-        // TODO: comb through all coordinate systems and identify why we have to flip lateral and forward here
+
         ChassisSpeeds speeds = isFieldOriented ?
-            ChassisSpeeds.fromFieldRelativeSpeeds(forwardSpeed, lateralSpeed, thisRotationSpeed, currentRotation)
+            ChassisSpeeds.fromFieldRelativeSpeeds(
+                // invert directions if we're red and manually controlling
+                Utility.IsRedAlliance() && DriverStation.isTeleop() ? -forwardSpeed : forwardSpeed,
+                Utility.IsRedAlliance() && DriverStation.isTeleop() ? -lateralSpeed : lateralSpeed,
+                thisRotationSpeed, currentRotation)
             : new ChassisSpeeds(forwardSpeed, lateralSpeed, thisRotationSpeed);
 
         SwerveModuleState[] moduleStates;

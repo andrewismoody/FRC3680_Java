@@ -4,8 +4,7 @@ import edu.wpi.first.math.geometry.Pose3d;
 import edu.wpi.first.math.geometry.Transform3d;
 import edu.wpi.first.math.geometry.Translation3d;
 import edu.wpi.first.net.PortForwarder;
-import edu.wpi.first.wpilibj.DriverStation;
-import edu.wpi.first.wpilibj.DriverStation.Alliance;
+import frc.robot.misc.Utility;
 import frc.robot.positioner.LimelightHelpers.PoseEstimate;
 
 public class LimeLightPositioner implements Positioner {
@@ -51,12 +50,12 @@ public class LimeLightPositioner implements Positioner {
         PoseEstimate poseEstimate = null;
         // TODO 1: evaluate red/blue origin after adjusting coordinate systems
         if (useMegatagTwo) {
-            if (DriverStation.getAlliance().isPresent() && DriverStation.getAlliance().get() == Alliance.Red)
+            if (Utility.IsRedAlliance())
                 poseEstimate = LimelightHelpers.getBotPoseEstimate_wpiRed_MegaTag2("");
             else
                 poseEstimate = LimelightHelpers.getBotPoseEstimate_wpiBlue_MegaTag2("");
         } else {
-            if (DriverStation.getAlliance().isPresent() && DriverStation.getAlliance().get() == Alliance.Red)
+            if (Utility.IsRedAlliance())
                 poseEstimate = LimelightHelpers.getBotPoseEstimate_wpiRed("");
             else
                 poseEstimate = LimelightHelpers.getBotPoseEstimate_wpiBlue("");
@@ -86,7 +85,7 @@ public class LimeLightPositioner implements Positioner {
     double pitch, double pitchRate, 
     double roll, double rollRate) {
         // TODO 1: evaluate red/blue origin after adjusting coordinate systems
-        if (DriverStation.getAlliance().isPresent() && DriverStation.getAlliance().get() == Alliance.Red)
+        if (Utility.IsRedAlliance())
             yaw = (yaw + 180) % 360;
 
         LimelightHelpers.SetRobotOrientation(limelightName, yaw, yawRate, pitch, pitchRate, roll, rollRate);
@@ -103,12 +102,12 @@ public class LimeLightPositioner implements Positioner {
         boolean valid = false;
         
         if (useMegatagTwo) {
-            if (DriverStation.getAlliance().isPresent() && DriverStation.getAlliance().get() == Alliance.Red)
+            if (Utility.IsRedAlliance())
                 valid = LimelightHelpers.getBotPoseEstimate_wpiRed_MegaTag2("").tagCount > 0;
             else 
                 valid = LimelightHelpers.getBotPoseEstimate_wpiBlue_MegaTag2("").tagCount > 0;
         } else {
-            if (DriverStation.getAlliance().isPresent() && DriverStation.getAlliance().get() == Alliance.Red)
+            if (Utility.IsRedAlliance())
                 valid = LimelightHelpers.getBotPoseEstimate_wpiRed("").tagCount > 0;
             else
                 valid = LimelightHelpers.getBotPoseEstimate_wpiBlue("").tagCount > 0;

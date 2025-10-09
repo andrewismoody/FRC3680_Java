@@ -26,8 +26,23 @@ public class ActionPoses {
         var Tag1 = new Translation3d(0.85, 7.40, 0);
         var ReefCenter = new Translation3d(4.49, 4.03, 0);
 
+        var StartRotation = new Rotation2d(2.75);
+
+        // TODO 1: figure out how to adjust these for red start without breaking everything
+        // if (Utility.IsRedAlliance()) {
+        //     Waypoint1 = Waypoint1.rotateAround(redStartTransform.getTranslation(), redStartTransform.getRotation());
+        //     Waypoint11 = Waypoint11.rotateAround(redStartTransform.getTranslation(), redStartTransform.getRotation());
+        //     Waypoint12 = Waypoint12.rotateAround(redStartTransform.getTranslation(), redStartTransform.getRotation());
+        //     Scoring1 = Scoring1.rotateAround(redStartTransform.getTranslation(), redStartTransform.getRotation());
+        //     Loading1 = Loading1.rotateAround(redStartTransform.getTranslation(), redStartTransform.getRotation());
+        //     Tag1 = Tag1.rotateAround(redStartTransform.getTranslation(), redStartTransform.getRotation());
+        //     ReefCenter = ReefCenter.rotateAround(redStartTransform.getTranslation(), redStartTransform.getRotation());
+
+        //     StartRotation = StartRotation.plus(redStartTransform.getRotation().toRotation2d());
+        // }
+
         // start, 240 (we don't know where we are yet, so rotate a specific angle to face a tag)
-        swerveDriveModule.AddActionPose(new ActionPose(Group.Start, Location.Barge.getValue(), 1, Position.Any.getValue(), Action.Any, new AutoTarget(new Rotation2d(2.75))));
+        swerveDriveModule.AddActionPose(new ActionPose(Group.Start, Location.Barge.getValue(), 1, Position.Any.getValue(), Action.Any, new AutoTarget(StartRotation)));
         // waypoint 11, Lookta reef
         swerveDriveModule.AddActionPose(new ActionPose(Group.Score, Location.Waypoint.getValue(), 11, Position.Any.getValue(), Action.Any, new AutoTarget(Waypoint11, ReefCenter)));
         // waypoint 12, Lookat reef
