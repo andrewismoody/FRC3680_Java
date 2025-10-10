@@ -37,7 +37,7 @@ import frc.robot.misc.Utility;
 
 public class SwerveDriveModule implements DriveModule {
     String moduleID;
-    ArrayList<SwerveMotorModule> driveModules = new ArrayList<SwerveMotorModule>();
+    SwerveMotorModule[] driveModules;
     double driveSpeed;
     double rotationSpeed;
     double rotationMultiplier = 5.0;
@@ -146,10 +146,12 @@ public class SwerveDriveModule implements DriveModule {
 
         // initialize modules after setting values, as modules lookup values from controller
         // TODO: maybe make this a little less brittle
+        driveModules = new SwerveMotorModule[modules.length];
         for (SwerveMotorModule module : modules) {
             var i = module.GetSwervePosition().getValue();
+            driveModules[i] = module;
             module.setDriveModule(this);
-            driveModules.add(module);
+            
             translations[i] = module.modulePosition;
             positions[i] = new SwerveModulePosition(0, new Rotation2d());
         }
@@ -192,9 +194,10 @@ public class SwerveDriveModule implements DriveModule {
     }
 
     public SwerveModuleState[] GetZeroStates() {
-        var returnStates = new SwerveModuleState[driveModules.size()];
+        var returnStates = new SwerveModuleState[driveModules.length];
 
-        for (int i = 0; i < driveModules.size(); i++) {
+        for (SwerveMotorModule module : driveModules) {
+            var i = module.GetSwervePosition().getValue();
             returnStates[i] = new SwerveModuleState();
         }
         
@@ -206,9 +209,10 @@ public class SwerveDriveModule implements DriveModule {
     }
 
     public SwerveModuleState[] GetLockStates() {
-        var returnStates = new SwerveModuleState[driveModules.size()];
+        var returnStates = new SwerveModuleState[driveModules.length];
 
-        for (int i = 0; i < driveModules.size(); i++) {
+        for (SwerveMotorModule module : driveModules) {
+            var i = module.GetSwervePosition().getValue();
             var lock = new SwerveModuleState();
             var angle = i % 2 == 0 ? 0.25 : -0.25;
             lock.angle = new Rotation2d(angle);
@@ -277,11 +281,10 @@ public class SwerveDriveModule implements DriveModule {
     }
 
     public void SetCurrentPose(Pose3d newPose) {
-        SwerveModulePosition[] positions = new SwerveModulePosition[driveModules.size()];
+        SwerveModulePosition[] positions = new SwerveModulePosition[driveModules.length];
 
-        for (int i = 0; i < driveModules.size(); i++) {
-            SwerveMotorModule module = driveModules.get(i);
-            positions[i] = module.getPosition();
+        for (SwerveMotorModule module : driveModules) {
+            positions[module.GetSwervePosition().getValue()] = module.getPosition();
         }
 
         poseEstimator.resetPose(newPose.toPose2d());
@@ -721,10 +724,10 @@ public class SwerveDriveModule implements DriveModule {
         } else
             moduleStates = kinematics.toSwerveModuleStates(speeds);
 
-        SwerveModulePosition[] positions = new SwerveModulePosition[driveModules.size()];
+        SwerveModulePosition[] positions = new SwerveModulePosition[driveModules.length];
         double[] driveSpeeds = new double[4]; //always 4 because of dashboard setup
 
-        SwerveModuleState[] actualStates = new SwerveModuleState[driveModules.size()];
+        SwerveModuleState[] actualStates = new SwerveModuleState[driveModules.length];
         for (SwerveMotorModule module : driveModules) {
             var i = module.GetSwervePosition().getValue();
             moduleStates[i] = module.updateModuleValues(moduleStates[i], optimize);
@@ -740,7 +743,7 @@ public class SwerveDriveModule implements DriveModule {
         odometry.update(currentRotation, positions);
         poseEstimator.update(currentRotation, positions);
 
-        var primaryModule = driveModules.get(0);
+        var primaryModule = driveModules[0];
         if (primaryModule != null) {
             // calculate and store current field position and rotation
             // var centerOffset = new Translation2d(Math.cos(getGyroAngle()) * primaryModule.modulePosition.getX(),
@@ -761,7 +764,7 @@ public class SwerveDriveModule implements DriveModule {
         previousRotationSpeed = thisRotationSpeed;
 
         // update dashboard
-        SmartDashboard.putNumberArray("RobotDrive Motors", new double[] {driveModules.get(0).getSpeed(), driveModules.get(1).getSpeed(), 0.0, 0.0});
+        SmartDashboard.putNumberArray("RobotDrive Motors", new double[] {driveModules[0].getSpeed(), driveModules[1].getSpeed(), 0.0, 0.0});
         //SmartDashboard.putNumberArray("My Motors", new double[] {driveModules.get(0).getSpeed(), driveModules.get(1).getSpeed(), 0.0, 0.0});
         //System.out.printf("leftFront speed: %f\n", driveModules.get(0).getSpeed()); // , driveModules.get(1).getSpeed(), 0.0, 0.0});
 

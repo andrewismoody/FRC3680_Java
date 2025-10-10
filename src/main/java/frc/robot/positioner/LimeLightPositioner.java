@@ -1,5 +1,6 @@
 package frc.robot.positioner;
 
+import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Pose3d;
 import edu.wpi.first.math.geometry.Transform3d;
 import edu.wpi.first.math.geometry.Translation3d;
@@ -43,7 +44,8 @@ public class LimeLightPositioner implements Positioner {
     }
 
     public Pose3d GetPose() {
-        return new Pose3d(GetPoseEstimate().pose);
+        var poseEstimate = GetPoseEstimate();
+        return new Pose3d(poseEstimate != null ? poseEstimate.pose : new Pose2d());
     }
 
     public PoseEstimate GetPoseEstimate() {

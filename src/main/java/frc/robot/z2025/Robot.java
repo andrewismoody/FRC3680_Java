@@ -132,17 +132,24 @@ public class Robot extends TimedRobot {
 
   SingleActuatorModule slide = new SingleActuatorModule("slide", pwm_slide, false);
   
+  // leftFront  software position should be leftrear   hardware position
+  // rightFront software position should be leftFront  hardware position
+  // leftRear   software position should be rightRear  hardware position
+  // rightRear  software position should be rightFront hardware position
+
+  // flipped x and y so that 'narrow' edge is front
+  Translation2d frameSize = new Translation2d(0.6985, 0.822325); // meters - 32.375" x 27.5" - distance from center of robot to center of wheel
   // total length of robot is 32.375", width is 27.5", centerline is 16.1875" from edge.  Drive axle center is 4" from edge - 12.1875" from center which is 309.56mm or 0.30956 meters
-  SwerveMotorModule leftFrontMM = new SwerveMotorModule(SwervePosition.LeftFront, new Translation2d(0.276225, 0.238125), can_drive_lf, can_steer_lf, enc_lf, steeringEncoderMultiplier, m_floatTolerance, false, false, 0.0);
-  SwerveMotorModule rightFrontMM = new SwerveMotorModule(SwervePosition.RightFront, new Translation2d(0.276225, -0.238125), can_drive_rf, can_steer_rf, enc_rf, steeringEncoderMultiplier, m_floatTolerance, false, false, 0.0);
-  SwerveMotorModule leftRearMM = new SwerveMotorModule(SwervePosition.LeftRear, new Translation2d(-0.276225, 0.238125), can_drive_lr, can_steer_lr, enc_lr, steeringEncoderMultiplier, m_floatTolerance, false, false, 0.0);
-  SwerveMotorModule rightRearMM = new SwerveMotorModule(SwervePosition.RightRear, new Translation2d(-0.276225, -0.238125), can_drive_rr, can_steer_rr, enc_rr, steeringEncoderMultiplier, m_floatTolerance, false, false, 0.0);
+  SwerveMotorModule leftFrontMM = new SwerveMotorModule(SwervePosition.LeftFront, new Translation2d(frameSize.getX() / 2, frameSize.getY() / 2), can_drive_lr, can_steer_lr, enc_lr, steeringEncoderMultiplier, m_floatTolerance, false, false, 0.0);
+  SwerveMotorModule rightFrontMM = new SwerveMotorModule(SwervePosition.RightFront, new Translation2d(frameSize.getX() / 2, -frameSize.getY() / 2), can_drive_lf, can_steer_lf, enc_lf, steeringEncoderMultiplier, m_floatTolerance, false, false, 0.0);
+  SwerveMotorModule leftRearMM = new SwerveMotorModule(SwervePosition.LeftRear, new Translation2d(-frameSize.getX() / 2, frameSize.getY() / 2), can_drive_rr, can_steer_rr, enc_rr, steeringEncoderMultiplier, m_floatTolerance, false, false, 0.0);
+  SwerveMotorModule rightRearMM = new SwerveMotorModule(SwervePosition.RightRear, new Translation2d(-frameSize.getX() / 2, -frameSize.getY() / 2), can_drive_rf, can_steer_rf, enc_rf, steeringEncoderMultiplier, m_floatTolerance, false, false, 0.0);
 
   SwerveDriveModule swerveDriveModule = new SwerveDriveModule("swerveDrive", m_gyro, m_positioner, m_driveSpeed, steerMotorSpeed, m_floatTolerance
-    , rightRearMM
+    , leftFrontMM
     , rightFrontMM
     , leftRearMM
-    , leftFrontMM
+    , rightRearMM
   );
 
   // DifferentialDriveModule diffDriveModule = new DifferentialDriveModule("differentialDrive", can_steer_rr, can_drive_lf);
