@@ -3,6 +3,11 @@ package frc.robot.modules;
 import edu.wpi.first.wpilibj.RobotBase;
 import edu.wpi.first.wpilibj.motorcontrol.MotorController;
 
+import com.revrobotics.spark.SparkMax;
+import com.revrobotics.spark.SparkBase.PersistMode;
+import com.revrobotics.spark.SparkBase.ResetMode;
+import com.revrobotics.spark.config.SparkMaxConfig;
+
 import edu.wpi.first.math.controller.PIDController;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Translation2d;
@@ -12,6 +17,8 @@ import edu.wpi.first.networktables.NetworkTable;
 import edu.wpi.first.networktables.NetworkTableInstance;
 import edu.wpi.first.networktables.NetworkTableEntry; // added
 import frc.robot.encoder.Encoder;
+import frc.robot.misc.Utility;
+import frc.robot.misc.Utility.SwervePosition;
 
 public class SwerveMotorModule {
   public Translation2d modulePosition;
@@ -21,6 +28,8 @@ public class SwerveMotorModule {
   Translation2d currentPosition = new Translation2d();
   Translation2d previousPosition = new Translation2d();
   double currentDistance;
+  SwerveModuleState currentState = new SwerveModuleState();
+  double rotationOffset = 0.0;
 
   double previousCurrentAngle;
   double previousTargetAngle;
@@ -66,6 +75,7 @@ public class SwerveMotorModule {
   boolean invertRotation = false;
 
   SwerveDriveModule driveModule;
+  SwervePosition swervePosition;
 
   NetworkTable myTable;
   // Cached NT entries
@@ -93,8 +103,9 @@ public class SwerveMotorModule {
   boolean enableDecelComp = false;
   boolean enableGiveUp = false;
 
-  public SwerveMotorModule(String ID, Translation2d Position, MotorController DriveMotor, MotorController RotationMotor, Encoder AngleEncoder, double EncoderMultiplier, double FloatTolerance, boolean InvertRotation, boolean InvertDrive) {
-    moduleID = ID;
+  public SwerveMotorModule(Utility.SwervePosition SwervePosition, Translation2d Position, MotorController DriveMotor, MotorController RotationMotor, Encoder AngleEncoder, double EncoderMultiplier, double FloatTolerance, boolean InvertRotation, boolean InvertDrive, double RotationOffset) {
+    moduleID = SwervePosition.toString();
+    swervePosition = SwervePosition;
 
     modulePosition = Position;
     driveMotor = DriveMotor;
@@ -103,13 +114,24 @@ public class SwerveMotorModule {
     floatTolerance = FloatTolerance;
     invertDrive = InvertDrive;
 
+    rotationOffset = RotationOffset;
+
     encoderMultiplier = EncoderMultiplier;
     angleEncoder.setMultiplier(EncoderMultiplier);
 
     // decelFactor = driveModule.rotationSpeed / 1.5;
 
-    // not used for absolute encoders
-    AngleEncoder.setReverseDirection(InvertRotation);
+    invertRotation = InvertRotation;
+    if (RotationMotor instanceof SparkMax)
+      ((SparkMax)RotationMotor).configure(new SparkMaxConfig().inverted(invertRotation), ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
+    else
+      // not used for absolute encoders - why?
+      AngleEncoder.setReverseDirection(InvertRotation);
+
+  }
+
+  public SwervePosition GetSwervePosition() {
+    return swervePosition;
   }
 
   public void Initialize() {
@@ -150,6 +172,7 @@ public class SwerveMotorModule {
     enableDecelCompEntry.setBoolean(enableDecelComp);
     enableGiveUpEntry.setBoolean(enableGiveUp);
     pidSetpointsEntry.setString("kp: " + pidController.getP() + "; ki: " + pidController.getI() + "; kd: " + pidController.getD());
+    myTable.getEntry("rotationOffset").setDouble(rotationOffset);
   }
 
   public SwerveModulePosition getPosition() {
@@ -173,15 +196,16 @@ public class SwerveMotorModule {
     myTable = NetworkTableInstance.getDefault().getTable(driveModule.moduleID).getSubTable(moduleID);
   }
 
-  public void updateModuleValues(SwerveModuleState moduleState, boolean optimize) {
+  public SwerveModuleState updateModuleValues(SwerveModuleState moduleState, boolean optimize) {
+    currentState.angle = currentAngle;
+    
     double distance = useFakeEncoder ?
       currentAngle.getDegrees()
       :
       angleEncoder.getDistance()
     ;
 
-    currentAngle = Rotation2d.fromDegrees(distance);
-    currentAngleEntry.setDouble(Math.round(currentAngle.getRadians() * 100) / 100.0);
+    currentAngle = Rotation2d.fromDegrees(distance).minus(Rotation2d.fromRadians(rotationOffset));
 
     if (optimize) {
       moduleState.optimize(currentAngle);
@@ -207,6 +231,8 @@ public class SwerveMotorModule {
       if (driveModule.controller.enableDrive)
         setSpeed(moduleState);
     }
+
+    return moduleState;
   }
 
   void setAngle(SwerveModuleState state) {
@@ -214,7 +240,9 @@ public class SwerveMotorModule {
     // https://docs.wpilib.org/en/stable/docs/software/advanced-controls/controllers/pidcontroller.html
     // https://www.chiefdelphi.com/t/normal-spark-pid-p-i-and-d-values/427683/4
     var currentRad = currentAngle.getRadians() + 0.0; // add zero to prevent negative zero
+    currentAngleEntry.setDouble(Math.round(currentAngle.getRadians() * 100) / 100.0);
 
+    // should we add offset to target or not?
     var tarAngle = state.angle;
     var tarRad = tarAngle.getRadians() + 0.0; // add 0 to prevent negative zero
     targetRadiansEntry.setDouble(tarRad);
@@ -262,7 +290,7 @@ public class SwerveMotorModule {
 
     if (useFakeEncoder) {
       // fake adjust current angle to simulate encoder input
-      currentAngle = Rotation2d.fromRadians((currentAngle.getRadians() + motorSpeed * encoderSimRate));
+      currentAngle = Rotation2d.fromRadians((currentAngle.plus(Rotation2d.fromRadians(rotationOffset)).getRadians() + motorSpeed * encoderSimRate));
     }
   }
 
@@ -302,7 +330,11 @@ public class SwerveMotorModule {
     adjustmentFactorEntry.setDouble(adjustmentFactor);
 
     return adjustmentFactor;
-}
+  }
+
+  public SwerveModuleState getCurrentState() {
+    return currentState;
+  }
 
   double getAccumulatedMotorSpeed(double currentRad, double delAngle) {
     // if we haven't moved, and our delta angle is larger than float tolerance, boost the motor voltage
@@ -346,15 +378,10 @@ public class SwerveMotorModule {
       motorSpeed *= -1;
     driveMotorSpeedEntry.setDouble(motorSpeed);
 
-    if (Math.abs(previousDriveSpeed - motorSpeed) > floatTolerance && debugSpeed) {
-      // System.out.printf("%s desired angle: %f; degrees %f\n", moduleID, optAngle.getRadians(), optAngle.getDegrees());
-      // System.out.printf("%s current angle: %f; degrees %f\n", moduleID, currentAngle.getRadians() % 6.28, currentAngle.getDegrees() % 360);
-      System.out.printf("%s rawMotorSpeed: %f\n", moduleID, rawMotorSpeed);
-      System.out.printf("%s setSpeed: motor speed: %f\n", moduleID, motorSpeed);
-      previousDriveSpeed = motorSpeed;
-    }
+    previousDriveSpeed = motorSpeed;
 
     driveMotor.set(motorSpeed);
+    currentState.speedMetersPerSecond = motorSpeed * driveModule.driveSpeed;
 
     // TODO: look at using encoders to get shaft rotation converted to actual wheel motion
     currentDistance += rawMotorSpeed * (elapsedTime / 1000);
@@ -363,12 +390,8 @@ public class SwerveMotorModule {
 
     // set fake position
     var delta = new Translation2d(Math.cos(optAngle.getRadians()) * rawMotorSpeed * elapsedTime, Math.sin(optAngle.getRadians()) * rawMotorSpeed * elapsedTime);
-    // System.out.printf("%s delta: %s\n", moduleID, delta);
     currentPosition = currentPosition.plus(delta);
-    if ((Math.abs(previousPosition.minus(currentPosition).getX()) > floatTolerance || Math.abs(previousPosition.minus(currentPosition).getY()) > floatTolerance) && debugSpeed) {
-      System.out.printf("%s setSpeed: currentPosition: %s\n", moduleID, currentPosition);
-      previousPosition = currentPosition;
-    }
+    previousPosition = currentPosition;
   }
 
   public double getSpeed() {

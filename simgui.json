@@ -39,6 +39,14 @@
   },
   "NetworkTables": {
     "transitory": {
+      "SmartDashboard": {
+        "Field": {
+          "double[]##v_/SmartDashboard/Field/Robot": {
+            "open": true
+          },
+          "open": true
+        }
+      },
       "elevator": {
         "open": true
       },
@@ -46,6 +54,9 @@
         "open": true
       },
       "swerveDrive": {
+        "leftFront": {
+          "open": true
+        },
         "open": true
       }
     }

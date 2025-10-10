@@ -14,6 +14,8 @@ import edu.wpi.first.math.kinematics.SwerveModuleState;
 import edu.wpi.first.math.util.Units;
 import edu.wpi.first.networktables.NetworkTable;
 import edu.wpi.first.networktables.NetworkTableInstance;
+import edu.wpi.first.networktables.StructArrayPublisher;
+import edu.wpi.first.networktables.StructPublisher;
 import edu.wpi.first.networktables.NetworkTableEntry;
 import edu.wpi.first.math.controller.PIDController;
 import edu.wpi.first.math.estimator.SwerveDrivePoseEstimator;
@@ -66,6 +68,7 @@ public class SwerveDriveModule implements DriveModule {
     double currentAngle = 0.0;
     double previousAngle = 0.0;
     double fakeGyroRate = 0.6;
+    Pose3d fakeCameraPose = new Pose3d(new Translation3d(0, -0.28, 0.51), new Rotation3d(new Rotation2d(1.566)));
 
     boolean isZeroPressed = false;
     boolean isLockPressed = false;
@@ -121,6 +124,10 @@ public class SwerveDriveModule implements DriveModule {
     private NetworkTableEntry currentPositionEntry;
     private NetworkTableEntry fakeAngleEntry;
     private NetworkTableEntry targetDeltaEntry;
+    StructPublisher<Pose3d> currentPosePublisher;
+    StructArrayPublisher<SwerveModuleState> swerveModuleReqestPublisher;
+    StructArrayPublisher<SwerveModuleState> swerveModuleCommandedPublisher;
+    StructPublisher<ChassisSpeeds> chassisSpeedsPublisher;
 
     public SwerveDriveModule(String ModuleID, Gyro Gyro, Positioner Positioner, double DriveSpeed, double RotationSpeed,
             double FloatTolerance, SwerveMotorModule ... modules) {
@@ -128,7 +135,6 @@ public class SwerveDriveModule implements DriveModule {
 
         var translations = new Translation2d[modules.length];
         var positions = new SwerveModulePosition[modules.length];
-        var i = 0;
 
         myTable = NetworkTableInstance.getDefault().getTable(moduleID);
 
@@ -137,14 +143,15 @@ public class SwerveDriveModule implements DriveModule {
         gyro = Gyro;
         positioner = Positioner;
         floatTolerance = FloatTolerance;
+
         // initialize modules after setting values, as modules lookup values from controller
         // TODO: maybe make this a little less brittle
         for (SwerveMotorModule module : modules) {
+            var i = module.GetSwervePosition().getValue();
             module.setDriveModule(this);
             driveModules.add(module);
             translations[i] = module.modulePosition;
             positions[i] = new SwerveModulePosition(0, new Rotation2d());
-            i++;
         }
         
         var posKp = 2.0; 
@@ -255,6 +262,12 @@ public class SwerveDriveModule implements DriveModule {
         lateralPidSetpointsEntry.setString(String.format("%f %f %f", lateralPidController.getP(), lateralPidController.getI(), lateralPidController.getD()));
         forwardPidSetpointsEntry.setString(String.format("%f %f %f", forwardPidController.getP(), forwardPidController.getI(), forwardPidController.getD()));
         fieldOrientedEntry.setBoolean(isFieldOriented);
+
+        // for AdvantageScope Visualization
+        currentPosePublisher = myTable.getStructTopic("CurrentPose", Pose3d.struct).publish();
+        swerveModuleReqestPublisher = myTable.getStructArrayTopic("RequestedModuleStates", SwerveModuleState.struct).publish();
+        swerveModuleCommandedPublisher = myTable.getStructArrayTopic("ActualModuleStates", SwerveModuleState.struct).publish();
+        chassisSpeedsPublisher = myTable.getStructTopic("ChassisSpeeds", ChassisSpeeds.struct).publish();
 
         positioner.Initialize();
 
@@ -533,7 +546,7 @@ public class SwerveDriveModule implements DriveModule {
                     } else if (pose.HasLookAt && posNorm > 0.0) {
                         // TODO 1: recalculate according to coordinate system updates
                         // trying to rotate from the camera's vantage point to ensure that the april tags are always in the center
-                        var adjustedPos = Robot.isReal() ? positioner.GetReferenceInFieldCoords() : currentPose;
+                        var adjustedPos = Robot.isReal() ? positioner.GetReferenceInFieldCoords() : fakeCameraPose.transformBy(currentPose.minus(fakeCameraPose));
                         myTable.getEntry("adjustedPos").setString(adjustedPos.toString());
                         var lookAt = pose.LookAt;
                         // currently, this gets the atan with axes flipped and then subtracts from negative field orientation
@@ -542,7 +555,7 @@ public class SwerveDriveModule implements DriveModule {
                         myTable.getEntry("lookTargetRaw").setDouble(lookTarget);
                         // adjust rotation for camera rotation offset
                         // TODO 1: make sure limelight rotation is positive for real
-                        var referenceAngle = Robot.isReal() ? positioner.GetReferenceInRobotCoords().getRotation().getZ() : 1.566;
+                        var referenceAngle = Robot.isReal() ? positioner.GetReferenceInRobotCoords().getRotation().getZ() : fakeCameraPose.getRotation().getZ();
                         lookTarget = lookTarget - referenceAngle;
                         myTable.getEntry("lookTargetAdj").setDouble(lookTarget);
                         // wrap to positive and modulo
@@ -644,6 +657,7 @@ public class SwerveDriveModule implements DriveModule {
         }
 
         Pose3d currentPose = new Pose3d(poseEstimator.getEstimatedPosition());
+        currentPosePublisher.set(currentPose);
 
         // update simulator field position
         fieldPosition.setRobotPose(currentPose.toPose2d());
@@ -686,12 +700,14 @@ public class SwerveDriveModule implements DriveModule {
         ChassisSpeeds speeds = isFieldOriented ?
             ChassisSpeeds.fromFieldRelativeSpeeds(
                 // invert directions if we're red and manually controlling
-                Utility.IsRedAlliance() && DriverStation.isTeleop() ? -forwardSpeed : forwardSpeed, // negate for red teleop
-                !Utility.IsRedAlliance() && DriverStation.isTeleop() ? -lateralSpeed : lateralSpeed, // negate for blue teleop
+                Utility.IsRedAlliance() && DriverStation.isTeleop() ? -forwardSpeed : forwardSpeed, // negate for red teleop (field rotation)
+                Utility.IsRedAlliance() && DriverStation.isTeleop() ? -lateralSpeed : lateralSpeed, // negate for red teleop (field rotation)
                 thisRotationSpeed, currentRotation)
             : new ChassisSpeeds(forwardSpeed,
-                DriverStation.isTeleop() ? -lateralSpeed : lateralSpeed,
+                lateralSpeed,
+                //Utility.IsRedAlliance() && DriverStation.isTeleop() ? -lateralSpeed : lateralSpeed, // negate for red teleop (field rotation)
                 thisRotationSpeed);
+        chassisSpeedsPublisher.set(speeds);
 
         SwerveModuleState[] moduleStates;
 
@@ -708,14 +724,18 @@ public class SwerveDriveModule implements DriveModule {
         SwerveModulePosition[] positions = new SwerveModulePosition[driveModules.size()];
         double[] driveSpeeds = new double[4]; //always 4 because of dashboard setup
 
-        for (int i = 0; i < driveModules.size(); i++) {
-            SwerveMotorModule module = driveModules.get(i);
-            module.updateModuleValues(moduleStates[i], optimize);
+        SwerveModuleState[] actualStates = new SwerveModuleState[driveModules.size()];
+        for (SwerveMotorModule module : driveModules) {
+            var i = module.GetSwervePosition().getValue();
+            moduleStates[i] = module.updateModuleValues(moduleStates[i], optimize);
+            actualStates[i] = module.getCurrentState();
             // TODO: this becomes critical with pose estimator - make sure it's right - maybe add drive wheel encoder values
             positions[i] = module.getPosition();
             if (i < driveSpeeds.length)
                 driveSpeeds[i] = module.getSpeed();
         }
+        swerveModuleReqestPublisher.set(moduleStates);
+        swerveModuleCommandedPublisher.set(actualStates);
 
         odometry.update(currentRotation, positions);
         poseEstimator.update(currentRotation, positions);

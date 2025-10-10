@@ -28,6 +28,7 @@ import frc.robot.gyro.AHRSGyro;
 import frc.robot.gyro.Gyro;
 import frc.robot.misc.GameController;
 import frc.robot.misc.Utility;
+import frc.robot.misc.Utility.SwervePosition;
 import frc.robot.modules.ModuleController;
 import frc.robot.modules.SingleActuatorModule;
 import frc.robot.modules.SingleMotorModule;
@@ -132,16 +133,16 @@ public class Robot extends TimedRobot {
   SingleActuatorModule slide = new SingleActuatorModule("slide", pwm_slide, false);
   
   // total length of robot is 32.375", width is 27.5", centerline is 16.1875" from edge.  Drive axle center is 4" from edge - 12.1875" from center which is 309.56mm or 0.30956 meters
-  SwerveMotorModule leftFrontMM = new SwerveMotorModule("leftFront", new Translation2d(-0.276225, -0.238125), can_drive_lf, can_steer_lf, enc_lf, steeringEncoderMultiplier, m_floatTolerance, false, true);
-  SwerveMotorModule rightFrontMM = new SwerveMotorModule("rightFront", new Translation2d(0.276225, -0.238125), can_drive_rf, can_steer_rf, enc_rf, steeringEncoderMultiplier, m_floatTolerance, false, false);
-  SwerveMotorModule leftRearMM = new SwerveMotorModule("leftRear", new Translation2d(-0.276225, 0.238125), can_drive_lr, can_steer_lr, enc_lr, steeringEncoderMultiplier, m_floatTolerance, false, false);
-  SwerveMotorModule rightRearMM = new SwerveMotorModule("rightRear", new Translation2d(0.276225, 0.238125), can_drive_rr, can_steer_rr, enc_rr, steeringEncoderMultiplier, m_floatTolerance, false, false);
+  SwerveMotorModule leftFrontMM = new SwerveMotorModule(SwervePosition.LeftFront, new Translation2d(0.276225, 0.238125), can_drive_lf, can_steer_lf, enc_lf, steeringEncoderMultiplier, m_floatTolerance, false, false, 0.0);
+  SwerveMotorModule rightFrontMM = new SwerveMotorModule(SwervePosition.RightFront, new Translation2d(0.276225, -0.238125), can_drive_rf, can_steer_rf, enc_rf, steeringEncoderMultiplier, m_floatTolerance, false, false, 0.0);
+  SwerveMotorModule leftRearMM = new SwerveMotorModule(SwervePosition.LeftRear, new Translation2d(-0.276225, 0.238125), can_drive_lr, can_steer_lr, enc_lr, steeringEncoderMultiplier, m_floatTolerance, false, false, 0.0);
+  SwerveMotorModule rightRearMM = new SwerveMotorModule(SwervePosition.RightRear, new Translation2d(-0.276225, -0.238125), can_drive_rr, can_steer_rr, enc_rr, steeringEncoderMultiplier, m_floatTolerance, false, false, 0.0);
 
   SwerveDriveModule swerveDriveModule = new SwerveDriveModule("swerveDrive", m_gyro, m_positioner, m_driveSpeed, steerMotorSpeed, m_floatTolerance
-    , leftFrontMM
+    , rightRearMM
     , rightFrontMM
     , leftRearMM
-    , rightRearMM
+    , leftFrontMM
   );
 
   // DifferentialDriveModule diffDriveModule = new DifferentialDriveModule("differentialDrive", can_steer_rr, can_drive_lf);

@@ -344,25 +344,6 @@ public class SingleMotorModule implements RobotModule {
         return null;
     }
 
-    // public void SetScoringPoseMiddle(boolean isPressed) {
-    //     // TODO: This shouldn't be game-specific, need to make this more generic
-    //     if (isPressed) {
-    //         SetTargetActionPose(Group.Score, -1, -1, 2, Action.Any);
-    //     }
-    // }
-    // public void SetScoringPoseLower(boolean isPressed) {
-    //     // TODO: This shouldn't be game-specific, need to make this more generic
-    //     if (isPressed) {
-    //         SetTargetActionPose(Group.Score, -1, -1, 1, Action.Any);
-    //     }
-    // }
-    // public void SetScoringPoseTrough(boolean isPressed) {
-    //     // TODO: This shouldn't be game-specific, need to make this more generic
-    //     if (isPressed) {
-    //         SetTargetActionPose(Group.Score, -1, -1, 0, Action.Any);
-    //     }
-    // }
-
     public void SetNoPose(boolean isPressed) {
         if (isPressed) {
             AbandonTarget();

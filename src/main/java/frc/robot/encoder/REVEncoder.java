@@ -1,5 +1,6 @@
 package frc.robot.encoder;
 
+import com.revrobotics.REVLibError;
 import com.revrobotics.RelativeEncoder;
 
 public class REVEncoder implements Encoder {
@@ -7,6 +8,7 @@ public class REVEncoder implements Encoder {
     RelativeEncoder internalEncoder;
     double angleOffsetRad = 0.0; // angle to subtract from actual angle to zero the encoder
     double multiplier = 1.0;
+    long giveUpTime = 1000;
 
     public void setMultiplier(double value) {
         multiplier = value;
@@ -46,7 +48,7 @@ public class REVEncoder implements Encoder {
     }
 
     public void setReverseDirection(boolean reverse) {
-        // Not Implemented
+        // Not Implemented - for SparkMAX, must be set on the motor controller itself
         // internalEncoder.setReverseDirection(reverse);
     }
 
@@ -55,7 +57,7 @@ public class REVEncoder implements Encoder {
     }
 
     public double getRawValue() {
-        return internalEncoder.getPosition() * multiplier;
+        return internalEncoder.getPosition() * multiplier + angleOffsetRad;
     }
 
     public double getDistanceDeg() {
@@ -63,17 +65,20 @@ public class REVEncoder implements Encoder {
     }
 
     public void setZeroPosition() {
-        var result = internalEncoder.setPosition(0.0);
-        System.out.println("Set REV Encoder Zero Position Result: " + result);
-        while (internalEncoder.getPosition() != 0.0) {
+        var result = internalEncoder.setPosition(angleOffsetRad);
+        var sleepTime = 10L;
+        var elapsedTime = 0L;
+        while (elapsedTime < giveUpTime && internalEncoder.getPosition() != angleOffsetRad) {
             try {
-                Thread.sleep(10);
+                Thread.sleep(sleepTime);
+                elapsedTime += sleepTime;
             } catch (Exception e) {
 
             }
         }
-        System.out.println("Rev Encoder position set");
-        //setAngleOffsetDeg(-getDistanceDeg());
+
+        if (result != REVLibError.kOk)
+            System.out.println("Set REV Encoder Zero Position Result: " + result);
     }
 
     public double getDistance() {
