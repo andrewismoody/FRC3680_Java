@@ -17,9 +17,25 @@ import frc.robot.modules.SwerveDriveModule;
 
 // SequenceRotateWaitReturn is a simple example auto sequence that uses target events mixed with timed events to move the robot.
 public class SequenceRotateWaitReturn extends AutoSequence {
+  private final AutoController autoController;
+  private boolean initialized = false;
+
   public SequenceRotateWaitReturn(String label, AutoController ac) {
     super(label, ac);
-    var modules = ac.GetModuleController();
+    autoController = ac;
+  }
+
+  @Override
+  public void Initialize() {
+    super.Initialize();
+
+    if (initialized) {
+      System.out.printf("Sequence %s already initialized; skipping duplicate init\n", GetLabel());
+      return;
+    }
+    initialized = true;
+
+    var modules = autoController.GetModuleController();
 
     // Modules
     var drive = (SwerveDriveModule) modules.GetDriveModule();
@@ -37,24 +53,24 @@ public class SequenceRotateWaitReturn extends AutoSequence {
     drive.AddActionPose(rotate0);
 
     // Phase 1: Dispatch both targets in parallel
-    AutoEventTarget setDrive90 = new AutoEventTarget("Set Drive 90deg", false, rotate90, AutoEvent.EventType.SetTarget, ac);
+    AutoEventTarget setDrive90 = new AutoEventTarget("Set Drive 90deg", false, rotate90, AutoEvent.EventType.SetTarget, autoController);
     setDrive90.SetTargetModule(drive);
     AddEvent(setDrive90);
 
     // Phase 2: Await completion
-    AutoEventTarget awaitDrive90 = new AutoEventTarget("Await Drive 90deg", false, null, AutoEvent.EventType.AwaitTarget, ac);
+    AutoEventTarget awaitDrive90 = new AutoEventTarget("Await Drive 90deg", false, null, AutoEvent.EventType.AwaitTarget, autoController);
     awaitDrive90.SetTargetModule(drive);
     AddEvent(awaitDrive90);
 
-    AutoEventTime waitTime = new AutoEventTime("Wait 10 seconds", false, 10000, AutoEvent.EventType.Void, ac);
+    AutoEventTime waitTime = new AutoEventTime("Wait 10 seconds", false, 10000, AutoEvent.EventType.Void, autoController);
     AddEvent(waitTime);
 
-    AutoEventTarget setDrive0 = new AutoEventTarget("Set Drive 0deg", false, rotate0, AutoEvent.EventType.SetTarget, ac);
+    AutoEventTarget setDrive0 = new AutoEventTarget("Set Drive 0deg", false, rotate0, AutoEvent.EventType.SetTarget, autoController);
     setDrive0.SetTargetModule(drive);
     AddEvent(setDrive0);
 
     // Phase 5: Await completion
-    AutoEventTarget awaitDrive0 = new AutoEventTarget("Await Drive 0deg", false, null, AutoEvent.EventType.AwaitTarget, ac);
+    AutoEventTarget awaitDrive0 = new AutoEventTarget("Await Drive 0deg", false, null, AutoEvent.EventType.AwaitTarget, autoController);
     awaitDrive0.SetTargetModule(drive);
     AddEvent(awaitDrive0);
   }

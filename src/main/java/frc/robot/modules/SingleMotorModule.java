@@ -10,6 +10,7 @@ import edu.wpi.first.math.geometry.Translation3d;
 import edu.wpi.first.networktables.NetworkTable;
 import edu.wpi.first.networktables.NetworkTableInstance;
 import edu.wpi.first.networktables.NetworkTableEntry;
+import edu.wpi.first.wpilibj.RobotBase;
 import edu.wpi.first.wpilibj.motorcontrol.MotorController;
 import frc.robot.action.Group;
 import frc.robot.auto.AutoTarget;
@@ -46,6 +47,10 @@ public class SingleMotorModule implements RobotModule {
 
     private int settleCyclesRequired = 3; // tune as needed
     private int settleCount = 0;
+
+    public boolean useFakeEncoder = !RobotBase.isReal();
+    double encoderSimRate = 3.0;
+    double encoderSimFactor = 0.03;
 
     ArrayList<ActionPose> actionPoses = new ArrayList<ActionPose>();
     ActionPose targetPose;
@@ -110,6 +115,8 @@ public class SingleMotorModule implements RobotModule {
             enc.setMultiplier(encoderMultiplier);
             enc.setZeroPosition();
         }
+
+        encoderSimRate = driveSpeed * encoderSimFactor;
     }
 
     public void AddActionPose(ActionPose newAction) {
@@ -131,6 +138,7 @@ public class SingleMotorModule implements RobotModule {
                 && (pose.position == position || pose.position == -1)
                 && (pose.action == action || pose.action == Action.Any)
             ) {
+                System.out.printf("%s GetActionPose: Matched %s %d %d %d %s\n", moduleID, pose.group, pose.location, pose.locationIndex, pose.position, pose.action);
                 return pose;
             }
         }
@@ -248,10 +256,12 @@ public class SingleMotorModule implements RobotModule {
     @Override
     public void ProcessState(boolean isAuto) {
         if (enc != null) {
-            if (enc.isAbsolute())
-                setRotationFromAbsolute();
-            else
-                rotationCount = enc.getRawValue();
+            if (!useFakeEncoder) {
+                if (enc.isAbsolute())
+                    setRotationFromAbsolute();
+                else
+                    rotationCount = enc.getRawValue();
+            }
             rotationCountEntry.setDouble(rotationCount);
         }
 
@@ -274,6 +284,11 @@ public class SingleMotorModule implements RobotModule {
         }
 
         previousRotationCount = rotationCount;
+
+        if (useFakeEncoder) {
+            // fake adjust current angle to simulate encoder input
+            rotationCount = rotationCount + currentDriveSpeed * encoderSimRate;
+        }
 
         currentDriveSpeed = 0.0;
     }

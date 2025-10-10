@@ -19,9 +19,25 @@ import frc.robot.modules.SwerveDriveModule;
 
 // SequenceRotateScoreReturn is an example auto sequence that uses target events mixed with timed events to control multiple modules.
 public class SequenceRotateScoreReturn extends AutoSequence {
+  private final AutoController autoController;
+  private boolean initialized = false;
+
   public SequenceRotateScoreReturn(String label, AutoController ac) {
     super(label, ac);
-    var modules = ac.GetModuleController();
+    autoController = ac;
+  }
+
+  @Override
+  public void Initialize() {
+    super.Initialize();
+
+    if (initialized) {
+      System.out.printf("Sequence %s already initialized; skipping duplicate init\n", GetLabel());
+      return;
+    }
+    initialized = true;
+
+    var modules = autoController.GetModuleController();
 
     // Modules
     var drive = (SwerveDriveModule) modules.GetDriveModule();
@@ -45,47 +61,47 @@ public class SequenceRotateScoreReturn extends AutoSequence {
     var elevZero = elevator.GetActionPose(Group.Score, Location.Any.getValue(), -1, Position.Trough.getValue(), Action.Any);
 
     // Phase 1: Dispatch both targets in parallel
-    AutoEventTarget setDrive90 = new AutoEventTarget("Set Drive 90deg", true, rotate90, AutoEvent.EventType.SetTarget, ac);
+    AutoEventTarget setDrive90 = new AutoEventTarget("Set Drive 90deg", true, rotate90, AutoEvent.EventType.SetTarget, autoController);
     setDrive90.SetTargetModule(drive);
     AddEvent(setDrive90);
 
-    AutoEventTarget setElevL2 = new AutoEventTarget("Set Elevator L2", true, elevL2, AutoEvent.EventType.SetTarget, ac);
+    AutoEventTarget setElevL2 = new AutoEventTarget("Set Elevator L2", true, elevL2, AutoEvent.EventType.SetTarget, autoController);
     setElevL2.SetTargetModule(elevator);
     AddEvent(setElevL2);
 
     // Phase 2: Await both completions in parallel
-    AutoEventTarget awaitDrive90 = new AutoEventTarget("Await Drive 90deg", false, null, AutoEvent.EventType.AwaitTarget, ac);
+    AutoEventTarget awaitDrive90 = new AutoEventTarget("Await Drive 90deg", false, null, AutoEvent.EventType.AwaitTarget, autoController);
     awaitDrive90.SetTargetModule(drive);
     AddEvent(awaitDrive90);
 
-    AutoEventTarget awaitElevL2 = new AutoEventTarget("Await Elevator L2", false, null, AutoEvent.EventType.AwaitTarget, ac);
+    AutoEventTarget awaitElevL2 = new AutoEventTarget("Await Elevator L2", false, null, AutoEvent.EventType.AwaitTarget, autoController);
     awaitElevL2.SetTargetModule(elevator);
     AddEvent(awaitElevL2);
 
     // Phase 3: Open slide latch for 2 seconds
-    AutoEventTime openLatch = new AutoEventTime("Open Latch", false, 0, AutoEvent.EventType.Boolean, ac);
+    AutoEventTime openLatch = new AutoEventTime("Open Latch", false, 0, AutoEvent.EventType.Boolean, autoController);
     openLatch.SetBoolEvent(true, slide::ApplyValue);
     AddEvent(openLatch);
 
-    AutoEventTime closeLatchAfter = new AutoEventTime("Close Latch (after 2s)", false, 2000, AutoEvent.EventType.Boolean, ac);
+    AutoEventTime closeLatchAfter = new AutoEventTime("Close Latch (after 2s)", false, 2000, AutoEvent.EventType.Boolean, autoController);
     closeLatchAfter.SetBoolEvent(true, slide::ApplyInverse); // true => reverse/close
     AddEvent(closeLatchAfter);
 
     // Phase 4: Simultaneously dispatch elevator to zero and rotate back to 0deg
-    AutoEventTarget setElevZero = new AutoEventTarget("Set Elevator Zero", false, elevZero, AutoEvent.EventType.SetTarget, ac);
+    AutoEventTarget setElevZero = new AutoEventTarget("Set Elevator Zero", false, elevZero, AutoEvent.EventType.SetTarget, autoController);
     setElevZero.SetTargetModule(elevator);
     AddEvent(setElevZero);
 
-    AutoEventTarget awaitElevZero = new AutoEventTarget("Await Elevator Zero", false, null, AutoEvent.EventType.AwaitTarget, ac);
+    AutoEventTarget awaitElevZero = new AutoEventTarget("Await Elevator Zero", false, null, AutoEvent.EventType.AwaitTarget, autoController);
     awaitElevZero.SetTargetModule(elevator);
     AddEvent(awaitElevZero);
 
-    AutoEventTarget setDrive0 = new AutoEventTarget("Set Drive 0deg", false, rotate0, AutoEvent.EventType.SetTarget, ac);
+    AutoEventTarget setDrive0 = new AutoEventTarget("Set Drive 0deg", false, rotate0, AutoEvent.EventType.SetTarget, autoController);
     setDrive0.SetTargetModule(drive);
     AddEvent(setDrive0);
 
     // Phase 5: Await both completions in parallel
-    AutoEventTarget awaitDrive0 = new AutoEventTarget("Await Drive 0deg", false, null, AutoEvent.EventType.AwaitTarget, ac);
+    AutoEventTarget awaitDrive0 = new AutoEventTarget("Await Drive 0deg", false, null, AutoEvent.EventType.AwaitTarget, autoController);
     awaitDrive0.SetTargetModule(drive);
     AddEvent(awaitDrive0);
   }

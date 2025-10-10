@@ -197,13 +197,6 @@ public class Robot extends TimedRobot {
 
     Dashboard.InitializeChoosers();
 
-    // Add action poses before button mappings so buttons can drive action poses
-    ActionPoses.Initialize(swerveDriveModule, elevator, slide);
-
-    // even tho this runs on every init, it only happens once so we don't mess up
-    Joystick.InitializeButtonMappings(m_controller, modules, swerveDriveModule, slide, elevator); //, grabber);
-
-    // initialize again after action poses
     autoModes = AutoModes.Initialize(autoModes, m_controller, modules);
 
     currentAutoMode = AutoModes.GetDefault(autoModes);
@@ -211,6 +204,12 @@ public class Robot extends TimedRobot {
 
   void commonInit() {
     var redStartTransform = new Transform3d(new Translation3d(new Translation2d(8.775, 4.025)), new Rotation3d(new Rotation2d(Math.PI)));
+
+    // Add action poses before button mappings so buttons can drive action poses
+    ActionPoses.Initialize(redStartTransform, swerveDriveModule, elevator, slide);
+
+    // even tho this runs on every init, it only happens once so we don't mess up
+    Joystick.InitializeButtonMappings(m_controller, modules, swerveDriveModule, slide, elevator); //, grabber);
 
     if (Robot.isSimulation()) {
       Pose3d startPose = new Pose3d(new Translation3d(new Translation2d(7.5, 6.55)), Rotation3d.kZero);
@@ -237,9 +236,14 @@ public class Robot extends TimedRobot {
   public void autonomousInit() {
     commonInit();
 
-    var selectedMode = autoModes.get(SmartDashboard.getString("Auto Selector", autoModes.keys().nextElement()));
-    if (selectedMode == null)
-      selectedMode = currentAutoMode; 
+    var selectedMode = currentAutoMode;
+    if (!isSimulation()) {
+      var selectedValue = SmartDashboard.getString("Auto Selector", autoModes.keys().nextElement());
+      System.out.printf("selected auto value '%s'\n", selectedValue);
+      if (selectedValue != null)
+        selectedMode = autoModes.get(selectedValue);
+    }
+    System.out.printf("selected auto mode '%s'\n", selectedMode.GetLabel());
     selectedMode.Initialize();
 
     // TODO: evaluate whether this is good or not - rezeroes on enable

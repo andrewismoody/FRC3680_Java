@@ -16,6 +16,7 @@ public interface AutoEvent {
         Double,
         SetTarget, // the idea of this event type is to allow the target module to perform its own calculations to meet the target
         AwaitTarget,
+        None,
     }
 
     public enum ModuleType {
@@ -24,17 +25,11 @@ public interface AutoEvent {
     }
 
     public TriggerType GetTriggerType();
-
     public EventType GetEventType();
-
     public boolean IsComplete();
-
     public void SetComplete(boolean Complete);
-
     public String GetLabel();
-
     public boolean IsParallel();
-
     public void Run();
-
+    public boolean HasStarted();
 }

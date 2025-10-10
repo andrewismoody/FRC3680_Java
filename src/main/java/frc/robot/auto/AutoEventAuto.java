@@ -7,6 +7,7 @@ public class AutoEventAuto implements AutoEvent {
     boolean complete;
     boolean parallel;
     String label;
+    boolean hasStarted = false;
 
     Translation3d target;
 
@@ -22,7 +23,14 @@ public class AutoEventAuto implements AutoEvent {
         autoEvent = AutoEvent;
     }
 
+    public boolean HasStarted() {
+        return hasStarted;
+    }
+
     public void Run() {
+        if (!hasStarted)
+            hasStarted = true;
+
         complete = true;
     }
 
@@ -44,6 +52,7 @@ public class AutoEventAuto implements AutoEvent {
 
     public void SetComplete(boolean Complete) {
         complete = Complete;
+        System.out.printf("AutoEventTime %s isComplete: %b\n", label, complete);
     }
 
     public String GetLabel() {

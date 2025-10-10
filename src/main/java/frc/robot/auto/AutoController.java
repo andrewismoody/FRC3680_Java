@@ -31,7 +31,6 @@ public class AutoController {
     }
 
     public void AddSequence(AutoSequence sequence) {
-        sequence.Initialize();
         sequences.put(sequence.label, sequence);
     }
 

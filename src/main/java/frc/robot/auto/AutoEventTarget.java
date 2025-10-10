@@ -11,6 +11,7 @@ public class AutoEventTarget implements AutoEvent {
     String label;
     boolean hasSetTarget = false;
     AutoController autoController;
+    boolean hasStarted = false;
 
     ActionPose target;
 
@@ -29,7 +30,14 @@ public class AutoEventTarget implements AutoEvent {
         target = Target;
     }
 
+    public boolean HasStarted() {
+        return hasStarted;
+    }
+
     public void Run() {
+        if (!hasStarted)
+            hasStarted = true;
+
         switch (eventType) {
             case SetTarget:
                 if (target != null) {
@@ -90,6 +98,7 @@ public class AutoEventTarget implements AutoEvent {
 
     public void SetComplete(boolean Complete) {
         complete = Complete;
+        System.out.printf("AutoEventTime %s isComplete: %b\n", label, complete);
     }
 
     public String GetLabel() {

@@ -5,9 +5,10 @@ public enum Group {
     Score(1),
     Pickup(2),
     Start(3),
-    Idle(4),
-    Any(5),
-    None(6);
+    Travel(4),
+    Idle(5),
+    Any(6),
+    None(7);
 
     private final int value;
 

@@ -40,7 +40,19 @@ public class AutoSequence {
         controller = Controller;
     }
 
+    public AutoSequence BeginWith(AutoEvent event) {
+        Events.add(event);
+        return this;
+    }
+
+    public AutoSequence Then(AutoEvent event) {
+        Events.add(event);
+        return this;
+    }
+
     public void Initialize() {
+        System.out.printf("AutoSequence %s initializing\n", label);
+
         startTime = System.currentTimeMillis();
         for (AutoEvent event : Events) {
             event.SetComplete(false);
@@ -65,9 +77,20 @@ public class AutoSequence {
 
             if (!event.IsComplete()) {
                 notFinished = true;
+                if (!event.HasStarted()) {
+                    System.out.printf("AutoSequence %s starting event %s of type %s\n", label, event.GetLabel(),
+                    event.GetTriggerType().toString());
+                }
+
                 switch (event.GetTriggerType()) {
                     case Time:
                         AutoEventTime timeEvent = (AutoEventTime) event;
+                        if (elapsedTime % 1000 == 0) {
+                            // print every second
+                            System.out.printf("AutoSequence %s waiting on time event %s: elapsed %d ms of %d ms\n",
+                                    label, timeEvent.GetLabel(), elapsedTime, timeEvent.milliseconds);
+                        }
+
                         if (elapsedTime < timeEvent.milliseconds) {
                             timeEvent.Run();
                         } else {
@@ -117,6 +140,9 @@ public class AutoSequence {
                     break eventLoop;
             }
         }
+
+        if (!notFinished)
+            System.out.printf("AutoSequence %s all events complete\n", label);
 
         finished = !notFinished;
     }

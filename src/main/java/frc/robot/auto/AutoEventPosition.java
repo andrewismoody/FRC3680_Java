@@ -30,6 +30,7 @@ public class AutoEventPosition implements AutoEvent {
     boolean wasNearby = false;
     double positionTolerance = 0.1; // meters
     double rotationTolerance = 5.0; // degrees
+    boolean hasStarted = false;
 
     DriveModule driveModule;
 
@@ -61,7 +62,14 @@ public class AutoEventPosition implements AutoEvent {
         voidEvent = Event;
     }
 
+    public boolean HasStarted() {
+        return hasStarted;
+    }
+
     public void Run() {
+        if (!hasStarted)
+            hasStarted = true;
+
         wasNearby = isNearby;
         isNearby = isNearby(driveModule.GetPosition(), target, positionTolerance, rotationTolerance);
         
@@ -123,6 +131,7 @@ public class AutoEventPosition implements AutoEvent {
 
     public void SetComplete(boolean Complete) {
         complete = Complete;
+        System.out.printf("AutoEventTime %s isComplete: %b\n", label, complete);
     }
 
     public String GetLabel() {

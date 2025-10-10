@@ -11,9 +11,23 @@ import frc.robot.auto.AutoEventTarget;
 import frc.robot.auto.AutoSequence;
 
 public class SequenceControllerScoreReloadScore extends AutoSequence {
+  private final AutoController autoController;
+  private boolean initialized = false;
+
   public SequenceControllerScoreReloadScore(String label, AutoController ac) {
     super(label, ac);
+    autoController = ac;
+  }
 
+  @Override
+  public void Initialize() {
+    super.Initialize();
+
+    if (initialized) {
+      System.out.printf("Sequence %s already initialized; skipping duplicate init\n", GetLabel());
+      return;
+    }
+    initialized = true;
 
     // Target Poses
     var scoreposition1 = new ActionPose(Group.Score, Location.Reef.getValue(), 0, Position.Lower.getValue(), Action.Pickup, null);
@@ -22,19 +36,19 @@ public class SequenceControllerScoreReloadScore extends AutoSequence {
     var scoreposition2 = new ActionPose(Group.Score, Location.Reef.getValue(), 0, Position.Middle.getValue(), Action.Pickup, null);
     var scoreaction2 = new ActionPose(Group.Score, Location.Reef.getValue(), 0, Position.Middle.getValue(), Action.Drop, null);
 
-    AutoEventTarget awaitScorePosition1 = new AutoEventTarget("Await Score Position 1", false, scoreposition1, AutoEvent.EventType.AwaitTarget, ac);
+    AutoEventTarget awaitScorePosition1 = new AutoEventTarget("Await Score Position 1", false, scoreposition1, AutoEvent.EventType.AwaitTarget, autoController);
     AddEvent(awaitScorePosition1);
 
-    AutoEventTarget awaitScoreAction1 = new AutoEventTarget("Await Score Action 1", false, scoreaction1, AutoEvent.EventType.AwaitTarget, ac);
+    AutoEventTarget awaitScoreAction1 = new AutoEventTarget("Await Score Action 1", false, scoreaction1, AutoEvent.EventType.AwaitTarget, autoController);
     AddEvent(awaitScoreAction1);
 
-    AutoEventTarget awaitPickupPosition1 = new AutoEventTarget("Await Pickup Position 1", false, pickupposition1, AutoEvent.EventType.AwaitTarget, ac);
+    AutoEventTarget awaitPickupPosition1 = new AutoEventTarget("Await Pickup Position 1", false, pickupposition1, AutoEvent.EventType.AwaitTarget, autoController);
     AddEvent(awaitPickupPosition1);
 
-    AutoEventTarget awaitScorePosition2 = new AutoEventTarget("Await Score Position 2", false, scoreposition2, AutoEvent.EventType.AwaitTarget, ac);
+    AutoEventTarget awaitScorePosition2 = new AutoEventTarget("Await Score Position 2", false, scoreposition2, AutoEvent.EventType.AwaitTarget, autoController);
     AddEvent(awaitScorePosition2);
 
-    AutoEventTarget awaitScoreAction2 = new AutoEventTarget("Await Score Action 2", false, scoreaction2, AutoEvent.EventType.AwaitTarget, ac);
+    AutoEventTarget awaitScoreAction2 = new AutoEventTarget("Await Score Action 2", false, scoreaction2, AutoEvent.EventType.AwaitTarget, autoController);
     AddEvent(awaitScoreAction2);
   }
 }

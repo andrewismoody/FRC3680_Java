@@ -409,6 +409,7 @@ public class SwerveDriveModule implements DriveModule {
                 && (pose.position == position || pose.position == -1)
                 && (pose.action == action || pose.action == Action.Any)
             ) {
+                System.out.printf("%s GetActionPose: Matched %s %d %d %d %s\n", moduleID, pose.group, pose.location, pose.locationIndex, pose.position, pose.action);
                 return pose;
             }
         }
