@@ -21,7 +21,8 @@
       "/SmartDashboard/SendableChooser[1]": "String Chooser",
       "/SmartDashboard/SendableChooser[2]": "String Chooser",
       "/SmartDashboard/SendableChooser[3]": "String Chooser",
-      "/SmartDashboard/SendableChooser[4]": "String Chooser"
+      "/SmartDashboard/SendableChooser[4]": "String Chooser",
+      "/SmartDashboard/elevator mech": "Mechanism2d"
     },
     "windows": {
       "/SmartDashboard/Field": {

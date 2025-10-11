@@ -148,7 +148,9 @@ public class Robot extends TimedRobot {
   // 20:1 gearbox
   final double steeringEncoderMultiplier = 1.0 / steerGearRatio;
 
-  SingleMotorModule elevator = new SingleMotorModule("elevator", can_elev, m_elevatorSpeed, false, null, null, enc_elev, elevatorEncoderMultiplier, 0.5);
+  final double elevatorMaxDistance = 0.5;
+  final double elevatorDistancePerRotation = 0.3;
+  SingleMotorModule elevator = new SingleMotorModule("elevator", can_elev, m_elevatorSpeed, false, null, null, enc_elev, elevatorEncoderMultiplier, 0.5, elevatorDistancePerRotation, elevatorMaxDistance);
 
   SingleActuatorModule slide = new SingleActuatorModule("slide", pwm_slide, false);
   

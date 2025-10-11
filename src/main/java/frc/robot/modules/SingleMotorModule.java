@@ -12,6 +12,10 @@ import edu.wpi.first.networktables.NetworkTableInstance;
 import edu.wpi.first.networktables.NetworkTableEntry;
 import edu.wpi.first.wpilibj.RobotBase;
 import edu.wpi.first.wpilibj.motorcontrol.MotorController;
+import edu.wpi.first.wpilibj.smartdashboard.Mechanism2d;
+import edu.wpi.first.wpilibj.smartdashboard.MechanismLigament2d;
+import edu.wpi.first.wpilibj.smartdashboard.MechanismRoot2d;
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import frc.robot.action.Group;
 import frc.robot.auto.AutoTarget;
 import frc.robot.action.Action;
@@ -19,7 +23,7 @@ import frc.robot.action.ActionPose;
 import frc.robot.encoder.Encoder;
 import frc.robot.switches.Switch;
 
-public class SingleMotorModule implements RobotModule {
+public class SingleMotorModule implements RobotModule,AutoCloseable {
     String moduleID;
     MotorController driveMotor;
     double driveSpeed;
@@ -50,7 +54,7 @@ public class SingleMotorModule implements RobotModule {
 
     public boolean useFakeEncoder = !RobotBase.isReal();
     double encoderSimRate = 3.0;
-    double encoderSimFactor = 0.03;
+    double encoderSimFactor = 0.005;
 
     ArrayList<ActionPose> actionPoses = new ArrayList<ActionPose>();
     ActionPose targetPose;
@@ -70,11 +74,19 @@ public class SingleMotorModule implements RobotModule {
     private NetworkTableEntry rotationCountEntry;
     private NetworkTableEntry currentDriveSpeedEntry;
 
-    public SingleMotorModule(String ModuleID, MotorController DriveMotor, double DriveSpeed, boolean Invert, Switch UpperLimit, Switch LowerLimit, Encoder Enc, double EncoderMultiplier, double ReverseMultiplier) {
+    Mechanism2d mech;
+    MechanismRoot2d mechRoot;
+    MechanismLigament2d mechMotion;
+    double endDistance = 1.0;
+    double distancePerRotation = 0.3;
+
+    public SingleMotorModule(String ModuleID, MotorController DriveMotor, double DriveSpeed, boolean Invert, Switch UpperLimit, Switch LowerLimit, Encoder Enc, double EncoderMultiplier, double ReverseMultiplier, double DistancePerRotation, double EndDistance) {
         moduleID = ModuleID;
         driveMotor = DriveMotor;
         driveSpeed = DriveSpeed;
         invert = Invert;
+
+        endDistance = EndDistance;
 
         var kp = 5; // kp = 20% over max motor capability
         var ki = 0; //kp * 0.10; // ki = 10% of kp
@@ -117,6 +129,17 @@ public class SingleMotorModule implements RobotModule {
         }
 
         encoderSimRate = driveSpeed * encoderSimFactor;
+        
+        var width = 0.5;
+        mech = new Mechanism2d(width, endDistance);
+        mechRoot = mech.getRoot(GetModuleID(), width / 2, 0);
+        mechMotion = mechRoot.append(new MechanismLigament2d("motion", 0, 90));
+        SmartDashboard.putData(String.format("%s mech", moduleID), mech);  
+    }
+
+    @Override
+    public void close() {
+        mech.close();
     }
 
     public void AddActionPose(ActionPose newAction) {
@@ -289,6 +312,8 @@ public class SingleMotorModule implements RobotModule {
             // fake adjust current angle to simulate encoder input
             rotationCount = rotationCount + currentDriveSpeed * encoderSimRate;
         }
+
+        mechMotion.setLength(rotationCount * distancePerRotation);
 
         currentDriveSpeed = 0.0;
     }

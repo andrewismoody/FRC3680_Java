@@ -40,7 +40,7 @@ public class SequenceControllerStartScoreReload extends AutoSequence {
     var pose_waypoint12_Reef = new ActionPose(Group.Travel, Location.Waypoint.getValue(), 12, Position.Trough.getValue(), Action.Pickup, null);
     var pose_waypoint1_Reef = new ActionPose(Group.Travel, Location.Waypoint.getValue(), 1, Position.Trough.getValue(), Action.Pickup, null);
     var pose_score1_Reef = new ActionPose(Group.Align, Location.Reef.getValue(), 1, Position.Trough.getValue(), Action.Pickup, null);
-    // var pose_score_Middle = new ActionPose(Group.Score, Location.Any.getValue(), 1, Position.Middle.getValue(), Action.Pickup, null);
+    var pose_score_Middle = new ActionPose(Group.Score, Location.Any.getValue(), 1, Position.Middle.getValue(), Action.Pickup, null);
     var pose_score_Lower = new ActionPose(Group.Score, Location.Any.getValue(), 1, Position.Lower.getValue(), Action.Pickup, null);
     var pose_score_Trough = new ActionPose(Group.Score, Location.Any.getValue(), 1, Position.Trough.getValue(), Action.Pickup, null);
     var pose_pickup1_coral = new ActionPose(Group.Pickup, Location.Coral.getValue(), 1, Position.Trough.getValue(), Action.Pickup, null);
@@ -98,7 +98,7 @@ public class SequenceControllerStartScoreReload extends AutoSequence {
     event_disableFieldOriented6.SetBoolEvent(false, drive::SetFieldOriented);
 
     AutoEventTarget event_score_lower1 = CreateSyncAwaitEvent("Elevator to Lower 1", pose_score_Lower);
-    AutoEventTarget event_score_lower2 = CreateSyncAwaitEvent("Elevator to Lower 2", pose_score_Lower);
+    AutoEventTarget event_score_middle1 = CreateSyncAwaitEvent("Elevator to Middle 1", pose_score_Middle);
 
     AutoEventTarget event_score_trough1 = CreateSyncAwaitEvent("Elevator to Trough 1", pose_score_Trough);
     AutoEventTarget event_score_trough2 = CreateSyncAwaitEvent("Elevator to Trough 2", pose_score_Trough);
@@ -143,7 +143,7 @@ public class SequenceControllerStartScoreReload extends AutoSequence {
       .Then(event_disableFieldOriented5)
       .Then(event_driveLeft3)
       .Then(event_enableFieldOriented5)
-      .Then(event_score_lower2)
+      .Then(event_score_middle1)
       .Then(event_openLatch2)
       .Then(event_closeLatchAfter2)
       .Then(event_score_trough2)
