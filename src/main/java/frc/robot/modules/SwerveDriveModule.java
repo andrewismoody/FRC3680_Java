@@ -471,7 +471,7 @@ public class SwerveDriveModule implements DriveModule {
             var positionerHealthy = isPositionerHealthy();
             var posNorm = currentPosition.getNorm();
 
-            // TODO: re-evaluate if this is needed with estimator
+            // TODO 1: re-evaluate if this is needed with estimator
             var seekTag = false; // posNorm == 0.0;
             myTable.getEntry("seekTag").setBoolean(seekTag);
 
@@ -561,7 +561,7 @@ public class SwerveDriveModule implements DriveModule {
                     boolean processAngle = false;
 
                     if (pose.HasOrientation) {
-                        // TODO: this doesn't seem to work if we're on the other side of zero?
+                        // TODO 1: is this still a problem? might have been fixed with auto selector fixes; this doesn't seem to work if we're on the other side of zero?
                         var targetRad = (targetRotation.getRadians() + (2 * Math.PI)) % (2 * Math.PI); // wrap to positive angles
                         var rotationDelta = targetRad - newAngleRad;
                         rotationDeltaEntry.setDouble(rotationDelta);
@@ -608,8 +608,7 @@ public class SwerveDriveModule implements DriveModule {
                         } else {
                             ProcessRotationAngle(rotationSpeed);
                         }
-                    } else if(seekTag) {
-                        // TODO: should not run in teleop mode
+                    } else if(seekTag && DriverStation.isAutonomous()) {
                         if (seekRotation == 0.0) {
                             double sign = previousRotationSpeed >= 0.0 ? -1.0 : 1.0;
                             seekRotation = sign * 0.25;
@@ -690,7 +689,7 @@ public class SwerveDriveModule implements DriveModule {
         fieldPosition.setRobotPose(currentPose.toPose2d());
         SmartDashboard.putData("Field", fieldPosition);
 
-        // TODO: Identify if this is correct - does it need inverse or does everything use normal?
+        // TODO 1: Identify if this is correct - does it need inverse or does everything use normal?
         // yaw is in degrees
         var limelightAngle = currentGyroAngle / ((Math.PI * 2) / 360);
         myTable.getEntry("limelightAngleRaw").setDouble(limelightAngle);
@@ -754,7 +753,6 @@ public class SwerveDriveModule implements DriveModule {
             var i = module.GetSwervePosition().getValue();
             moduleStates[i] = module.updateModuleValues(moduleStates[i], optimize);
             actualStates[i] = module.getCurrentState();
-            // TODO: this becomes critical with pose estimator - make sure it's right - maybe add drive wheel encoder values
             positions[i] = module.getPosition();
             if (i < driveSpeeds.length)
                 driveSpeeds[i] = module.getSpeed();

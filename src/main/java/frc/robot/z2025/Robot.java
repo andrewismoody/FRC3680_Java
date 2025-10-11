@@ -171,7 +171,7 @@ public class Robot extends TimedRobot {
   public Robot() {
     gc_timer.start();
 
-    // TODO: figure out if we actually need this - clogs up the log - for raspi?
+    // TODO 1: figure out if we actually need this - clogs up the log - for raspi?
     // CameraServer.startAutomaticCapture();
   }
 
@@ -273,10 +273,6 @@ public class Robot extends TimedRobot {
     System.out.printf("selected auto mode '%s'\n", selectedMode.GetLabel());
     selectedMode.Initialize();
 
-    // TODO: evaluate whether this is good or not - rezeroes on enable
-    // causes more trouble than it solves
-    // modules.Initialize();
-
     // default to field oriented for Auto
     modules.GetDriveModule().SetFieldOriented(true);
 
@@ -299,10 +295,6 @@ public class Robot extends TimedRobot {
   @Override
   public void teleopInit() {
     commonInit();
-
-    // TODO: evaluate whether this is good or not - rezeroes on enable
-    // causes more trouble than it solves
-    // modules.Initialize();
 
     // switch back to defined field oriented mode when we start up tele-op; prevents bleedover from auto
     modules.GetDriveModule().SetFieldOriented(isFieldOriented);

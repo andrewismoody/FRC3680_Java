@@ -176,8 +176,6 @@ public class SwerveMotorModule {
   }
 
   public SwerveModulePosition getPosition() {
-    // TODO: this is reporting in field coordinates and currently doesn't match the actual drive direction of the robot
-    // TODO: We have to correct coordinate systems
     return new SwerveModulePosition(currentDistance, currentAngle);
   }
 
@@ -383,7 +381,7 @@ public class SwerveMotorModule {
     driveMotor.set(motorSpeed);
     currentState.speedMetersPerSecond = motorSpeed * driveModule.driveSpeed;
 
-    // TODO: look at using encoders to get shaft rotation converted to actual wheel motion
+    // TODO 1: look at using encoders to get shaft rotation converted to actual wheel motion
     currentDistance += rawMotorSpeed * (elapsedTime / 1000);
     myTable.getEntry("rawMotorSpeed").setDouble(rawMotorSpeed);
     myTable.getEntry("currentDistance").setDouble(currentDistance);

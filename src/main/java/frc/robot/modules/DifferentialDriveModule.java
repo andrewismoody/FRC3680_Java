@@ -2,9 +2,16 @@ package frc.robot.modules;
 
 import java.util.ArrayList;
 
+import com.revrobotics.spark.SparkBase.ResetMode;
+import com.revrobotics.spark.SparkMax;
+import com.revrobotics.spark.SparkBase.PersistMode;
+import com.revrobotics.spark.config.SparkMaxConfig;
+
 import edu.wpi.first.math.geometry.Pose3d;
 import edu.wpi.first.math.geometry.Rotation3d;
 import edu.wpi.first.math.geometry.Translation3d;
+import edu.wpi.first.networktables.NetworkTable;
+import edu.wpi.first.networktables.NetworkTableInstance;
 import edu.wpi.first.wpilibj.drive.DifferentialDrive;
 import edu.wpi.first.wpilibj.motorcontrol.MotorController;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
@@ -32,23 +39,29 @@ public class DifferentialDriveModule implements DriveModule {
     double previousRotationAngle = 0.0;
 
     boolean isFieldOriented = false;
-    boolean wasFieldOriented = false;
+    boolean wasFieldOrientedPressed = false;
 
     Translation3d currentPosition = Translation3d.kZero;
 
     ArrayList<ActionPose> actionPoses = new ArrayList<ActionPose>();
     ActionPose targetPose;
 
+    NetworkTable myTable;
+
     public DifferentialDriveModule(String ModuleID, MotorController LeftMotor, MotorController RightMotor) {
         moduleID = ModuleID;
         leftMotor = LeftMotor;
         rightMotor = RightMotor;
 
+        myTable = NetworkTableInstance.getDefault().getTable(moduleID);
+
         // We need to invert one side of the drivetrain so that positive voltages
         // result in both sides moving forward. Depending on how your robot's
         // gearbox is constructed, you might have to invert the left side instead.
-        // TODO: Re-enable this as needed with config
-        // rightMotor.setInverted(true);
+        if (rightMotor instanceof SparkMax)
+            ((SparkMax)rightMotor).configure(new SparkMaxConfig().inverted(true), ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
+        else
+            rightMotor.setInverted(true);
 
         driveController = new DifferentialDrive(leftMotor::set, rightMotor::set);
         driveController.setSafetyEnabled(false);
@@ -169,17 +182,15 @@ public class DifferentialDriveModule implements DriveModule {
     }
 
    public void SetFieldOriented(boolean value) {
-        wasFieldOriented = isFieldOriented;
         isFieldOriented = value;
-        //myTable.getEntry("fieldOriented").setBoolean(value);
+        myTable.getEntry("fieldOriented").setBoolean(value);
    }
 
    public void ToggleFieldOriented(boolean pressed) {
-        // TODO: this is breaking driving because it toggles constantly with current logic. Verify it's fixed.
-        if (pressed) {
-            if (wasFieldOriented != isFieldOriented)
-                SetFieldOriented(!isFieldOriented);
-        }
+        if (pressed && !wasFieldOrientedPressed)
+            SetFieldOriented(!isFieldOriented);
+
+        wasFieldOrientedPressed = pressed;
    }
 
    public boolean IsFieldOriented() {

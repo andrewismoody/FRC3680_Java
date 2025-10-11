@@ -56,7 +56,7 @@ public class ActionPoses {
         // scoring 1, no movement, Lookat reef
         swerveDriveModule.AddActionPose(new ActionPose(Group.Score, Location.Reef.getValue(), 1, Position.Any.getValue(), Action.Any, new AutoTarget(ReefCenter, true)));
 
-        // TODO: seek tag breaks this - will have to hard code a rotation like start to switch lookat targets - or fix seek tag
+        // TODO 1: seek tag breaks this - will have to hard code a rotation like start to switch lookat targets - or fix seek tag
         // waypoint 1, 126 -- should this be hard-coded to a rotation or will LookAt work as long as we don't "clear" our position?
         swerveDriveModule.AddActionPose(new ActionPose(Group.Pickup, Location.Waypoint.getValue(), 1, Position.Any.getValue(), Action.Any, new AutoTarget(Waypoint1, Tag1)));
         // loading 1, 126
