@@ -15,6 +15,7 @@ import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.geometry.Translation3d;
 import edu.wpi.first.networktables.DoubleSubscriber;
 import edu.wpi.first.networktables.NetworkTableInstance;
+import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.Relay;
 import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj.Timer;
@@ -53,6 +54,7 @@ public class Robot extends TimedRobot {
   double elapsedTime;
 
   final String codeBuildVersion = "2025.10.05-THOR";
+  boolean initialized = false;
 
   // RR
   final SparkMax can_drive_rr = new SparkMax(10, MotorType.kBrushless);
@@ -132,6 +134,11 @@ public class Robot extends TimedRobot {
 
   SingleActuatorModule slide = new SingleActuatorModule("slide", pwm_slide, false);
   
+  // Field Dimensions Y (width) = 8.05, X (length) = 17.55; 
+  Translation2d fieldSize = new Translation2d(17.55, 8.05);
+  // starting line is at X = 7.56
+  Translation2d startArea = new Translation2d(fieldSize.getX() / 2 - 7.56, 3.72);
+
   // leftFront  software position should be leftrear   hardware position
   // rightFront software position should be leftFront  hardware position
   // leftRear   software position should be rightRear  hardware position
@@ -203,7 +210,25 @@ public class Robot extends TimedRobot {
   }
 
   void commonInit() {
-    var redStartTransform = new Transform3d(new Translation3d(new Translation2d(8.775, 4.025)), new Rotation3d(new Rotation2d(Math.PI)));
+    var startPadding = (startArea.getX() - frameSize.getX()) / 2.0;
+    var fieldCenter = new Translation2d(fieldSize.getX() / 2.0, fieldSize.getY() / 2.0);
+    var robotCenter = new Translation2d(frameSize.getX() / 2.0, frameSize.getY() / 2.0);
+    var robotOffset = robotCenter.plus(new Translation2d(startPadding, startPadding * 2));
+
+    var blueStartPositions = new Translation2d[] {
+      new Translation2d(fieldCenter.getX() - startArea.getX() + robotOffset.getX(), fieldSize.getY() - (robotOffset.getY() * 1)),
+      new Translation2d(fieldCenter.getX() - startArea.getX() + robotOffset.getX(), fieldSize.getY() - (robotOffset.getY() * 2)),
+      new Translation2d(fieldCenter.getX() - startArea.getX() + robotOffset.getX(), fieldSize.getY() - (robotOffset.getY() * 3))
+    };
+
+    var driverLocation = 1;
+    if (DriverStation.getLocation().isPresent())
+      driverLocation = DriverStation.getLocation().getAsInt();
+
+    var blueStartPosition = blueStartPositions[driverLocation - 1];
+    var blueStartPose = new Pose3d(new Translation3d(blueStartPosition), Rotation3d.kZero);
+    var redStartTransform = new Transform3d(new Translation3d(fieldCenter), new Rotation3d(new Rotation2d(Math.PI)));
+    System.out.printf("Robot Init: Driver Location %d, Red Alliance %b, Start Pos (%.2f, %.2f)\n", driverLocation, Utility.IsRedAlliance(), blueStartPosition.getX(), blueStartPosition.getY());
 
     // Add action poses before button mappings so buttons can drive action poses
     ActionPoses.Initialize(redStartTransform, swerveDriveModule, elevator, slide);
@@ -211,17 +236,19 @@ public class Robot extends TimedRobot {
     // even tho this runs on every init, it only happens once so we don't mess up
     Joystick.InitializeButtonMappings(m_controller, modules, swerveDriveModule, slide, elevator); //, grabber);
 
-    if (Robot.isSimulation()) {
-      Pose3d startPose = new Pose3d(new Translation3d(new Translation2d(7.5, 6.55)), Rotation3d.kZero);
-      if (Utility.IsRedAlliance()) {
-        // Y = 8.05, X = 17.55; 
-        //startPose = new Pose3d(startPose.rotateAround(redStartTransform.getTranslation(), redStartTransform.getRotation()).getTranslation(), redStartTransform.getRotation());
-        startPose = new Pose3d(startPose.rotateAround(redStartTransform.getTranslation(), redStartTransform.getRotation()).getTranslation(), Rotation3d.kZero);
+    if (!initialized) { // only set start position once per match
+      initialized = true;
+      // real robot starts at (0,0) so that we know we don't have a vision estimate yet.
+      Pose3d startPose = Pose3d.kZero;
+
+      if (Robot.isSimulation()) {
+        startPose = blueStartPose;
+        if (Utility.IsRedAlliance()) {
+          startPose = new Pose3d(startPose.rotateAround(redStartTransform.getTranslation(), redStartTransform.getRotation()).getTranslation(), Rotation3d.kZero);
+        }
       }
+
       modules.GetDriveModule().SetCurrentPose(startPose);
-    } else {
-      // TODO 1: evaluate whether we should reset pose on teleop start
-      modules.GetDriveModule().SetCurrentPose(Pose3d.kZero);
     }
   }
 
@@ -296,10 +323,12 @@ public class Robot extends TimedRobot {
   /** This function is called once each time the robot enters test mode. */
   @Override
   public void testInit() {
+    commonInit();
   }
 
   /** This function is called periodically during test mode. */
   @Override
   public void testPeriodic() {
+    commonPeriodic();
   }
 }
