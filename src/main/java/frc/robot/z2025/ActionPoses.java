@@ -30,7 +30,6 @@ public class ActionPoses {
 
         var StartRotation = new Rotation2d(2.75);
 
-        // TODO 1: figure out how to adjust these for red start without breaking everything
         if (Utility.IsRedAlliance()) {
             Waypoint1 = Waypoint1.rotateAround(redStartTransform.getTranslation(), redStartTransform.getRotation());
             Waypoint11 = Waypoint11.rotateAround(redStartTransform.getTranslation(), redStartTransform.getRotation());

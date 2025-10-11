@@ -50,17 +50,12 @@ public class LimeLightPositioner implements Positioner {
 
     public PoseEstimate GetPoseEstimate() {
         PoseEstimate poseEstimate = null;
-        // TODO 1: evaluate red/blue origin after adjusting coordinate systems
         if (useMegatagTwo) {
-            if (Utility.IsRedAlliance())
-                poseEstimate = LimelightHelpers.getBotPoseEstimate_wpiRed_MegaTag2("");
-            else
-                poseEstimate = LimelightHelpers.getBotPoseEstimate_wpiBlue_MegaTag2("");
+            // always get blue alliance position, as field is oriented to blue origin from 2023 onwards
+            poseEstimate = LimelightHelpers.getBotPoseEstimate_wpiBlue_MegaTag2("");
         } else {
-            if (Utility.IsRedAlliance())
-                poseEstimate = LimelightHelpers.getBotPoseEstimate_wpiRed("");
-            else
-                poseEstimate = LimelightHelpers.getBotPoseEstimate_wpiBlue("");
+            // always get blue alliance position, as field is oriented to blue origin from 2023 onwards
+            poseEstimate = LimelightHelpers.getBotPoseEstimate_wpiBlue("");
         }
 
         return poseEstimate;
@@ -86,10 +81,6 @@ public class LimeLightPositioner implements Positioner {
     public void SetRobotOrientation(String limelightName, double yaw, double yawRate, 
     double pitch, double pitchRate, 
     double roll, double rollRate) {
-        // TODO 1: evaluate red/blue origin after adjusting coordinate systems
-        if (Utility.IsRedAlliance())
-            yaw = (yaw + 180) % 360;
-
         LimelightHelpers.SetRobotOrientation(limelightName, yaw, yawRate, pitch, pitchRate, roll, rollRate);
     }
 
