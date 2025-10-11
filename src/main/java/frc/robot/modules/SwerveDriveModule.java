@@ -40,6 +40,7 @@ public class SwerveDriveModule implements DriveModule {
     String moduleID;
     SwerveMotorModule[] driveModules;
     double driveSpeed;
+    double driveRatio;
     double rotationSpeed;
     double rotationMultiplier = 5.0;
     ModuleController controller;
@@ -131,7 +132,7 @@ public class SwerveDriveModule implements DriveModule {
     StructArrayPublisher<SwerveModuleState> swerveModuleCommandedPublisher;
     StructPublisher<ChassisSpeeds> chassisSpeedsPublisher;
 
-    public SwerveDriveModule(String ModuleID, Gyro Gyro, Positioner Positioner, double DriveSpeed, double RotationSpeed,
+    public SwerveDriveModule(String ModuleID, Gyro Gyro, Positioner Positioner, double DriveSpeed, double DriveRatio, double RotationSpeed,
             double FloatTolerance, SwerveMotorModule ... modules) {
         moduleID = ModuleID;
 
@@ -141,6 +142,7 @@ public class SwerveDriveModule implements DriveModule {
         myTable = NetworkTableInstance.getDefault().getTable(moduleID);
 
         driveSpeed = DriveSpeed;
+        driveRatio = DriveRatio;
         rotationSpeed = RotationSpeed;
         gyro = Gyro;
         positioner = Positioner;

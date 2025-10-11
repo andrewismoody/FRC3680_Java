@@ -48,6 +48,7 @@ public class SwerveMotorModule {
   MotorController rotatorMotor;
 
   Encoder angleEncoder;
+  Encoder driveEncoder;
   public boolean useFakeEncoder = !RobotBase.isReal();
   double encoderSimRate = 3.0;
   double encoderSimFactor = 0.03;
@@ -55,7 +56,6 @@ public class SwerveMotorModule {
 
   double floatTolerance;
 
-  double previousEncoderAngle;
   double accumulatedMotorSpeed = 0.0;
   long rotationStartTime = 0;
   long rotationLimitTime = 2 * 1000;
@@ -103,7 +103,7 @@ public class SwerveMotorModule {
   boolean enableDecelComp = false;
   boolean enableGiveUp = false;
 
-  public SwerveMotorModule(Utility.SwervePosition SwervePosition, Translation2d Position, MotorController DriveMotor, MotorController RotationMotor, Encoder AngleEncoder, double EncoderMultiplier, double FloatTolerance, boolean InvertRotation, boolean InvertDrive, double RotationOffset) {
+  public SwerveMotorModule(Utility.SwervePosition SwervePosition, Translation2d Position, MotorController DriveMotor, Encoder DriveEncoder, MotorController RotationMotor, Encoder AngleEncoder, double EncoderMultiplier, double FloatTolerance, boolean InvertRotation, boolean InvertDrive, double RotationOffset) {
     moduleID = SwervePosition.toString();
     swervePosition = SwervePosition;
 
@@ -111,6 +111,7 @@ public class SwerveMotorModule {
     driveMotor = DriveMotor;
     rotatorMotor = RotationMotor;
     angleEncoder = AngleEncoder;
+    driveEncoder = DriveEncoder;
     floatTolerance = FloatTolerance;
     invertDrive = InvertDrive;
 
@@ -381,8 +382,12 @@ public class SwerveMotorModule {
     driveMotor.set(motorSpeed);
     currentState.speedMetersPerSecond = motorSpeed * driveModule.driveSpeed;
 
-    // TODO 1: look at using encoders to get shaft rotation converted to actual wheel motion
-    currentDistance += rawMotorSpeed * (elapsedTime / 1000);
+    // TODO 1: verify that this is correct
+    double distanceTraveled = useFakeEncoder || driveEncoder == null ?
+      rawMotorSpeed * (elapsedTime / 1000) :
+      driveEncoder.getRawValue() * driveModule.driveRatio; // driveRatio is wheelCircumference / gearRatio
+    currentDistance += distanceTraveled;
+    myTable.getEntry("distanceTraveled").setDouble(distanceTraveled);
     myTable.getEntry("rawMotorSpeed").setDouble(rawMotorSpeed);
     myTable.getEntry("currentDistance").setDouble(currentDistance);
 

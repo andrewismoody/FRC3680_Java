@@ -56,10 +56,6 @@ public class Robot extends TimedRobot {
   final String codeBuildVersion = "2025.10.05-THOR";
   boolean initialized = false;
 
-  // RR
-  final SparkMax can_drive_rr = new SparkMax(10, MotorType.kBrushless);
-  final SparkMax can_steer_rr = new SparkMax(3, MotorType.kBrushless);
-
   // LF
   final SparkMax can_drive_lf = new SparkMax(4, MotorType.kBrushless);
   final SparkMax can_steer_lf = new SparkMax(5,MotorType.kBrushless);
@@ -72,18 +68,31 @@ public class Robot extends TimedRobot {
   final SparkMax can_drive_lr = new SparkMax(8, MotorType.kBrushless);
   final SparkMax can_steer_lr = new SparkMax(9, MotorType.kBrushless);
 
+  // RR
+  final SparkMax can_drive_rr = new SparkMax(10, MotorType.kBrushless);
+  final SparkMax can_steer_rr = new SparkMax(3, MotorType.kBrushless);
+
   final SparkMax can_elev = new SparkMax(2, MotorType.kBrushless);
 
   final Relay pwm_slide = new Relay(0);
 
-  // rf
-  final Encoder enc_rf = new REVEncoder(can_steer_rf.getEncoder());
   // lf
-  final Encoder enc_lf = new REVEncoder(can_steer_lf.getEncoder());
-  // rr
-  final Encoder enc_rr = new REVEncoder(can_steer_rr.getEncoder());
+  final Encoder enc_steer_lf = new REVEncoder(can_steer_lf.getEncoder());
+  // rf
+  final Encoder enc_steer_rf = new REVEncoder(can_steer_rf.getEncoder());
   // lr
-  final Encoder enc_lr = new REVEncoder(can_steer_lr.getEncoder());
+  final Encoder enc_steer_lr = new REVEncoder(can_steer_lr.getEncoder());
+  // rr
+  final Encoder enc_steer_rr = new REVEncoder(can_steer_rr.getEncoder());
+
+  // lf
+  final Encoder enc_drive_lf = new REVEncoder(can_drive_lf.getEncoder());
+  // rf
+  final Encoder enc_drive_rf = new REVEncoder(can_drive_rf.getEncoder());
+  // lr
+  final Encoder enc_drive_lr = new REVEncoder(can_drive_lr.getEncoder());
+  // rr
+  final Encoder enc_drive_rr = new REVEncoder(can_drive_rr.getEncoder());
 
   final Gyro m_gyro = new AHRSGyro();
 
@@ -110,14 +119,21 @@ public class Robot extends TimedRobot {
   double m_divider = 0.5;
   double m_speedMod = 1.0;
 
+  final double driveGearRatio = 27.0;
+  // Rev NEO empirical motor speed = 5676 rotations per minute; 5676 / 60 = 94.6 rotations per second
+  final double driveMotorRPM = 5676.0;
+   // 4" wheel = 0.1016m diameter
+  final double wheelDiameter = 0.1016;
+  // 0.319m wheel circumference
+  final double wheelCircumference = Math.PI * wheelDiameter;
+  // 9:1 gearbox with 3:1 gear reduction (27:1 total) on 0.319m circumference = 0.0118 meters per motor rotation
+  final double m_driveRatio = wheelCircumference / driveGearRatio; 
+  // m_driveSpeed should be actual meters per second that is achievable by the drive motor
   // higher numbers result in faster drive speeds. To slow it down, send a higher
   // number, which will result in a lower voltage being sent to the motor for any
   // given speed.
-  // 4" wheel = 0.1016m, radius = 0.0508m
-  // Rev NEO empirical motor speed = 5676 rotations per minute; 5676 * 6.28 = 35645 radians per minute; 35645 / 60 = 594 radians per second
-  // 9:1 gearbox with 3:1 gear reduction (27:1 total) on 594 rps = 22 rps shaft output
-  // should be actual meters per second that is achievable by the drive motor
-  final double m_driveSpeed = 0.0508 * (((5676.0 * 6.28) / 60.0) / 27.0); 
+  // 0.0118 meters per rotation * 94.6 rotations per second = 1.116 meters per second
+  final double m_driveSpeed = m_driveRatio * (driveMotorRPM / 60.0); 
 
   // https://cdn.andymark.com/media/W1siZiIsIjIwMjIvMDIvMDIvMDgvMzMvMTIvNzMzYmY3YmQtYTI0MC00ZDkyLWI5NGMtYjRlZWU1Zjc4NzY0L2FtLTQyMzNhIEpFLVBMRy00MTAgbW90b3IuUERGIl1d/am-4233a%20JE-PLG-410%20motor.PDF?sha=5387f684d4e2ce1f
   // higher numbers result in faster drive speeds. To slow it down, send a higher
@@ -126,9 +142,11 @@ public class Robot extends TimedRobot {
   // Rev NEO empirical motor speed = 5676 rotations per minute; 5676 * 6.28 = 35645 radians per minute; 35645 / 60 = 594 radians per second
   // 20:1 gearbox on 594 rps = 29.7 rps shaft output
   // should be actual radians per second that is achievable by the rotation motor
-  final double steerMotorSpeed = ((5676.0 * 6.28) / 60.0) / 20.0; 
+  final double steerGearRatio = 20.0;
+  final double steerMotorRPM = 5676.0;
+  final double steerMotorSpeed = ((steerMotorRPM * (Math.PI * 2)) / 60.0) / steerGearRatio; 
   // 20:1 gearbox
-  final double steeringEncoderMultiplier = 1.0 / 20.0;
+  final double steeringEncoderMultiplier = 1.0 / steerGearRatio;
 
   SingleMotorModule elevator = new SingleMotorModule("elevator", can_elev, m_elevatorSpeed, false, null, null, enc_elev, elevatorEncoderMultiplier, 0.5);
 
@@ -136,7 +154,7 @@ public class Robot extends TimedRobot {
   
   // Field Dimensions Y (width) = 8.05, X (length) = 17.55; 
   Translation2d fieldSize = new Translation2d(17.55, 8.05);
-  // starting line is at X = 7.56
+  // starting line is at X = 7.56m; barge is 3.72m wide
   Translation2d startArea = new Translation2d(fieldSize.getX() / 2 - 7.56, 3.72);
 
   // leftFront  software position should be leftrear   hardware position
@@ -146,17 +164,13 @@ public class Robot extends TimedRobot {
 
   // flipped x and y so that 'narrow' edge is front
   Translation2d frameSize = new Translation2d(0.6985, 0.822325); // meters - 32.375" x 27.5" - distance from center of robot to center of wheel
-  // total length of robot is 32.375", width is 27.5", centerline is 16.1875" from edge.  Drive axle center is 4" from edge - 12.1875" from center which is 309.56mm or 0.30956 meters
-  SwerveMotorModule leftFrontMM = new SwerveMotorModule(SwervePosition.LeftFront, new Translation2d(frameSize.getX() / 2, frameSize.getY() / 2), can_drive_lr, can_steer_lr, enc_lr, steeringEncoderMultiplier, m_floatTolerance, false, false, 0.0);
-  SwerveMotorModule rightFrontMM = new SwerveMotorModule(SwervePosition.RightFront, new Translation2d(frameSize.getX() / 2, -frameSize.getY() / 2), can_drive_lf, can_steer_lf, enc_lf, steeringEncoderMultiplier, m_floatTolerance, false, false, 0.0);
-  SwerveMotorModule leftRearMM = new SwerveMotorModule(SwervePosition.LeftRear, new Translation2d(-frameSize.getX() / 2, frameSize.getY() / 2), can_drive_rr, can_steer_rr, enc_rr, steeringEncoderMultiplier, m_floatTolerance, false, false, 0.0);
-  SwerveMotorModule rightRearMM = new SwerveMotorModule(SwervePosition.RightRear, new Translation2d(-frameSize.getX() / 2, -frameSize.getY() / 2), can_drive_rf, can_steer_rf, enc_rf, steeringEncoderMultiplier, m_floatTolerance, false, false, 0.0);
 
-  SwerveDriveModule swerveDriveModule = new SwerveDriveModule("swerveDrive", m_gyro, m_positioner, m_driveSpeed, steerMotorSpeed, m_floatTolerance
-    , leftFrontMM
-    , rightFrontMM
-    , leftRearMM
-    , rightRearMM
+  // total length of robot is 32.375", width is 27.5", centerline is 16.1875" from edge.  Drive axle center is 4" from edge - 12.1875" from center which is 309.56mm or 0.30956 meters
+  SwerveDriveModule swerveDriveModule = new SwerveDriveModule("swerveDrive", m_gyro, m_positioner, m_driveSpeed, m_driveRatio, steerMotorSpeed, m_floatTolerance
+    , new SwerveMotorModule(SwervePosition.LeftFront, new Translation2d(frameSize.getX() / 2, frameSize.getY() / 2), can_drive_lr, enc_drive_lr, can_steer_lr, enc_steer_lr, steeringEncoderMultiplier, m_floatTolerance, false, false, 0.0)
+    , new SwerveMotorModule(SwervePosition.RightFront, new Translation2d(frameSize.getX() / 2, -frameSize.getY() / 2), can_drive_lf, enc_drive_lf, can_steer_lf, enc_steer_lf, steeringEncoderMultiplier, m_floatTolerance, false, false, 0.0)
+    , new SwerveMotorModule(SwervePosition.LeftRear, new Translation2d(-frameSize.getX() / 2, frameSize.getY() / 2), can_drive_rr, enc_drive_rr, can_steer_rr, enc_steer_rr, steeringEncoderMultiplier, m_floatTolerance, false, false, 0.0)
+    , new SwerveMotorModule(SwervePosition.RightRear, new Translation2d(-frameSize.getX() / 2, -frameSize.getY() / 2), can_drive_rf, enc_drive_rf, can_steer_rf, enc_steer_rf, steeringEncoderMultiplier, m_floatTolerance, false, false, 0.0)
   );
 
   // DifferentialDriveModule diffDriveModule = new DifferentialDriveModule("differentialDrive", can_steer_rr, can_drive_lf);
