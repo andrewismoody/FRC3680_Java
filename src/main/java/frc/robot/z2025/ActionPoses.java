@@ -52,7 +52,7 @@ public class ActionPoses {
         // waypoint 1, Lookat reef
         swerveDriveModule.AddActionPose(new ActionPose(Group.Travel, Location.Waypoint.getValue(), 1, Position.Any.getValue(), Action.Any, new AutoTarget(Waypoint1, ReefCenter)));
         // scoring 1, Lookat reef
-        swerveDriveModule.AddActionPose(new ActionPose(Group.Travel, Location.Reef.getValue(), 1, Position.Any.getValue(), Action.Any, new AutoTarget(Scoring1, ReefCenter)));
+        swerveDriveModule.AddActionPose(new ActionPose(Group.Align, Location.Reef.getValue(), 1, Position.Any.getValue(), Action.Any, new AutoTarget(Scoring1, ReefCenter)));
 
         // scoring 1, no movement, Lookat reef
         swerveDriveModule.AddActionPose(new ActionPose(Group.Score, Location.Reef.getValue(), 1, Position.Any.getValue(), Action.Any, new AutoTarget(ReefCenter, true)));

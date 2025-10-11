@@ -6,6 +6,7 @@ public enum Group {
     Pickup(2),
     Start(3),
     Travel(4),
+    Align(5),
     Idle(5),
     Any(6),
     None(7);

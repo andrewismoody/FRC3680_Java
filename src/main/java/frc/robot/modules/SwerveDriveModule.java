@@ -34,6 +34,7 @@ import frc.robot.action.Action;
 import frc.robot.action.ActionPose;
 import frc.robot.gyro.Gyro;
 import frc.robot.misc.Utility;
+import frc.robot.misc.Utility.SwervePosition;
 
 public class SwerveDriveModule implements DriveModule {
     String moduleID;
@@ -62,6 +63,7 @@ public class SwerveDriveModule implements DriveModule {
     double angleOffset = 0.0;
     double floatTolerance;
     double deltaLimit = 0.5;
+    double frameNorm = 0.0;
 
     boolean debug;
     public boolean useFakeGyro = !RobotBase.isReal();
@@ -155,6 +157,9 @@ public class SwerveDriveModule implements DriveModule {
             translations[i] = module.modulePosition;
             positions[i] = new SwerveModulePosition(0, new Rotation2d());
         }
+
+        var frameNormStart = modules[SwervePosition.LeftFront.getValue()].modulePosition;
+        frameNorm = frameNormStart.getNorm();
         
         var posKp = 2.0; 
         var posKi = 0; //posKp * 0.10;
@@ -268,10 +273,10 @@ public class SwerveDriveModule implements DriveModule {
         fieldOrientedEntry.setBoolean(isFieldOriented);
 
         // for AdvantageScope Visualization
-        currentPosePublisher = myTable.getStructTopic("CurrentPose", Pose3d.struct).publish();
-        swerveModuleReqestPublisher = myTable.getStructArrayTopic("RequestedModuleStates", SwerveModuleState.struct).publish();
-        swerveModuleCommandedPublisher = myTable.getStructArrayTopic("ActualModuleStates", SwerveModuleState.struct).publish();
-        chassisSpeedsPublisher = myTable.getStructTopic("ChassisSpeeds", ChassisSpeeds.struct).publish();
+        currentPosePublisher = myTable.getStructTopic("currentPose", Pose3d.struct).publish();
+        swerveModuleReqestPublisher = myTable.getStructArrayTopic("requestedModuleStates", SwerveModuleState.struct).publish();
+        swerveModuleCommandedPublisher = myTable.getStructArrayTopic("actualModuleStates", SwerveModuleState.struct).publish();
+        chassisSpeedsPublisher = myTable.getStructTopic("chassisSpeeds", ChassisSpeeds.struct).publish();
 
         positioner.Initialize();
 
@@ -483,43 +488,59 @@ public class SwerveDriveModule implements DriveModule {
             // only process position if we have a target
             if (pose.HasPosition) {
                 var positionDelta = targetPosition.minus(currentPosition);
-                positionDeltaEntry.setString(positionDelta.toString());
-                positionTargetEntry.setString(targetPosition.toString());
-                myTable.getEntry("posNorm").setDouble(posNorm);
-
-                if (posNorm > 0.0) { // requires position to be initialized
-                    // limelight team-based origin is x forward positive, y left positive - same as FRC field
-                    // TODO: why does this only work inverted'? - we must've confused coordinates somewhere else
-                    // TODO: figure out how to allow target evaluation in teleop - game controller sends values for position constantly and overrides this, I think?
-                    if (!wroteLateralThisTick) { // allows game controller precedence
-                        var lateralSpeed = lateralPidController.calculate(currentPosition.getY(), targetPosition.getY());
-                        // clamp to real values
-                        lateralSpeed = Math.max(-driveSpeed, Math.min(driveSpeed, lateralSpeed));
-                        if (Math.abs(lateralSpeed) < floatTolerance) {
-                            lateralReached = true;
-                            lateralReachedEntry.setBoolean(lateralReached);
-                            ProcessLateralSpeed(0.0);
-                        } else if (positionerHealthy) { // prevents sending wrong coordinates
-                            ProcessLateralSpeed(lateralSpeed);
-                        }
+                var isTravelGroup = targetPose.group == Group.Travel;
+                if (isTravelGroup) {
+                    var positionTolerance = frameNorm;
+                    myTable.getEntry("_deltaNorm").setDouble(positionDelta.getNorm());
+                    myTable.getEntry("_positionTolerance").setDouble(positionTolerance);
+                    if (positionDelta.getNorm() < positionTolerance) {
+                        // travel group we don't want to stop on position, but find next waypoint when we get close
+                        lateralReached = true;
+                        forwardReached = true;
                     }
+                } else {
+                    myTable.getEntry("_deltaNorm").unpublish();
+                    myTable.getEntry("_positionTolerance").unpublish();
+                }
 
-                    if (!wroteForwardThisTick) { // allows game controller precedence
-                        var forwardSpeed = forwardPidController.calculate(currentPosition.getX(), targetPosition.getX());
-                        // clamp to real values
-                        forwardSpeed = Math.max(-driveSpeed, Math.min(driveSpeed, forwardSpeed));
-                        if (Math.abs(forwardSpeed) < floatTolerance) {
-                            forwardReached = true;
-                            forwardReachedEntry.setBoolean(forwardReached);
-                            ProcessForwardSpeed(0.0);
-                        } else if (positionerHealthy) { // prevents sending wrong coordinates
-                            ProcessForwardSpeed(forwardSpeed);
+                if (!lateralReached || !forwardReached) {
+                    positionDeltaEntry.setString(positionDelta.toString());
+                    positionTargetEntry.setString(targetPosition.toString());
+                    myTable.getEntry("posNorm").setDouble(posNorm);
+
+                    if (posNorm > 0.0) { // requires position to be initialized
+                        // limelight team-based origin is x forward positive, y left positive - same as FRC field
+                        // TODO: figure out how to allow target evaluation in teleop - game controller sends values for position constantly and overrides this, I think?
+                        if (!wroteLateralThisTick) { // allows game controller precedence
+                            var lateralSpeed = lateralPidController.calculate(currentPosition.getY(), targetPosition.getY());
+                            // clamp to real values
+                            lateralSpeed = Math.max(-driveSpeed, Math.min(driveSpeed, lateralSpeed));
+                            if (Math.abs(lateralSpeed) < floatTolerance) {
+                                lateralReached = true;
+                                lateralReachedEntry.setBoolean(lateralReached);
+                                ProcessLateralSpeed(0.0);
+                            } else if (positionerHealthy) { // prevents sending wrong coordinates
+                                ProcessLateralSpeed(lateralSpeed);
+                            }
                         }
+
+                        if (!wroteForwardThisTick) { // allows game controller precedence
+                            var forwardSpeed = forwardPidController.calculate(currentPosition.getX(), targetPosition.getX());
+                            // clamp to real values
+                            forwardSpeed = Math.max(-driveSpeed, Math.min(driveSpeed, forwardSpeed));
+                            if (Math.abs(forwardSpeed) < floatTolerance) {
+                                forwardReached = true;
+                                forwardReachedEntry.setBoolean(forwardReached);
+                                ProcessForwardSpeed(0.0);
+                            } else if (positionerHealthy) { // prevents sending wrong coordinates
+                                ProcessForwardSpeed(forwardSpeed);
+                            }
+                        }
+                    } else if (!wroteLateralThisTick && !wroteForwardThisTick) {
+                        // shut down any previous drive commands because we lost our position
+                        // TODO: need to smooth this out somehow, but keep it safe - jitters with limelight
+                        zeroPositionCommands();
                     }
-                } else if (!wroteLateralThisTick && !wroteForwardThisTick) {
-                    // shut down any previous drive commands because we lost our position
-                    // TODO: need to smooth this out somehow, but keep it safe - jitters with limelight
-                    zeroPositionCommands();
                 }
             } else {
                 // avoid deadlock, if we don't have a position defined, short circuit
@@ -527,9 +548,9 @@ public class SwerveDriveModule implements DriveModule {
                 forwardReached = true;
             }
 
-            // TOD: why isn't this called consistently?
+            // TODO: why isn't this called consistently?
             // if we have a lookat and we've reached our position, don't keep trying to find the lookat
-            myTable.getEntry("HasLookAt").setBoolean(pose.HasLookAt);
+            myTable.getEntry("hasLookAt").setBoolean(pose.HasLookAt);
             if (pose.HasLookAt && lateralReached && forwardReached)
                 rotationReached = true;
 
@@ -548,7 +569,6 @@ public class SwerveDriveModule implements DriveModule {
                         targetValue = targetRotation.getRadians();
                         processAngle = true;
                     } else if (pose.HasLookAt && posNorm > 0.0) {
-                        // TODO 1: recalculate according to coordinate system updates
                         // trying to rotate from the camera's vantage point to ensure that the april tags are always in the center
                         var adjustedPos = Robot.isReal() ? positioner.GetReferenceInFieldCoords() : fakeCameraPose.transformBy(currentPose.minus(fakeCameraPose));
                         myTable.getEntry("adjustedPos").setString(adjustedPos.toString());

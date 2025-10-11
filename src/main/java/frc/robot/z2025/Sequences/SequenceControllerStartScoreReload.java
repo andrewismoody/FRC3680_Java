@@ -39,7 +39,7 @@ public class SequenceControllerStartScoreReload extends AutoSequence {
     var pose_start1 = new ActionPose(Group.Start, Location.Barge.getValue(), 1, Position.Trough.getValue(), Action.Pickup, null);
     var pose_waypoint12_Reef = new ActionPose(Group.Travel, Location.Waypoint.getValue(), 12, Position.Trough.getValue(), Action.Pickup, null);
     var pose_waypoint1_Reef = new ActionPose(Group.Travel, Location.Waypoint.getValue(), 1, Position.Trough.getValue(), Action.Pickup, null);
-    var pose_score1_Reef = new ActionPose(Group.Travel, Location.Reef.getValue(), 1, Position.Trough.getValue(), Action.Pickup, null);
+    var pose_score1_Reef = new ActionPose(Group.Align, Location.Reef.getValue(), 1, Position.Trough.getValue(), Action.Pickup, null);
     // var pose_score_Middle = new ActionPose(Group.Score, Location.Any.getValue(), 1, Position.Middle.getValue(), Action.Pickup, null);
     var pose_score_Lower = new ActionPose(Group.Score, Location.Any.getValue(), 1, Position.Lower.getValue(), Action.Pickup, null);
     var pose_score_Trough = new ActionPose(Group.Score, Location.Any.getValue(), 1, Position.Trough.getValue(), Action.Pickup, null);
