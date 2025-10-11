@@ -593,6 +593,9 @@ public class SwerveDriveModule implements DriveModule {
                     if (processAngle) { // only try to process the angle if we've given it one
                         // TODO 1: make sure we're rotating the right direction for real - positive values here result in negative navx values, I think.
                         var rotationSpeed = rotationPidController.calculate(newAngleRad, targetValue);
+                        // TODO 1: evaluate if this works as expected - may need to adjust the PID controller for all rotations?
+                        if (pose.HasLookAt)
+                            rotationSpeed *= 1.5; // boost lookat rotation speed a bit
                         // clamp to real values
                         rotationSpeed = Math.max(-this.rotationSpeed, Math.min(this.rotationSpeed, rotationSpeed));
                         // check angle by rotation to avoid mismatched signs and other things from preventing target matching
