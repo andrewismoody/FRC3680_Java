@@ -40,6 +40,7 @@ public class SequenceControllerStartScoreReload extends AutoSequence {
     var pose_waypoint12_Reef = new ActionPose(Group.Travel, Location.Waypoint.getValue(), 12, Position.Trough.getValue(), Action.Pickup, null);
     var pose_waypoint1_Reef = new ActionPose(Group.Travel, Location.Waypoint.getValue(), 1, Position.Trough.getValue(), Action.Pickup, null);
     var pose_score1_Reef = new ActionPose(Group.Align, Location.Reef.getValue(), 1, Position.Trough.getValue(), Action.Pickup, null);
+    var pose_score2_Reef = new ActionPose(Group.Align, Location.Reef.getValue(), 2, Position.Trough.getValue(), Action.Pickup, null);
     var pose_score_Middle = new ActionPose(Group.Score, Location.Any.getValue(), 1, Position.Middle.getValue(), Action.Pickup, null);
     var pose_score_Lower = new ActionPose(Group.Score, Location.Any.getValue(), 1, Position.Lower.getValue(), Action.Pickup, null);
     var pose_score_Trough = new ActionPose(Group.Score, Location.Any.getValue(), 1, Position.Trough.getValue(), Action.Pickup, null);
@@ -54,7 +55,7 @@ public class SequenceControllerStartScoreReload extends AutoSequence {
     var event_waypoint1_reef2 = CreateSyncAwaitEvent("Await Pose Waypoint 1 Reef 2", pose_waypoint1_Reef);
     var event_waypoint1_reef3 = CreateSyncAwaitEvent("Await Pose Waypoint 1 Reef 3", pose_waypoint1_Reef);
     var event_score1_reef1 = CreateSyncAwaitEvent("Await Pose Score 1 Reef 1", pose_score1_Reef);
-    var event_score1_reef2 = CreateSyncAwaitEvent("Await Pose Score 1 Reef 2", pose_score1_Reef);
+    var event_score2_reef1 = CreateSyncAwaitEvent("Await Pose Score 2 Reef 1", pose_score2_Reef);
     var event_pickup1_coral = CreateSyncAwaitEvent("Await Pose Pickup 1 Coral", pose_pickup1_coral);
 
     AutoEventTime event_driveLeft1 = new AutoEventTime("Drive Left 1", false, 2000, AutoEvent.EventType.Double, autoController);
@@ -132,14 +133,14 @@ public class SequenceControllerStartScoreReload extends AutoSequence {
       .Then(event_waypoint1_reef2)
       .Then(event_pickup1_coral)
       .Then(event_disableFieldOriented3)
-      .Then(event_driveLeft2)
+      .Then(event_driveRight2)
       .Then(event_enableFieldOriented3)
       .Then(event_waitForLoading)
       .Then(event_disableFieldOriented4)
-      .Then(event_driveRight2)
+      .Then(event_driveLeft2)
       .Then(event_enableFieldOriented4)
       .Then(event_waypoint1_reef3)
-      .Then(event_score1_reef2)
+      .Then(event_score2_reef1)
       .Then(event_disableFieldOriented5)
       .Then(event_driveLeft3)
       .Then(event_enableFieldOriented5)

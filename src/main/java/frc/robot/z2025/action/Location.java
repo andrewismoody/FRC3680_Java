@@ -10,7 +10,10 @@ public enum Location {
     Barge(3),
     AdHoc(4),
     Waypoint(5),
-    None(6);
+    Tag(6),
+    Interest(7),
+    None(8),
+    ;
 
     private final int value;
 
