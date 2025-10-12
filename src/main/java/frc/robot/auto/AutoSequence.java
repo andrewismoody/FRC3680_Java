@@ -108,7 +108,7 @@ public class AutoSequence {
                                 targetEvent.Run();
                                 if (targetEvent.IsComplete())
                                     startTime = System.currentTimeMillis();
-                                    break;
+                                break;
                             case SetTarget:
                                 targetEvent.Run();
                                 startTime = System.currentTimeMillis();

@@ -125,6 +125,7 @@ public class Robot extends TimedRobot {
    */
   @Override
   public void robotInit() {
+    Utility.fieldSize = Constants.fieldSize;
     SmartDashboard.putString("DB/String 0", codeBuildVersion);
     SmartDashboard.putNumber("DB/Slider 0", Constants.speedMod);
     var smartDash = NetworkTableInstance.getDefault().getTable("SmartDashboard");
@@ -170,7 +171,7 @@ public class Robot extends TimedRobot {
       if (Robot.isSimulation()) {
         startPose = blueStartPose;
         if (Utility.IsRedAlliance()) {
-          startPose = new Pose3d(Constants.rotateToRedStart(startPose).getTranslation(), Rotation3d.kZero);
+          startPose = new Pose3d(Utility.rotateToRedStart(startPose).getTranslation(), Rotation3d.kZero);
         }
       }
 

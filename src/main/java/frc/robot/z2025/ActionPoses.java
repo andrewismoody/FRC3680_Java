@@ -26,22 +26,38 @@ public class ActionPoses {
         // waypoint 1, Lookat reef
         swerveDriveModule.AddActionPose(new ActionPose(Group.Travel, Location.Waypoint.getValue(), 1, Position.Any.getValue(), Action.Any,
             new AutoTarget(Constants.getFieldPosition(Location.Waypoint, 1), Constants.getFieldPosition(Location.Interest, 1))));
-        // scoring 1, match tag 19 rotation
-        swerveDriveModule.AddActionPose(new ActionPose(Group.Align, Location.Reef.getValue(), 1, Position.Any.getValue(), Action.Any,
-            new AutoTarget(Constants.getFieldPosition(Location.Reef, 1), Constants.getKnownRotation(Location.Tag, 19).plus(Rotation2d.fromDegrees(180)))));
-        // scoring 2, match tag 19 rotation
-        swerveDriveModule.AddActionPose(new ActionPose(Group.Align, Location.Reef.getValue(), 2, Position.Any.getValue(), Action.Any,
-            new AutoTarget(Constants.getFieldPosition(Location.Reef, 2), Constants.getKnownRotation(Location.Tag, 19).plus(Rotation2d.fromDegrees(180)))));
 
-        // scoring 1, no movement, Lookat reef
-        swerveDriveModule.AddActionPose(new ActionPose(Group.Score, Location.Reef.getValue(), 1, Position.Any.getValue(), Action.Any,
-            new AutoTarget(Constants.getFieldPosition(Location.Interest, 1), true)));
+        // align scoring 11, match tag 20 rotation
+        swerveDriveModule.AddActionPose(new ActionPose(Group.Align, Location.Reef.getValue(), 11, Position.Any.getValue(), Action.Any,
+            new AutoTarget(Constants.getFieldPosition(Location.ReefAlign, 11), Constants.getKnownRotation(Location.Tag, 20).plus(Rotation2d.fromDegrees(180)))));
+        // align scoring 12, match tag 20 rotation
+        swerveDriveModule.AddActionPose(new ActionPose(Group.Align, Location.Reef.getValue(), 12, Position.Any.getValue(), Action.Any,
+            new AutoTarget(Constants.getFieldPosition(Location.ReefAlign, 12), Constants.getKnownRotation(Location.Tag, 20).plus(Rotation2d.fromDegrees(180)))));
+
+        // approach scoring 11, match tag 20 rotation
+        swerveDriveModule.AddActionPose(new ActionPose(Group.Approach, Location.Reef.getValue(), 11, Position.Any.getValue(), Action.Any,
+            new AutoTarget(Constants.getFieldPosition(Location.ReefApproach, 11), Constants.getKnownRotation(Location.Tag, 20).plus(Rotation2d.fromDegrees(180)))));
+        // approach scoring 12, match tag 20 rotation
+        swerveDriveModule.AddActionPose(new ActionPose(Group.Approach, Location.Reef.getValue(), 12, Position.Any.getValue(), Action.Any,
+            new AutoTarget(Constants.getFieldPosition(Location.ReefApproach, 12), Constants.getKnownRotation(Location.Tag, 20).plus(Rotation2d.fromDegrees(180)))));
+
+        // scoring 11, match tag 20 rotation
+        swerveDriveModule.AddActionPose(new ActionPose(Group.Score, Location.Reef.getValue(), 11, Position.Any.getValue(), Action.Any,
+            new AutoTarget(Constants.getFieldPosition(Location.Reef, 11), Constants.getKnownRotation(Location.Tag, 20).plus(Rotation2d.fromDegrees(180)))));
+        // scoring 12, match tag 20 rotation
+        swerveDriveModule.AddActionPose(new ActionPose(Group.Score, Location.Reef.getValue(), 12, Position.Any.getValue(), Action.Any,
+            new AutoTarget(Constants.getFieldPosition(Location.Reef, 12), Constants.getKnownRotation(Location.Tag, 20).plus(Rotation2d.fromDegrees(180)))));
 
         // TODO 1: seek tag breaks this - will have to hard code a rotation like start to switch lookat targets - or fix seek tag
-        // waypoint 1, 126 -- should this be hard-coded to a rotation or will LookAt work as long as we don't "clear" our position?
+        // waypoint 1, lookat reef -- should this be hard-coded to a rotation or will LookAt work as long as we don't "clear" our position?
         swerveDriveModule.AddActionPose(new ActionPose(Group.Pickup, Location.Waypoint.getValue(), 1, Position.Any.getValue(), Action.Any,
             new AutoTarget(Constants.getFieldPosition(Location.Waypoint, 1), Constants.getFieldPosition(Location.Interest, 1))));
-        // loading 1, 126
+
+        // align coral 1, match tag 13 rotation
+        swerveDriveModule.AddActionPose(new ActionPose(Group.Align, Location.Coral.getValue(), 1, Position.Any.getValue(), Action.Any,
+        new AutoTarget(Constants.getFieldPosition(Location.CoralAlign, 1), Constants.getKnownRotation(Location.Tag, 13))));
+
+        // coral 1, match tag 13 rotation
         swerveDriveModule.AddActionPose(new ActionPose(Group.Pickup, Location.Coral.getValue(), 1, Position.Any.getValue(), Action.Any,
             new AutoTarget(Constants.getFieldPosition(Location.Coral, 1), Constants.getKnownRotation(Location.Tag, 13))));
 

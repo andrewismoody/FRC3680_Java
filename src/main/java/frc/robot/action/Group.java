@@ -7,9 +7,10 @@ public enum Group {
     Start(3),
     Travel(4),
     Align(5),
-    Idle(5),
-    Any(6),
-    None(7);
+    Approach(6),
+    Idle(7),
+    Any(8),
+    None(9);
 
     private final int value;
 

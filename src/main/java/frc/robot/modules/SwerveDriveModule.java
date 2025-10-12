@@ -397,9 +397,14 @@ public class SwerveDriveModule implements DriveModule {
     }
 
 
-    public void AddActionPose(ActionPose newAction) {
-        if (GetActionPose(newAction) == null) {
-            actionPoses.add(newAction);
+    public void AddActionPose(ActionPose pose) {
+        if (GetActionPose(pose) == null) {
+            actionPoses.add(pose);
+
+            if (pose.target.HasPosition)
+                System.out.printf("%s AddActionPose: %s %d %d %d %s (%f, %f)\n", moduleID, pose.group, pose.location, pose.locationIndex, pose.position, pose.action, Utility.metersToInches(pose.target.Position.getX()), Utility.metersToInches(pose.target.Position.getY()));
+            else
+                System.out.printf("%s AddActionPose: %s %d %d %d %s\n", moduleID, pose.group, pose.location, pose.locationIndex, pose.position, pose.action);
         }
     }
 
@@ -493,8 +498,7 @@ public class SwerveDriveModule implements DriveModule {
             // only process position if we have a target
             if (pose.HasPosition) {
                 var positionDelta = targetPosition.minus(currentPosition);
-                var isTravelGroup = targetPose.group == Group.Travel;
-                if (isTravelGroup) {
+                if (Utility.isTravelGroup(targetPose.group)) {
                     var positionTolerance = frameNorm;
                     myTable.getEntry("_deltaNorm").setDouble(positionDelta.getNorm());
                     myTable.getEntry("_positionTolerance").setDouble(positionTolerance);

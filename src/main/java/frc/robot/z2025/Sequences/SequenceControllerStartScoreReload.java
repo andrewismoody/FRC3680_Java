@@ -38,71 +38,44 @@ public class SequenceControllerStartScoreReload extends AutoSequence {
     // Target Poses
     var pose_start1 = new ActionPose(Group.Start, Location.Barge.getValue(), 1, Position.Trough.getValue(), Action.Pickup, null);
     var pose_waypoint12_Reef = new ActionPose(Group.Travel, Location.Waypoint.getValue(), 12, Position.Trough.getValue(), Action.Pickup, null);
+    var pose_waypoint11_Reef = new ActionPose(Group.Travel, Location.Waypoint.getValue(), 11, Position.Trough.getValue(), Action.Pickup, null);
     var pose_waypoint1_Reef = new ActionPose(Group.Travel, Location.Waypoint.getValue(), 1, Position.Trough.getValue(), Action.Pickup, null);
-    var pose_score1_Reef = new ActionPose(Group.Align, Location.Reef.getValue(), 1, Position.Trough.getValue(), Action.Pickup, null);
-    var pose_score2_Reef = new ActionPose(Group.Align, Location.Reef.getValue(), 2, Position.Trough.getValue(), Action.Pickup, null);
-    var pose_score_Middle = new ActionPose(Group.Score, Location.Any.getValue(), 1, Position.Middle.getValue(), Action.Pickup, null);
-    var pose_score_Lower = new ActionPose(Group.Score, Location.Any.getValue(), 1, Position.Lower.getValue(), Action.Pickup, null);
-    var pose_score_Trough = new ActionPose(Group.Score, Location.Any.getValue(), 1, Position.Trough.getValue(), Action.Pickup, null);
+    var pose_align11_Reef = new ActionPose(Group.Align, Location.Reef.getValue(), 11, Position.Trough.getValue(), Action.Pickup, null);
+    var pose_align12_Reef = new ActionPose(Group.Align, Location.Reef.getValue(), 12, Position.Trough.getValue(), Action.Pickup, null);
+    var pose_approach11_Reef = new ActionPose(Group.Approach, Location.Reef.getValue(), 11, Position.Trough.getValue(), Action.Pickup, null);
+    var pose_approach12_Reef = new ActionPose(Group.Approach, Location.Reef.getValue(), 12, Position.Trough.getValue(), Action.Pickup, null);
+    var pose_score11_Lower = new ActionPose(Group.Score, Location.Reef.getValue(), 11, Position.Lower.getValue(), Action.Pickup, null);
+    var pose_score12_Lower = new ActionPose(Group.Score, Location.Reef.getValue(), 12, Position.Lower.getValue(), Action.Pickup, null);
+    var pose_score11_Trough = new ActionPose(Group.Score, Location.Any.getValue(), 11, Position.Trough.getValue(), Action.Pickup, null);
+    var pose_score12_Trough = new ActionPose(Group.Score, Location.Any.getValue(), 12, Position.Trough.getValue(), Action.Pickup, null);
+    var pose_align1_coral = new ActionPose(Group.Align, Location.Coral.getValue(), 1, Position.Trough.getValue(), Action.Pickup, null);
     var pose_pickup1_coral = new ActionPose(Group.Pickup, Location.Coral.getValue(), 1, Position.Trough.getValue(), Action.Pickup, null);
 
-    var drive = modules.GetDriveModule();
+    // var drive = modules.GetDriveModule();
     var slide = (SingleActuatorModule) modules.GetModule("slide");
 
     var event_start1 = CreateSyncAwaitEvent("Await Pose Start 1", pose_start1);
-    var event_waypoint12_reef = CreateSyncAwaitEvent("Await Pose Waypoint 12 Reef", pose_waypoint12_Reef);
+    var event_waypoint12_reef1 = CreateSyncAwaitEvent("Await Pose Waypoint 12 Reef 1", pose_waypoint12_Reef);
+    var event_waypoint12_reef2 = CreateSyncAwaitEvent("Await Pose Waypoint 12 Reef 2", pose_waypoint12_Reef);
+    var event_waypoint12_reef3 = CreateSyncAwaitEvent("Await Pose Waypoint 12 Reef 3", pose_waypoint12_Reef);
+    var event_waypoint11_reef1 = CreateSyncAwaitEvent("Await Pose Waypoint 11 Reef 1", pose_waypoint11_Reef);
+    var event_waypoint11_reef2 = CreateSyncAwaitEvent("Await Pose Waypoint 11 Reef 2", pose_waypoint11_Reef);
+    var event_waypoint11_reef3 = CreateSyncAwaitEvent("Await Pose Waypoint 11 Reef 3", pose_waypoint11_Reef);
+    var event_waypoint11_reef4 = CreateSyncAwaitEvent("Await Pose Waypoint 11 Reef 4", pose_waypoint11_Reef);
     var event_waypoint1_reef1 = CreateSyncAwaitEvent("Await Pose Waypoint 1 Reef 1", pose_waypoint1_Reef);
     var event_waypoint1_reef2 = CreateSyncAwaitEvent("Await Pose Waypoint 1 Reef 2", pose_waypoint1_Reef);
-    var event_waypoint1_reef3 = CreateSyncAwaitEvent("Await Pose Waypoint 1 Reef 3", pose_waypoint1_Reef);
-    var event_score1_reef1 = CreateSyncAwaitEvent("Await Pose Score 1 Reef 1", pose_score1_Reef);
-    var event_score2_reef1 = CreateSyncAwaitEvent("Await Pose Score 2 Reef 1", pose_score2_Reef);
+    var event_align11_reef1 = CreateSyncAwaitEvent("Await Pose Align 11 Reef 1", pose_align11_Reef);
+    var event_align12_reef1 = CreateSyncAwaitEvent("Await Pose Align 12 Reef 1", pose_align12_Reef);
+    var event_approach11_reef1 = CreateSyncAwaitEvent("Await Pose Approach 11 Reef 1", pose_approach11_Reef);
+    var event_approach12_reef1 = CreateSyncAwaitEvent("Await Pose Approach 12 Reef 1", pose_approach12_Reef);
+    var event_align1_coral1 = CreateSyncAwaitEvent("Await Pose Align 1 Coral 1", pose_align1_coral);
     var event_pickup1_coral = CreateSyncAwaitEvent("Await Pose Pickup 1 Coral", pose_pickup1_coral);
 
-    AutoEventTime event_driveLeft1 = new AutoEventTime("Drive Left 1", false, 2000, AutoEvent.EventType.Double, autoController);
-    event_driveLeft1.SetDoubleEvent(0.5, drive::ProcessLateralSpeed); // positive = left
-    AutoEventTime event_driveLeft2 = new AutoEventTime("Drive Left 2", false, 2000, AutoEvent.EventType.Double, autoController);
-    event_driveLeft2.SetDoubleEvent(0.5, drive::ProcessLateralSpeed); // positive = left
-    AutoEventTime event_driveLeft3 = new AutoEventTime("Drive Left 3", false, 2000, AutoEvent.EventType.Double, autoController);
-    event_driveLeft3.SetDoubleEvent(0.5, drive::ProcessLateralSpeed); // positive = left
+    AutoEventTarget event_score11_lower1 = CreateSyncAwaitEvent("Await Pose Score 11 Lower 1", pose_score11_Lower);
+    AutoEventTarget event_score12_lower1 = CreateSyncAwaitEvent("Await Pose Score 12 Lower 1", pose_score12_Lower);
 
-    AutoEventTime event_driveRight1 = new AutoEventTime("Drive Right", false, 2000, AutoEvent.EventType.Double, autoController);
-    event_driveRight1.SetDoubleEvent(-0.5, drive::ProcessLateralSpeed); // negative = right
-    AutoEventTime event_driveRight2 = new AutoEventTime("Drive Right", false, 2000, AutoEvent.EventType.Double, autoController);
-    event_driveRight2.SetDoubleEvent(-0.5, drive::ProcessLateralSpeed); // negative = right
-    AutoEventTime event_driveRight3 = new AutoEventTime("Drive Right", false, 2000, AutoEvent.EventType.Double, autoController);
-    event_driveRight3.SetDoubleEvent(-0.5, drive::ProcessLateralSpeed); // negative = right
-
-    AutoEventTime event_enableFieldOriented1 = new AutoEventTime("Enable Field Oriented 1", false, 60, AutoEvent.EventType.Boolean, autoController);
-    event_enableFieldOriented1.SetBoolEvent(true, drive::SetFieldOriented);
-    AutoEventTime event_enableFieldOriented2 = new AutoEventTime("Enable Field Oriented 2", false, 60, AutoEvent.EventType.Boolean, autoController);
-    event_enableFieldOriented2.SetBoolEvent(true, drive::SetFieldOriented);
-    AutoEventTime event_enableFieldOriented3 = new AutoEventTime("Enable Field Oriented 3", false, 60, AutoEvent.EventType.Boolean, autoController);
-    event_enableFieldOriented3.SetBoolEvent(true, drive::SetFieldOriented);
-    AutoEventTime event_enableFieldOriented4 = new AutoEventTime("Enable Field Oriented 4", false, 60, AutoEvent.EventType.Boolean, autoController);
-    event_enableFieldOriented4.SetBoolEvent(true, drive::SetFieldOriented);
-    AutoEventTime event_enableFieldOriented5 = new AutoEventTime("Enable Field Oriented 5", false, 60, AutoEvent.EventType.Boolean, autoController);
-    event_enableFieldOriented5.SetBoolEvent(true, drive::SetFieldOriented);
-    AutoEventTime event_enableFieldOriented6 = new AutoEventTime("Enable Field Oriented 6", false, 60, AutoEvent.EventType.Boolean, autoController);
-    event_enableFieldOriented6.SetBoolEvent(true, drive::SetFieldOriented);
-
-    AutoEventTime event_disableFieldOriented1 = new AutoEventTime("Disable Field Oriented 1", false, 60, AutoEvent.EventType.Boolean, autoController);
-    event_disableFieldOriented1.SetBoolEvent(false, drive::SetFieldOriented);
-    AutoEventTime event_disableFieldOriented2 = new AutoEventTime("Disable Field Oriented 2", false, 60, AutoEvent.EventType.Boolean, autoController);
-    event_disableFieldOriented2.SetBoolEvent(false, drive::SetFieldOriented);
-    AutoEventTime event_disableFieldOriented3 = new AutoEventTime("Disable Field Oriented 3", false, 60, AutoEvent.EventType.Boolean, autoController);
-    event_disableFieldOriented3.SetBoolEvent(false, drive::SetFieldOriented);
-    AutoEventTime event_disableFieldOriented4 = new AutoEventTime("Disable Field Oriented 4", false, 60, AutoEvent.EventType.Boolean, autoController);
-    event_disableFieldOriented4.SetBoolEvent(false, drive::SetFieldOriented);
-    AutoEventTime event_disableFieldOriented5 = new AutoEventTime("Disable Field Oriented 5", false, 60, AutoEvent.EventType.Boolean, autoController);
-    event_disableFieldOriented5.SetBoolEvent(false, drive::SetFieldOriented);
-    AutoEventTime event_disableFieldOriented6 = new AutoEventTime("Disable Field Oriented 6", false, 60, AutoEvent.EventType.Boolean, autoController);
-    event_disableFieldOriented6.SetBoolEvent(false, drive::SetFieldOriented);
-
-    AutoEventTarget event_score_lower1 = CreateSyncAwaitEvent("Elevator to Lower 1", pose_score_Lower);
-    AutoEventTarget event_score_middle1 = CreateSyncAwaitEvent("Elevator to Middle 1", pose_score_Middle);
-
-    AutoEventTarget event_score_trough1 = CreateSyncAwaitEvent("Elevator to Trough 1", pose_score_Trough);
-    AutoEventTarget event_score_trough2 = CreateSyncAwaitEvent("Elevator to Trough 2", pose_score_Trough);
+    AutoEventTarget event_score11_trough1 = CreateSyncAwaitEvent("Await Pose Score 11 Trough 1", pose_score11_Trough);
+    AutoEventTarget event_score12_trough1 = CreateSyncAwaitEvent("Await Pose Score 12 Trough 1", pose_score12_Trough);
 
     AutoEventTime event_openLatch1 = new AutoEventTime("Open Latch 1", false, 2000, AutoEvent.EventType.Boolean, autoController);
     event_openLatch1.SetBoolEvent(true, slide::ApplyValue);
@@ -117,40 +90,30 @@ public class SequenceControllerStartScoreReload extends AutoSequence {
     AutoEventTime event_waitForLoading = new AutoEventTime("Wait For Loading", false, 5000, AutoEvent.EventType.None, autoController);
 
     BeginWith(event_start1)
-      .Then(event_waypoint12_reef)
-      .Then(event_waypoint1_reef1)
-      .Then(event_score1_reef1)
-      .Then(event_disableFieldOriented1)
-      .Then(event_driveLeft1)
-      .Then(event_enableFieldOriented1)
-      .Then(event_score_lower1)
+      .Then(event_waypoint12_reef1)
+      .Then(event_waypoint11_reef1)
+      .Then(event_align11_reef1)
+      .Then(event_approach11_reef1)
+      .Then(event_score11_lower1)
       .Then(event_openLatch1)
       .Then(event_closeLatchAfter1)
-      .Then(event_score_trough1)
-      .Then(event_disableFieldOriented2)
-      .Then(event_driveRight1)
-      .Then(event_enableFieldOriented2)
-      .Then(event_waypoint1_reef2)
+      .Then(event_score11_trough1)
+      .Then(event_waypoint11_reef2)
+      .Then(event_waypoint12_reef2)
+      .Then(event_waypoint1_reef1)
+      .Then(event_align1_coral1)
       .Then(event_pickup1_coral)
-      .Then(event_disableFieldOriented3)
-      .Then(event_driveRight2)
-      .Then(event_enableFieldOriented3)
       .Then(event_waitForLoading)
-      .Then(event_disableFieldOriented4)
-      .Then(event_driveLeft2)
-      .Then(event_enableFieldOriented4)
-      .Then(event_waypoint1_reef3)
-      .Then(event_score2_reef1)
-      .Then(event_disableFieldOriented5)
-      .Then(event_driveLeft3)
-      .Then(event_enableFieldOriented5)
-      .Then(event_score_middle1)
+      .Then(event_waypoint1_reef2)
+      .Then(event_waypoint12_reef3)
+      .Then(event_waypoint11_reef3)
+      .Then(event_align12_reef1)
+      .Then(event_approach12_reef1)
+      .Then(event_score12_lower1)
       .Then(event_openLatch2)
       .Then(event_closeLatchAfter2)
-      .Then(event_score_trough2)
-      .Then(event_disableFieldOriented6)
-      .Then(event_driveRight3)
-      .Then(event_enableFieldOriented6)
+      .Then(event_score12_trough1)
+      .Then(event_waypoint11_reef4)
     ;
   }
 
