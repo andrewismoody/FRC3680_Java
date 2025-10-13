@@ -232,7 +232,30 @@ public class SwerveDriveModule implements DriveModule {
         var startupAngle = useFakeGyro ? currentAngle
         : gyro.getAngle();
         
-        // instantiate entries
+        if (debug) {
+            // instantiate entries
+            forwardSpeedEntry = myTable.getEntry("forwardSpeed");
+            lateralSpeedEntry = myTable.getEntry("lateralSpeed");
+            rotationAngleEntry = myTable.getEntry("rotationAngle");
+            lateralReachedEntry = myTable.getEntry("lateralReached");
+            forwardReachedEntry = myTable.getEntry("forwardReached");
+            rotationReachedEntry = myTable.getEntry("rotationReached");
+            settleCountEntry = myTable.getEntry("settleCount");
+            positionerHealthyEntry = myTable.getEntry("positionerHealthy");
+            positionHealthReasonEntry = myTable.getEntry("positionHealthReason");
+            newAngleRadEntry = myTable.getEntry("newAngleRad");
+            positionDeltaEntry = myTable.getEntry("positionDelta");
+            positionTargetEntry = myTable.getEntry("positionTarget");
+            rotationDeltaEntry = myTable.getEntry("rotationDelta");
+            rotationTargetEntry = myTable.getEntry("rotationTarget");
+            lookTargetAngEntry = myTable.getEntry("lookTargetAng");
+            lookTargetPosEntry = myTable.getEntry("lookTargetPos");
+            currentGyroAngleEntry = myTable.getEntry("currentGyroAngle");
+            currentPositionEntry = myTable.getEntry("currentPosition");
+            fakeAngleEntry = myTable.getEntry("fakeAngle");
+            targetDeltaEntry = myTable.getEntry("targetDelta");
+        }
+
         startupAngleEntry = myTable.getEntry("startupAngle");
         useFakeGyroEntry = myTable.getEntry("useFakeGyro");
         rotationSpeedEntry = myTable.getEntry("rotationSpeed");
@@ -241,29 +264,8 @@ public class SwerveDriveModule implements DriveModule {
         lateralPidSetpointsEntry = myTable.getEntry("lateralPidSetpoints");
         forwardPidSetpointsEntry = myTable.getEntry("forwardPidSetpoints");
         fieldOrientedEntry = myTable.getEntry("fieldOriented");
-        forwardSpeedEntry = myTable.getEntry("forwardSpeed");
-        lateralSpeedEntry = myTable.getEntry("lateralSpeed");
-        rotationAngleEntry = myTable.getEntry("rotationAngle");
         targetActionPoseEntry = myTable.getEntry("targetActionPose");
-        lateralReachedEntry = myTable.getEntry("lateralReached");
-        forwardReachedEntry = myTable.getEntry("forwardReached");
-        rotationReachedEntry = myTable.getEntry("rotationReached");
-        settleCountEntry = myTable.getEntry("settleCount");
-        positionerHealthyEntry = myTable.getEntry("positionerHealthy");
-        positionHealthReasonEntry = myTable.getEntry("positionHealthReason");
-        newAngleRadEntry = myTable.getEntry("newAngleRad");
-        positionDeltaEntry = myTable.getEntry("positionDelta");
-        positionTargetEntry = myTable.getEntry("positionTarget");
-        rotationDeltaEntry = myTable.getEntry("rotationDelta");
-        rotationTargetEntry = myTable.getEntry("rotationTarget");
-        lookTargetAngEntry = myTable.getEntry("lookTargetAng");
-        lookTargetPosEntry = myTable.getEntry("lookTargetPos");
-        currentGyroAngleEntry = myTable.getEntry("currentGyroAngle");
-        currentPositionEntry = myTable.getEntry("currentPosition");
-        fakeAngleEntry = myTable.getEntry("fakeAngle");
-        targetDeltaEntry = myTable.getEntry("targetDelta");
 
-        // set initial values
         startupAngleEntry.setDouble(startupAngle);
         useFakeGyroEntry.setBoolean(useFakeGyro);
         rotationSpeedEntry.setDouble(rotationSpeed);
@@ -272,6 +274,7 @@ public class SwerveDriveModule implements DriveModule {
         lateralPidSetpointsEntry.setString(String.format("%f %f %f", lateralPidController.getP(), lateralPidController.getI(), lateralPidController.getD()));
         forwardPidSetpointsEntry.setString(String.format("%f %f %f", forwardPidController.getP(), forwardPidController.getI(), forwardPidController.getD()));
         fieldOrientedEntry.setBoolean(isFieldOriented);
+        targetActionPoseEntry.setString("none");
 
         // for AdvantageScope Visualization
         currentPosePublisher = myTable.getStructTopic("currentPose", Pose3d.struct).publish();
@@ -297,7 +300,8 @@ public class SwerveDriveModule implements DriveModule {
         //currentAngle = newPose.getRotation().getZ();
 
         positionInitialized = true;
-        myTable.getEntry("positionInitialized").setBoolean(positionInitialized);
+        if (debug)
+            myTable.getEntry("positionInitialized").setBoolean(positionInitialized);
     }
 
     public void SetFieldOriented(boolean value) {
@@ -354,19 +358,22 @@ public class SwerveDriveModule implements DriveModule {
     public void ProcessForwardSpeed(double value) {
         forwardSpeed = value;
         wroteForwardThisTick = true; // mark open-loop write this tick
-        forwardSpeedEntry.setDouble(forwardSpeed);
+        if (debug)
+            forwardSpeedEntry.setDouble(forwardSpeed);
     }
 
     public void ProcessLateralSpeed(double value) {
         lateralSpeed = value;
         wroteLateralThisTick = true; // mark open-loop write this tick
-        lateralSpeedEntry.setDouble(lateralSpeed);
+        if (debug)
+            lateralSpeedEntry.setDouble(lateralSpeed);
     }
 
     public void ProcessRotationAngle(double value) {
         rotationAngle = value;
         wroteRotationThisTick = true; // mark open-loop write this tick
-        rotationAngleEntry.setDouble(rotationAngle);
+        if (debug)
+            rotationAngleEntry.setDouble(rotationAngle);
     }
 
     public double getInvertedGyroValue() {
@@ -445,13 +452,16 @@ public class SwerveDriveModule implements DriveModule {
         if (actionPose != null) {
             targetPose = actionPose;
             targetActionPoseEntry.setString(String.format("%s %s %d %s %s", group, location, locationIndex, position, action));
-            lateralReachedEntry.setBoolean(false);
-            forwardReachedEntry.setBoolean(false);
-            rotationReachedEntry.setBoolean(false);
+            if (debug) {
+                lateralReachedEntry.setBoolean(false);
+                forwardReachedEntry.setBoolean(false);
+                rotationReachedEntry.setBoolean(false);
+            }
             
             // reset settle counter on new target
             settleCount = 0;
-            settleCountEntry.setNumber(settleCount);
+            if (debug)
+                settleCountEntry.setNumber(settleCount);
         }
     }
 
@@ -461,15 +471,18 @@ public class SwerveDriveModule implements DriveModule {
         if (RobotBase.isReal())
             healthy = positioner.IsHealthy();
 
-        positionerHealthyEntry.setBoolean(healthy);
-        positionHealthReasonEntry.setString(positioner.GetHealthReason());
+        if (debug) {
+            positionerHealthyEntry.setBoolean(healthy);
+            positionHealthReasonEntry.setString(positioner.GetHealthReason());
+        }
 
         return healthy;
     }
 
     public void EvaluateTargetPose(Pose3d currentPose, double newAngleRad) {
         if (targetPose != null) {
-            newAngleRadEntry.setDouble(newAngleRad);
+            if (debug)
+                newAngleRadEntry.setDouble(newAngleRad);
             var pose = targetPose.target;
             var targetPosition = pose.Position;
             var targetRotation = pose.Orientation;
@@ -482,7 +495,8 @@ public class SwerveDriveModule implements DriveModule {
 
             // TODO 1: re-evaluate if this is needed with estimator
             var seekTag = false; // posNorm == 0.0;
-            myTable.getEntry("seekTag").setBoolean(seekTag);
+            if (debug)
+                myTable.getEntry("seekTag").setBoolean(seekTag);
 
             if (!seekTag) {
                 seekRotation = 0.0;
@@ -490,17 +504,21 @@ public class SwerveDriveModule implements DriveModule {
                 seekReversed = false;
             }
 
-            rotationReachedEntry.setBoolean(rotationReached);
-            lateralReachedEntry.setBoolean(lateralReached);
-            forwardReachedEntry.setBoolean(forwardReached);
+            if (debug) {
+                rotationReachedEntry.setBoolean(rotationReached);
+                lateralReachedEntry.setBoolean(lateralReached);
+                forwardReachedEntry.setBoolean(forwardReached);
+            }
 
             // only process position if we have a target
             if (pose.HasPosition) {
                 var positionDelta = targetPosition.minus(currentPosition);
                 if (Utility.isTravelGroup(targetPose.group)) {
                     var positionTolerance = frameNorm;
-                    myTable.getEntry("_deltaNorm").setDouble(positionDelta.getNorm());
-                    myTable.getEntry("_positionTolerance").setDouble(positionTolerance);
+                    if (debug) {
+                        myTable.getEntry("_deltaNorm").setDouble(positionDelta.getNorm());
+                        myTable.getEntry("_positionTolerance").setDouble(positionTolerance);
+                    }
                     if (positionDelta.getNorm() < positionTolerance) {
                         // travel group with lookat rotation we don't want to stop on position, but find next waypoint when we get close
                         if (pose.HasLookAt)
@@ -511,14 +529,19 @@ public class SwerveDriveModule implements DriveModule {
                         settleCount = settleCyclesRequired; // force settle
                     }
                 } else {
-                    myTable.getEntry("_deltaNorm").unpublish();
-                    myTable.getEntry("_positionTolerance").unpublish();
+                    if (debug) {
+                        myTable.getEntry("_deltaNorm").unpublish();
+                        myTable.getEntry("_positionTolerance").unpublish();
+                    }
                 }
 
                 if (!lateralReached || !forwardReached) {
-                    positionDeltaEntry.setString(positionDelta.toString());
-                    positionTargetEntry.setString(targetPosition.toString());
-                    myTable.getEntry("posNorm").setDouble(posNorm);
+                    if (debug) {
+                        positionDeltaEntry.setString(positionDelta.toString());
+                        positionTargetEntry.setString(targetPosition.toString());
+                        if (debug)
+                            myTable.getEntry("posNorm").setDouble(posNorm);
+                    }
 
                     if (posNorm > 0.0) { // requires position to be initialized
                         // limelight team-based origin is x forward positive, y left positive - same as FRC field
@@ -529,7 +552,8 @@ public class SwerveDriveModule implements DriveModule {
                             lateralSpeed = Math.max(-driveSpeed, Math.min(driveSpeed, lateralSpeed));
                             if (Math.abs(lateralSpeed) < floatTolerance) {
                                 lateralReached = true;
-                                lateralReachedEntry.setBoolean(lateralReached);
+                                if (debug)
+                                    lateralReachedEntry.setBoolean(lateralReached);
                                 ProcessLateralSpeed(0.0);
                             } else if (positionerHealthy) { // prevents sending wrong coordinates
                                 ProcessLateralSpeed(lateralSpeed);
@@ -542,7 +566,8 @@ public class SwerveDriveModule implements DriveModule {
                             forwardSpeed = Math.max(-driveSpeed, Math.min(driveSpeed, forwardSpeed));
                             if (Math.abs(forwardSpeed) < floatTolerance) {
                                 forwardReached = true;
-                                forwardReachedEntry.setBoolean(forwardReached);
+                                if (debug)
+                                    forwardReachedEntry.setBoolean(forwardReached);
                                 ProcessForwardSpeed(0.0);
                             } else if (positionerHealthy) { // prevents sending wrong coordinates
                                 ProcessForwardSpeed(forwardSpeed);
@@ -562,7 +587,8 @@ public class SwerveDriveModule implements DriveModule {
 
             // TODO: why isn't this called consistently?
             // if we have a lookat and we've reached our position, don't keep trying to find the lookat
-            myTable.getEntry("hasLookAt").setBoolean(pose.HasLookAt);
+            if (debug)
+                myTable.getEntry("hasLookAt").setBoolean(pose.HasLookAt);
             if (pose.HasLookAt && lateralReached && forwardReached) {
                 System.out.printf("%d ms: lookat position reached\n", System.currentTimeMillis());
                 rotationReached = true;
@@ -578,25 +604,29 @@ public class SwerveDriveModule implements DriveModule {
                         // TODO 1: is this still a problem? might have been fixed with auto selector fixes; this doesn't seem to work if we're on the other side of zero?
                         var targetRad = (targetRotation.getRadians() + (2 * Math.PI)) % (2 * Math.PI); // wrap to positive angles
                         var rotationDelta = targetRad - newAngleRad;
-                        rotationDeltaEntry.setDouble(rotationDelta);
-                        rotationTargetEntry.setDouble(targetRotation.getRadians());
+                        if (debug) {
+                            rotationDeltaEntry.setDouble(rotationDelta);
+                            rotationTargetEntry.setDouble(targetRotation.getRadians());
+                        }
                         targetValue = targetRotation.getRadians();
                         processAngle = true;
                     } else if (pose.HasLookAt && posNorm > 0.0) {
                         // trying to rotate from the camera's vantage point to ensure that the april tags are always in the center
                         var adjustedPos = RobotBase.isReal() ? positioner.GetReferenceInFieldCoords() : fakeCameraPose.transformBy(currentPose.minus(fakeCameraPose));
-                        myTable.getEntry("adjustedPos").setString(adjustedPos.toString());
                         var lookTarget = Utility.getLookat(adjustedPos.getTranslation().toTranslation2d(), pose.LookAt.toTranslation2d()).getRadians();
-                        myTable.getEntry("lookTargetRaw").setDouble(lookTarget);
                         // adjust rotation for camera rotation offset
                         // TODO 1: make sure limelight rotation is positive for real
                         var referenceAngle = RobotBase.isReal() ? positioner.GetReferenceInRobotCoords().getRotation().getZ() : fakeCameraPose.getRotation().getZ();
                         lookTarget = lookTarget - referenceAngle;
-                        myTable.getEntry("lookTargetAdj").setDouble(lookTarget);
                         // wrap to positive and modulo
                         lookTarget = (lookTarget + (2 * Math.PI)) % (2 * Math.PI);
-                        lookTargetAngEntry.setDouble(lookTarget);
-                        lookTargetPosEntry.setString(pose.LookAt.toString());
+                        if (debug) {
+                            myTable.getEntry("adjustedPos").setString(adjustedPos.toString());
+                            myTable.getEntry("lookTargetRaw").setDouble(lookTarget);
+                            myTable.getEntry("lookTargetAdj").setDouble(lookTarget);
+                            lookTargetAngEntry.setDouble(lookTarget);
+                            lookTargetPosEntry.setString(pose.LookAt.toString());
+                        }
                         targetValue = lookTarget;
                         processAngle = true;
                     }
@@ -614,7 +644,8 @@ public class SwerveDriveModule implements DriveModule {
                             // only mark 'reached' if we don't have a lookat target or our position is also reached
                             if (!pose.HasLookAt || (lateralReached && forwardReached))
                                 rotationReached = true;
-                            rotationReachedEntry.setBoolean(rotationReached);
+                            if (debug)
+                                rotationReachedEntry.setBoolean(rotationReached);
                             ProcessRotationAngle(0.0);
                         } else {
                             ProcessRotationAngle(rotationSpeed);
@@ -656,7 +687,8 @@ public class SwerveDriveModule implements DriveModule {
                 // any axis out of tolerance resets the settle window
                 settleCount = 0;
             }
-            settleCountEntry.setNumber(settleCount);
+            if (debug)
+                settleCountEntry.setNumber(settleCount);
         }
     }
 
@@ -666,11 +698,13 @@ public class SwerveDriveModule implements DriveModule {
         zeroDriveCommands();
         
         targetActionPoseEntry.setString("none");
-        lateralReachedEntry.unpublish();
-        forwardReachedEntry.unpublish();
-        rotationReachedEntry.unpublish();
-        targetDeltaEntry.unpublish();
-        rotationDeltaEntry.unpublish();
+        if (debug) {
+            lateralReachedEntry.unpublish();
+            forwardReachedEntry.unpublish();
+            rotationReachedEntry.unpublish();
+            targetDeltaEntry.unpublish();
+            rotationDeltaEntry.unpublish();
+        }
     }
 
     public void ProcessState(boolean isAuto) {
@@ -681,7 +715,8 @@ public class SwerveDriveModule implements DriveModule {
         // Invert the Gyro angle because it rotates opposite of the robot steering, then wrap it to a positive value
         // TODO 1: check this after adjusting coordinate systems
         double currentGyroAngle = getInvertedGyroValue();
-        currentGyroAngleEntry.setDouble(currentGyroAngle);
+        if (debug)
+            currentGyroAngleEntry.setDouble(currentGyroAngle);
 
         if (RobotBase.isReal()) {
             PoseEstimate visionEstimate = positioner.GetPoseEstimate();
@@ -689,7 +724,8 @@ public class SwerveDriveModule implements DriveModule {
 
             if (!positionInitialized && visionEstimate.pose.getTranslation().getNorm() > 0.0) {
                 positionInitialized = true;
-                myTable.getEntry("positionInitialized").setBoolean(positionInitialized);
+                if (debug)
+                    myTable.getEntry("positionInitialized").setBoolean(positionInitialized);
 
                 poseEstimator.resetPose(visionEstimate.pose);
             }
@@ -705,8 +741,10 @@ public class SwerveDriveModule implements DriveModule {
         // TODO 1: Identify if this is correct - does it need inverse or does everything use normal?
         // yaw is in degrees
         var limelightAngle = currentGyroAngle / ((Math.PI * 2) / 360);
-        myTable.getEntry("limelightAngleRaw").setDouble(limelightAngle);
-        myTable.getEntry("limelightAngleRadAdj").setDouble((limelightAngle + 180) % 360);
+        if (debug) {
+            myTable.getEntry("limelightAngleRaw").setDouble(limelightAngle);
+            myTable.getEntry("limelightAngleRadAdj").setDouble((limelightAngle + 180) % 360);
+        }
         positioner.SetRobotOrientation("", limelightAngle, 0,0,0,0,0);
 
         currentPosition = currentPose.getTranslation();
@@ -730,7 +768,8 @@ public class SwerveDriveModule implements DriveModule {
         double forwardSpeed = this.forwardSpeed * controller.ApplyModifiers(driveSpeed);
         double lateralSpeed = this.lateralSpeed * controller.ApplyModifiers(driveSpeed);
         double thisRotationSpeed = rotationAngle * controller.ApplyModifiers(rotationMultiplier); //rotationAngle; // * controller.ApplyModifiers(this.rotationSpeed);
-        rotationSpeedEntry.setDouble(thisRotationSpeed);
+        if (debug)
+            rotationSpeedEntry.setDouble(thisRotationSpeed);
 
         var currentRotation = Rotation2d.fromRadians(currentGyroAngle);
 
@@ -781,7 +820,8 @@ public class SwerveDriveModule implements DriveModule {
             // calculate and store current field position and rotation
             // var centerOffset = new Translation2d(Math.cos(getGyroAngle()) * primaryModule.modulePosition.getX(),
             //         Math.sin(getGyroAngle()) * primaryModule.modulePosition.getY());
-            currentPositionEntry.setString(currentPosition.toString());
+            if (debug)
+                currentPositionEntry.setString(currentPosition.toString());
             if ((Math.abs(previousPosition.minus(currentPosition).getX()) > floatTolerance
                     || Math.abs(previousPosition.minus(currentPosition).getY()) > floatTolerance)
                     && Math.abs(previousPosition.minus(currentPosition).getNorm()) < deltaLimit) {
@@ -791,7 +831,8 @@ public class SwerveDriveModule implements DriveModule {
 
         // update fake gyro angle
         currentAngle += -thisRotationSpeed * fakeGyroRate;
-        fakeAngleEntry.setDouble(currentAngle);
+        if (debug)
+            fakeAngleEntry.setDouble(currentAngle);
         previousAngle = currentAngle;
         previousRotationSpeed = thisRotationSpeed;
 

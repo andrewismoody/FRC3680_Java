@@ -103,9 +103,17 @@ public class Constants {
         }
     };
 
+    public static final HashMap<Integer, Integer> coralIndexToTag = new HashMap<Integer, Integer>() {
+        {
+            put(1, 13);
+            put(2, 12);
+        }
+    };
+
     public static Translation3d getBlueStartFieldPosition(Group group, Location location, int index) {
         Translation3d selectedLocation = Translation3d.kZero;
         var reefTag = reefIndexToTag.get(index);
+        var coralTag = coralIndexToTag.get(index);
 
         switch (location) {
             case Barge:
@@ -120,43 +128,49 @@ public class Constants {
                         selectedLocation = Utility.projectPerpendicular(getBlueStartFieldPosition(Group.Any, Location.Tag, 19), getBlueStartKnownRotation(Group.Any, Location.Tag, 19), alignOffset);
                         break;
                     case 3:
-                        selectedLocation = Utility.projectPerpendicular(getBlueStartFieldPosition(Group.Any, Location.Tag, 18), getBlueStartKnownRotation(Group.Any, Location.Tag, 19), alignOffset);
+                        selectedLocation = Utility.projectPerpendicular(getBlueStartFieldPosition(Group.Any, Location.Tag, 18), getBlueStartKnownRotation(Group.Any, Location.Tag, 18), alignOffset);
                         break;
                     case 5:
-                        selectedLocation = Utility.projectPerpendicular(getBlueStartFieldPosition(Group.Any, Location.Tag, 17), getBlueStartKnownRotation(Group.Any, Location.Tag, 19), alignOffset);
+                        selectedLocation = Utility.projectPerpendicular(getBlueStartFieldPosition(Group.Any, Location.Tag, 17), getBlueStartKnownRotation(Group.Any, Location.Tag, 17), alignOffset);
                         break;
                     case 7:
-                        selectedLocation = Utility.projectPerpendicular(getBlueStartFieldPosition(Group.Any, Location.Tag, 22), getBlueStartKnownRotation(Group.Any, Location.Tag, 19), alignOffset);
+                        selectedLocation = Utility.projectPerpendicular(getBlueStartFieldPosition(Group.Any, Location.Tag, 22), getBlueStartKnownRotation(Group.Any, Location.Tag, 22), alignOffset);
                         break;
                     case 9:
-                        selectedLocation = Utility.projectPerpendicular(getBlueStartFieldPosition(Group.Any, Location.Tag, 21), getBlueStartKnownRotation(Group.Any, Location.Tag, 19), alignOffset);
+                        selectedLocation = Utility.projectPerpendicular(getBlueStartFieldPosition(Group.Any, Location.Tag, 21), getBlueStartKnownRotation(Group.Any, Location.Tag, 21), alignOffset);
                         break;
                     case 11:
                         selectedLocation =  Utility.projectPerpendicular(getBlueStartFieldPosition(Group.Any, Location.Tag, 20), getBlueStartKnownRotation(Group.Any, Location.Tag, 20), alignOffset);
                         break;
                     case 2:
                         Pose2d bisectorAngle2 = Utility.perpendicularBisectorAngle(getBlueStartFieldPosition(Group.Any, Location.Tag, 19).toTranslation2d(), getBlueStartFieldPosition(Group.Any, Location.Tag, 18).toTranslation2d());
-                        selectedLocation = Utility.projectParallel(new Translation3d(bisectorAngle2.getTranslation()), bisectorAngle2.getRotation(), alignOffset * 2);
+                        // System.out.printf("bisector 2: (%f, %f)@%f\n", Utility.metersToInches(bisectorAngle2.getX()), Utility.metersToInches(bisectorAngle2.getY()), bisectorAngle2.getRotation().getDegrees());
+                        selectedLocation = Utility.projectParallel(new Translation3d(bisectorAngle2.getTranslation()), bisectorAngle2.getRotation(), alignOffset * 1.25);
                         break;
                     case 4:
                         Pose2d bisectorAngle4 = Utility.perpendicularBisectorAngle(getBlueStartFieldPosition(Group.Any, Location.Tag, 18).toTranslation2d(), getBlueStartFieldPosition(Group.Any, Location.Tag, 17).toTranslation2d());
-                        selectedLocation = Utility.projectParallel(new Translation3d(bisectorAngle4.getTranslation()), bisectorAngle4.getRotation(), alignOffset * 2);
+                        // System.out.printf("bisector 4: (%f, %f)@%f\n", Utility.metersToInches(bisectorAngle4.getX()), Utility.metersToInches(bisectorAngle4.getY()), bisectorAngle4.getRotation().getDegrees());
+                        selectedLocation = Utility.projectParallel(new Translation3d(bisectorAngle4.getTranslation()), bisectorAngle4.getRotation(), alignOffset * 1.25);
                         break;
                     case 6:
                         Pose2d bisectorAngle6 = Utility.perpendicularBisectorAngle(getBlueStartFieldPosition(Group.Any, Location.Tag, 17).toTranslation2d(), getBlueStartFieldPosition(Group.Any, Location.Tag, 22).toTranslation2d());
-                        selectedLocation = Utility.projectParallel(new Translation3d(bisectorAngle6.getTranslation()), bisectorAngle6.getRotation(), alignOffset * 2);
+                        // System.out.printf("bisector 6: (%f, %f)@%f\n", Utility.metersToInches(bisectorAngle6.getX()), Utility.metersToInches(bisectorAngle6.getY()), bisectorAngle6.getRotation().getDegrees());
+                        selectedLocation = Utility.projectParallel(new Translation3d(bisectorAngle6.getTranslation()), bisectorAngle6.getRotation(), alignOffset * 1.25);
                         break;
                     case 8:
                         Pose2d bisectorAngle8 = Utility.perpendicularBisectorAngle(getBlueStartFieldPosition(Group.Any, Location.Tag, 22).toTranslation2d(), getBlueStartFieldPosition(Group.Any, Location.Tag, 21).toTranslation2d());
-                        selectedLocation = Utility.projectParallel(new Translation3d(bisectorAngle8.getTranslation()), bisectorAngle8.getRotation(), alignOffset * 2);
+                        // System.out.printf("bisector 8: (%f, %f)@%f\n", Utility.metersToInches(bisectorAngle8.getX()), Utility.metersToInches(bisectorAngle8.getY()), bisectorAngle8.getRotation().getDegrees());
+                        selectedLocation = Utility.projectParallel(new Translation3d(bisectorAngle8.getTranslation()), bisectorAngle8.getRotation(), alignOffset * 1.25);
                         break;
                     case 10:
                         Pose2d bisectorAngle10 = Utility.perpendicularBisectorAngle(getBlueStartFieldPosition(Group.Any, Location.Tag, 21).toTranslation2d(), getBlueStartFieldPosition(Group.Any, Location.Tag, 20).toTranslation2d());
-                        selectedLocation = Utility.projectParallel(new Translation3d(bisectorAngle10.getTranslation()), bisectorAngle10.getRotation(), alignOffset * 2);
+                        // System.out.printf("bisector 10: (%f, %f)@%f\n", Utility.metersToInches(bisectorAngle10.getX()), Utility.metersToInches(bisectorAngle10.getY()), bisectorAngle10.getRotation().getDegrees());
+                        selectedLocation = Utility.projectParallel(new Translation3d(bisectorAngle10.getTranslation()), bisectorAngle10.getRotation(), alignOffset * 1.25);
                         break;
                     case 12:
                         Pose2d bisectorAngle12 = Utility.perpendicularBisectorAngle(getBlueStartFieldPosition(Group.Any, Location.Tag, 20).toTranslation2d(), getBlueStartFieldPosition(Group.Any, Location.Tag, 19).toTranslation2d());
-                        selectedLocation = Utility.projectParallel(new Translation3d(bisectorAngle12.getTranslation()), bisectorAngle12.getRotation(), alignOffset * 2);
+                        // System.out.printf("bisector 12: (%f, %f)@%f\n", Utility.metersToInches(bisectorAngle12.getX()), Utility.metersToInches(bisectorAngle12.getY()), bisectorAngle12.getRotation().getDegrees());
+                        selectedLocation = Utility.projectParallel(new Translation3d(bisectorAngle12.getTranslation()), bisectorAngle12.getRotation(), alignOffset * 1.25);
                         break;
                     default:
                         break;
@@ -180,17 +194,10 @@ public class Constants {
             case Coral:
                 switch (group) {
                     case Align:
-                        selectedLocation = Utility.projectPerpendicular(getBlueStartFieldPosition(Group.Any, Location.Coral, index), getBlueStartKnownRotation(Group.Any, Location.Tag, 13), alignOffset);
+                        selectedLocation = Utility.projectPerpendicular(getBlueStartFieldPosition(Group.Any, Location.Coral, index), getBlueStartKnownRotation(Group.Any, Location.Tag, coralTag), alignOffset);
                         break;
                     default:
-                        switch (index) {
-                            case 1:
-                                selectedLocation =  Utility.projectPerpendicular(getBlueStartFieldPosition(Group.Any, Location.Tag, 13), getBlueStartKnownRotation(Group.Any, Location.Tag, 13), robotCenter.getX());
-                                break;
-                            case 2:
-                                selectedLocation =  Utility.projectPerpendicular(getBlueStartFieldPosition(Group.Any, Location.Tag, 12), getBlueStartKnownRotation(Group.Any, Location.Tag, 13), robotCenter.getX());
-                                break;
-                        }
+                        selectedLocation =  Utility.projectPerpendicular(getBlueStartFieldPosition(Group.Any, Location.Tag, coralTag), getBlueStartKnownRotation(Group.Any, Location.Tag, coralTag), robotCenter.getX());
                         break;
                 }
                 break;
