@@ -581,10 +581,7 @@ public class SwerveDriveModule implements DriveModule {
                         // trying to rotate from the camera's vantage point to ensure that the april tags are always in the center
                         var adjustedPos = Robot.isReal() ? positioner.GetReferenceInFieldCoords() : fakeCameraPose.transformBy(currentPose.minus(fakeCameraPose));
                         myTable.getEntry("adjustedPos").setString(adjustedPos.toString());
-                        var lookAt = pose.LookAt;
-                        // currently, this gets the atan with axes flipped and then subtracts from negative field orientation
-                        // var lookTarget = -1.566 - Math.atan2(lookAt.getX() - adjustedPos.getX(), lookAt.getY() - adjustedPos.getY());
-                        var lookTarget = Math.atan2(lookAt.getY() - adjustedPos.getY(), lookAt.getX() - adjustedPos.getX());
+                        var lookTarget = Utility.getLookat(adjustedPos.getTranslation().toTranslation2d(), pose.LookAt.toTranslation2d()).getRadians();
                         myTable.getEntry("lookTargetRaw").setDouble(lookTarget);
                         // adjust rotation for camera rotation offset
                         // TODO 1: make sure limelight rotation is positive for real
@@ -594,7 +591,7 @@ public class SwerveDriveModule implements DriveModule {
                         // wrap to positive and modulo
                         lookTarget = (lookTarget + (2 * Math.PI)) % (2 * Math.PI);
                         lookTargetAngEntry.setDouble(lookTarget);
-                        lookTargetPosEntry.setString(lookAt.toString());
+                        lookTargetPosEntry.setString(pose.LookAt.toString());
                         targetValue = lookTarget;
                         processAngle = true;
                     }

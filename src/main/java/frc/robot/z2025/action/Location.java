@@ -12,9 +12,6 @@ public enum Location {
     Waypoint(5),
     Tag(6),
     Interest(7),
-    ReefAlign(8),
-    ReefApproach(9),
-    CoralAlign(10),
     None(11),
     ;
 

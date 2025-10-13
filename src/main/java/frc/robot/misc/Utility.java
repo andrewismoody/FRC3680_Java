@@ -1,5 +1,6 @@
 package frc.robot.misc;
 
+import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Pose3d;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Rotation3d;
@@ -19,6 +20,8 @@ public class Utility {
 
     static void Initialize() {
         if (!initialized) {
+            System.out.println("Initializing Utility");
+            
             if (fieldSize == Translation2d.kZero)
                 throw new RuntimeException("Utility.fieldSize not set - you must set this to your Constants.fieldSize in RobotInit");
             
@@ -75,6 +78,35 @@ public class Utility {
 
     public static double radiansToDegrees(double radians) {
         return radians / 0.017453292519943295;
+    }
+
+    public static Rotation2d getLookat(Translation2d source, Translation2d target) {
+        double dx = target.getX() - source.getX();
+        double dy = target.getY() - source.getY();
+
+        return Rotation2d.fromRadians(Math.atan2(dy,  dx));
+    }
+
+    public static double getMidpoint(double min, double max) {
+        return (min + max) / 2.0;
+    }
+
+    public static Pose2d perpendicularBisectorAngle(Translation2d first, Translation2d second) {
+        double x1 = first.getX();
+        double y1 = first.getY();
+        double x2 = second.getX();
+        double y2 = second.getY();
+
+        double dx = x2 - x1;
+        double dy = y2 - y1;
+        if (Math.abs(dx) < 1e-9 && Math.abs(dy) < 1e-9) {
+            throw new IllegalArgumentException("Perpendicular bisector undefined for identical points");
+        }
+        double mx = (x1 + x2) / 2.0;
+        double my = (y1 + y2) / 2.0;
+    
+        double theta = Math.atan2(dy, dx) + Math.PI / 2.0; // perpendicular to segment
+        return new Pose2d(new Translation2d(mx, my), new Rotation2d(theta).plus(Rotation2d.k180deg));
     }
 
     public static boolean isTravelGroup(Group group) {

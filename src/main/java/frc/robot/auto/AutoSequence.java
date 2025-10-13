@@ -33,7 +33,82 @@ public class AutoSequence {
     }
 
     public void AddEvent(AutoEvent event) {
-        Events.add(event);
+        AutoEvent newEvent;
+
+        switch (event.GetTriggerType()) {
+            case Time:
+                newEvent = setupTimeEvent((AutoEventTime) event, new AutoEventTime(event.GetLabel(), event.IsParallel(),
+                        ((AutoEventTime) event).milliseconds, event.GetEventType(), autoController));
+                break;
+            case Position:
+                newEvent = setupPositionEvent((AutoEventPosition) event, new AutoEventPosition(event.GetLabel(), event.IsParallel(),
+                        ((AutoEventPosition) event).target, event.GetEventType(), autoController, controller.GetDriveModule()));
+                break;
+            case Target:
+                newEvent = setupTargetEvent((AutoEventTarget) event, new AutoEventTarget(event.GetLabel(), event.IsParallel(),
+                        ((AutoEventTarget) event).target, event.GetEventType(), autoController));
+                break;
+            case Auto:
+                newEvent = new AutoEventAuto(event.GetLabel(), event.IsParallel(), ((AutoEventAuto) event).autoEvent, event.GetEventType());
+                break;
+            default:
+                newEvent = new AutoEventTime(event.GetLabel(), event.IsParallel(), 0, event.GetEventType(), autoController);
+                System.out.printf("AutoSequence %s unknown event type %s\n", label, event.GetTriggerType().toString());
+                return;
+        }
+
+        Events.add(newEvent);
+    }
+
+    AutoEventTime setupTimeEvent(AutoEventTime oldEvent, AutoEventTime newEvent) {
+        switch (oldEvent.GetEventType()) {
+            case Auto:
+                newEvent.SetAutoEvent(oldEvent.autoEvent);
+                break;
+            case Void:
+                newEvent.SetVoidEvent(oldEvent.voidEvent);
+                break;
+            case Boolean:
+                newEvent.SetBoolEvent(oldEvent.boolValue, oldEvent.boolEvent);
+                break;
+            case Double:
+                newEvent.SetDoubleEvent(oldEvent.doubleValue, oldEvent.doubleEvent);
+                break;
+            default:
+                // do nothing
+                break;
+        }
+
+        return newEvent;
+    }
+
+    AutoEventPosition setupPositionEvent(AutoEventPosition oldEvent, AutoEventPosition newEvent) {
+        switch (oldEvent.GetEventType()) {
+            case Auto:
+                newEvent.SetAutoEvent(oldEvent.autoEvent);
+                break;
+            case Void:
+                newEvent.SetVoidEvent(oldEvent.voidEvent);
+                break;
+            case Boolean:
+                newEvent.SetBoolEvent(oldEvent.boolValue, oldEvent.boolEvent);
+                break;
+            case Double:
+                newEvent.SetDoubleEvent(oldEvent.doubleValue, oldEvent.doubleEvent);
+                break;
+            default:
+                // do nothing
+                break;
+        }
+
+        return newEvent;
+    }
+
+    AutoEventTarget setupTargetEvent(AutoEventTarget oldEvent, AutoEventTarget newEvent) {
+        if (oldEvent.targetModule != null)
+            newEvent.targetModule = oldEvent.targetModule;
+
+        return newEvent;
     }
 
     public void SetController(ModuleController Controller) {
@@ -41,12 +116,12 @@ public class AutoSequence {
     }
 
     public AutoSequence BeginWith(AutoEvent event) {
-        Events.add(event);
+        AddEvent(event);
         return this;
     }
 
     public AutoSequence Then(AutoEvent event) {
-        Events.add(event);
+        AddEvent(event);
         return this;
     }
 
@@ -70,6 +145,7 @@ public class AutoSequence {
 
         boolean notFinished = false;
 
+        // TODO figure out why there's a pause between each event
         // process triggers
         eventLoop: for (AutoEvent event : Events) {
             if (interrupt)

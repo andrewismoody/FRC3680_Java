@@ -640,6 +640,7 @@ public class GameController {
     public static GameController Initialize() {
         GameController m_controller = null;
 
+        // TODO 1: figure out why no joysticks are detected when this runs in Robot.init
         JoystickIndexLoop: for (int j = 0; j < 6; j++) {
             System.out.printf("Checking for joystick on port %d\n", j);
 

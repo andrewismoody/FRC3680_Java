@@ -38,16 +38,16 @@ public class SequenceControllerStartScoreReload extends AutoSequence {
     // Target Poses
     var pose_start1 = new ActionPose(Group.Start, Location.Barge.getValue(), 1, Position.Trough.getValue(), Action.Pickup, null);
     var pose_waypoint12_Reef = new ActionPose(Group.Travel, Location.Waypoint.getValue(), 12, Position.Trough.getValue(), Action.Pickup, null);
-    var pose_waypoint11_Reef = new ActionPose(Group.Travel, Location.Waypoint.getValue(), 11, Position.Trough.getValue(), Action.Pickup, null);
+    var pose_waypoint2_Reef = new ActionPose(Group.Travel, Location.Waypoint.getValue(), 2, Position.Trough.getValue(), Action.Pickup, null);
     var pose_waypoint1_Reef = new ActionPose(Group.Travel, Location.Waypoint.getValue(), 1, Position.Trough.getValue(), Action.Pickup, null);
-    var pose_align11_Reef = new ActionPose(Group.Align, Location.Reef.getValue(), 11, Position.Trough.getValue(), Action.Pickup, null);
-    var pose_align12_Reef = new ActionPose(Group.Align, Location.Reef.getValue(), 12, Position.Trough.getValue(), Action.Pickup, null);
-    var pose_approach11_Reef = new ActionPose(Group.Approach, Location.Reef.getValue(), 11, Position.Trough.getValue(), Action.Pickup, null);
-    var pose_approach12_Reef = new ActionPose(Group.Approach, Location.Reef.getValue(), 12, Position.Trough.getValue(), Action.Pickup, null);
-    var pose_score11_Lower = new ActionPose(Group.Score, Location.Reef.getValue(), 11, Position.Lower.getValue(), Action.Pickup, null);
-    var pose_score12_Lower = new ActionPose(Group.Score, Location.Reef.getValue(), 12, Position.Lower.getValue(), Action.Pickup, null);
-    var pose_score11_Trough = new ActionPose(Group.Score, Location.Any.getValue(), 11, Position.Trough.getValue(), Action.Pickup, null);
-    var pose_score12_Trough = new ActionPose(Group.Score, Location.Any.getValue(), 12, Position.Trough.getValue(), Action.Pickup, null);
+    var pose_align3_Reef = new ActionPose(Group.Align, Location.Reef.getValue(), 3, Position.Trough.getValue(), Action.Pickup, null);
+    var pose_align4_Reef = new ActionPose(Group.Align, Location.Reef.getValue(), 4, Position.Trough.getValue(), Action.Pickup, null);
+    var pose_approach3_Reef = new ActionPose(Group.Approach, Location.Reef.getValue(), 3, Position.Trough.getValue(), Action.Pickup, null);
+    var pose_approach4_Reef = new ActionPose(Group.Approach, Location.Reef.getValue(), 4, Position.Trough.getValue(), Action.Pickup, null);
+    var pose_score3_Lower = new ActionPose(Group.Score, Location.Reef.getValue(), 3, Position.Lower.getValue(), Action.Pickup, null);
+    var pose_score4_Lower = new ActionPose(Group.Score, Location.Reef.getValue(), 4, Position.Lower.getValue(), Action.Pickup, null);
+    var pose_score3_Trough = new ActionPose(Group.Score, Location.Any.getValue(), 3, Position.Trough.getValue(), Action.Pickup, null);
+    var pose_score4_Trough = new ActionPose(Group.Score, Location.Any.getValue(), 4, Position.Trough.getValue(), Action.Pickup, null);
     var pose_align1_coral = new ActionPose(Group.Align, Location.Coral.getValue(), 1, Position.Trough.getValue(), Action.Pickup, null);
     var pose_pickup1_coral = new ActionPose(Group.Pickup, Location.Coral.getValue(), 1, Position.Trough.getValue(), Action.Pickup, null);
 
@@ -55,65 +55,54 @@ public class SequenceControllerStartScoreReload extends AutoSequence {
     var slide = (SingleActuatorModule) modules.GetModule("slide");
 
     var event_start1 = CreateSyncAwaitEvent("Await Pose Start 1", pose_start1);
-    var event_waypoint12_reef1 = CreateSyncAwaitEvent("Await Pose Waypoint 12 Reef 1", pose_waypoint12_Reef);
-    var event_waypoint12_reef2 = CreateSyncAwaitEvent("Await Pose Waypoint 12 Reef 2", pose_waypoint12_Reef);
-    var event_waypoint12_reef3 = CreateSyncAwaitEvent("Await Pose Waypoint 12 Reef 3", pose_waypoint12_Reef);
-    var event_waypoint11_reef1 = CreateSyncAwaitEvent("Await Pose Waypoint 11 Reef 1", pose_waypoint11_Reef);
-    var event_waypoint11_reef2 = CreateSyncAwaitEvent("Await Pose Waypoint 11 Reef 2", pose_waypoint11_Reef);
-    var event_waypoint11_reef3 = CreateSyncAwaitEvent("Await Pose Waypoint 11 Reef 3", pose_waypoint11_Reef);
-    var event_waypoint11_reef4 = CreateSyncAwaitEvent("Await Pose Waypoint 11 Reef 4", pose_waypoint11_Reef);
-    var event_waypoint1_reef1 = CreateSyncAwaitEvent("Await Pose Waypoint 1 Reef 1", pose_waypoint1_Reef);
-    var event_waypoint1_reef2 = CreateSyncAwaitEvent("Await Pose Waypoint 1 Reef 2", pose_waypoint1_Reef);
-    var event_align11_reef1 = CreateSyncAwaitEvent("Await Pose Align 11 Reef 1", pose_align11_Reef);
-    var event_align12_reef1 = CreateSyncAwaitEvent("Await Pose Align 12 Reef 1", pose_align12_Reef);
-    var event_approach11_reef1 = CreateSyncAwaitEvent("Await Pose Approach 11 Reef 1", pose_approach11_Reef);
-    var event_approach12_reef1 = CreateSyncAwaitEvent("Await Pose Approach 12 Reef 1", pose_approach12_Reef);
-    var event_align1_coral1 = CreateSyncAwaitEvent("Await Pose Align 1 Coral 1", pose_align1_coral);
+    var event_waypoint12_reef = CreateSyncAwaitEvent("Await Pose Waypoint 12 Reef", pose_waypoint12_Reef);
+    var event_waypoint2_reef = CreateSyncAwaitEvent("Await Pose Waypoint 2 Reef", pose_waypoint2_Reef);
+    var event_waypoint1_reef = CreateSyncAwaitEvent("Await Pose Waypoint 1 Reef", pose_waypoint1_Reef);
+    var event_align3_reef = CreateSyncAwaitEvent("Await Pose Align 3 Reef", pose_align3_Reef);
+    var event_align4_reef = CreateSyncAwaitEvent("Await Pose Align 4 Reef", pose_align4_Reef);
+    var event_approach3_reef = CreateSyncAwaitEvent("Await Pose Approach 3 Reef", pose_approach3_Reef);
+    var event_approach4_reef = CreateSyncAwaitEvent("Await Pose Approach 4 Reef", pose_approach4_Reef);
+    var event_align1_coral = CreateSyncAwaitEvent("Await Pose Align 1 Coral", pose_align1_coral);
     var event_pickup1_coral = CreateSyncAwaitEvent("Await Pose Pickup 1 Coral", pose_pickup1_coral);
 
-    AutoEventTarget event_score11_lower1 = CreateSyncAwaitEvent("Await Pose Score 11 Lower 1", pose_score11_Lower);
-    AutoEventTarget event_score12_lower1 = CreateSyncAwaitEvent("Await Pose Score 12 Lower 1", pose_score12_Lower);
+    AutoEventTarget event_score3_lower = CreateSyncAwaitEvent("Await Pose Score 3 Lower", pose_score3_Lower);
+    AutoEventTarget event_score4_lower = CreateSyncAwaitEvent("Await Pose Score 4 Lower", pose_score4_Lower);
 
-    AutoEventTarget event_score11_trough1 = CreateSyncAwaitEvent("Await Pose Score 11 Trough 1", pose_score11_Trough);
-    AutoEventTarget event_score12_trough1 = CreateSyncAwaitEvent("Await Pose Score 12 Trough 1", pose_score12_Trough);
+    AutoEventTarget event_score3_trough = CreateSyncAwaitEvent("Await Pose Score 3 Trough", pose_score3_Trough);
+    AutoEventTarget event_score4_trough = CreateSyncAwaitEvent("Await Pose Score 4 Trough", pose_score4_Trough);
 
-    AutoEventTime event_openLatch1 = new AutoEventTime("Open Latch 1", false, 2000, AutoEvent.EventType.Boolean, autoController);
-    event_openLatch1.SetBoolEvent(true, slide::ApplyValue);
-    AutoEventTime event_openLatch2 = new AutoEventTime("Open Latch 2", false, 2000, AutoEvent.EventType.Boolean, autoController);
-    event_openLatch2.SetBoolEvent(true, slide::ApplyValue);
+    AutoEventTime event_openLatch = new AutoEventTime("Open Latch", false, 2000, AutoEvent.EventType.Boolean, autoController);
+    event_openLatch.SetBoolEvent(true, slide::ApplyValue);
 
-    AutoEventTime event_closeLatchAfter1 = new AutoEventTime("Close Latch (after 2s) 1", false, 60, AutoEvent.EventType.Boolean, autoController);
-    event_closeLatchAfter1.SetBoolEvent(true, slide::ApplyInverse);
-    AutoEventTime event_closeLatchAfter2 = new AutoEventTime("Close Latch (after 2s) 2", false, 60, AutoEvent.EventType.Boolean, autoController);
-    event_closeLatchAfter2.SetBoolEvent(true, slide::ApplyInverse);
+    AutoEventTime event_closeLatchAfter = new AutoEventTime("Close Latch (after 2s)", false, 60, AutoEvent.EventType.Boolean, autoController);
+    event_closeLatchAfter.SetBoolEvent(true, slide::ApplyInverse);
 
     AutoEventTime event_waitForLoading = new AutoEventTime("Wait For Loading", false, 5000, AutoEvent.EventType.None, autoController);
 
     BeginWith(event_start1)
-      .Then(event_waypoint12_reef1)
-      .Then(event_waypoint11_reef1)
-      .Then(event_align11_reef1)
-      .Then(event_approach11_reef1)
-      .Then(event_score11_lower1)
-      .Then(event_openLatch1)
-      .Then(event_closeLatchAfter1)
-      .Then(event_score11_trough1)
-      .Then(event_waypoint11_reef2)
-      .Then(event_waypoint12_reef2)
-      .Then(event_waypoint1_reef1)
-      .Then(event_align1_coral1)
+      .Then(event_waypoint12_reef)
+      .Then(event_waypoint1_reef)
+      .Then(event_waypoint2_reef)
+      .Then(event_align3_reef)
+      .Then(event_approach3_reef)
+      .Then(event_score3_lower)
+      .Then(event_openLatch)
+      .Then(event_closeLatchAfter)
+      .Then(event_score3_trough)
+      .Then(event_waypoint2_reef)
+      .Then(event_waypoint1_reef)
+      .Then(event_align1_coral)
       .Then(event_pickup1_coral)
       .Then(event_waitForLoading)
-      .Then(event_waypoint1_reef2)
-      .Then(event_waypoint12_reef3)
-      .Then(event_waypoint11_reef3)
-      .Then(event_align12_reef1)
-      .Then(event_approach12_reef1)
-      .Then(event_score12_lower1)
-      .Then(event_openLatch2)
-      .Then(event_closeLatchAfter2)
-      .Then(event_score12_trough1)
-      .Then(event_waypoint11_reef4)
+      .Then(event_waypoint1_reef)
+      .Then(event_waypoint2_reef)
+      .Then(event_align4_reef)
+      .Then(event_approach4_reef)
+      .Then(event_score4_lower)
+      .Then(event_openLatch)
+      .Then(event_closeLatchAfter)
+      .Then(event_score4_trough)
+      .Then(event_waypoint2_reef)
     ;
   }
 

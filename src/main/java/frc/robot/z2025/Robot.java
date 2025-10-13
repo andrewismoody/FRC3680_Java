@@ -7,10 +7,8 @@ package frc.robot.z2025;
 import java.util.Hashtable;
 
 import edu.wpi.first.math.geometry.Pose3d;
-import edu.wpi.first.math.geometry.Rotation3d;
 // import edu.wpi.first.cameraserver.CameraServer;
 import edu.wpi.first.math.geometry.Translation2d;
-import edu.wpi.first.math.geometry.Translation3d;
 import edu.wpi.first.networktables.DoubleSubscriber;
 import edu.wpi.first.networktables.NetworkTableInstance;
 import edu.wpi.first.wpilibj.Relay;
@@ -152,10 +150,6 @@ public class Robot extends TimedRobot {
   }
 
   void commonInit() {
-    var blueStartPosition = Constants.blueStartPositions[Utility.getDriverLocation() - 1];
-    var blueStartPose = new Pose3d(new Translation3d(blueStartPosition), Rotation3d.kZero);
-    System.out.printf("Robot Init: Driver Location %d, Red Alliance %b, Start Pos (%.2f, %.2f)\n", Utility.getDriverLocation(), Utility.IsRedAlliance(), blueStartPosition.getX(), blueStartPosition.getY());
-
     // Add action poses before button mappings so buttons can drive action poses
     ActionPoses.Initialize(swerveDriveModule, elevator, slide);
     // even tho this runs on every init, we clear it out before every run so we don't mess up
@@ -168,12 +162,9 @@ public class Robot extends TimedRobot {
       // real robot starts at (0,0) so that we know we don't have a vision estimate yet.
       Pose3d startPose = Pose3d.kZero;
 
-      if (Robot.isSimulation()) {
-        startPose = blueStartPose;
-        if (Utility.IsRedAlliance()) {
-          startPose = new Pose3d(Utility.rotateToRedStart(startPose).getTranslation(), Rotation3d.kZero);
-        }
-      }
+      if (Robot.isSimulation())
+        startPose = Constants.getStartPose();
+      System.out.printf("Robot Init: Driver Location %d, Red Alliance %b, Start Pos (%.2f, %.2f)\n", Utility.getDriverLocation(), Utility.IsRedAlliance(), startPose.getX(), startPose.getY());
 
       modules.GetDriveModule().SetCurrentPose(startPose);
     }

@@ -2,9 +2,13 @@ package frc.robot.z2025;
 
 import java.util.HashMap;
 
+import edu.wpi.first.math.geometry.Pose2d;
+import edu.wpi.first.math.geometry.Pose3d;
 import edu.wpi.first.math.geometry.Rotation2d;
+import edu.wpi.first.math.geometry.Rotation3d;
 import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.geometry.Translation3d;
+import frc.robot.action.Group;
 import frc.robot.misc.Utility;
 import frc.robot.z2025.action.Location;
 
@@ -25,7 +29,7 @@ public class Constants {
     // Rev NEO empirical motor speed = 5676 rotations per minute; 5676 / 60 = 94.6 rotations per second
     public static final double driveMotorRPM = 5676.0;
      // 4" wheel = 0.1016m diameter
-    public static final double wheelDiameter = 0.1016;
+    public static final double wheelDiameter = Utility.inchesToMeters(4.0);
     // 0.319m wheel circumference
     public static final double wheelCircumference = Math.PI * wheelDiameter;
     // 9:1 gearbox with 3:1 gear reduction (27:1 total) on 0.319m circumference = 0.0118 meters per motor rotation
@@ -60,21 +64,27 @@ public class Constants {
     public static final Translation2d startArea = new Translation2d(fieldSize.getX() / 2 - 7.56, 3.72);
 
     // flipped x and y so that 'narrow' edge is front
-    public static final Translation2d frameSize = new Translation2d(0.6985, 0.822325); // meters - 32.375" x 27.5" - distance from center of robot to center of wheel
-
+     // width and length of robot frame (excluding bumpers)
+    public static final Translation2d frameSize = new Translation2d(Utility.inchesToMeters(32.375), Utility.inchesToMeters(27.5));
     public static final Translation2d frameCenter = new Translation2d(frameSize.getX() / 2, frameSize.getY() / 2);
 
-    public static final double startPadding = (Constants.startArea.getX() - Constants.frameCenter.getX());
-    public static final Translation2d robotOffset = frameCenter.plus(new Translation2d(startPadding, startPadding * 2));
+    public static final double bumperWidth = Utility.inchesToMeters(4);
+    public static final Translation2d robotSize = frameSize.plus(new Translation2d(bumperWidth, bumperWidth));
+    public static final Translation2d robotCenter = new Translation2d(robotSize.getX() / 2, robotSize.getY() / 2);
 
-    public static final Translation2d[] blueStartPositions = new Translation2d[] {
-        new Translation2d(Constants.fieldCenter.getX() - Constants.startArea.getX() + robotOffset.getX(), Constants.fieldSize.getY() - (robotOffset.getY() * 1)),
-        new Translation2d(Constants.fieldCenter.getX() - Constants.startArea.getX() + robotOffset.getX(), Constants.fieldSize.getY() - (robotOffset.getY() * 2)),
-        new Translation2d(Constants.fieldCenter.getX() - Constants.startArea.getX() + robotOffset.getX(), Constants.fieldSize.getY() - (robotOffset.getY() * 3))
-    };
+    public static final double startPadding = (Constants.startArea.getX() / 2 - Constants.robotCenter.getX());
+    public static final Translation2d robotOffset = robotCenter.plus(new Translation2d(startPadding, startPadding * 2));
 
-    public static final double alignOffset = frameSize.getNorm();
+    public static final Translation2d blueStartPosition = new Translation2d(Constants.fieldCenter.getX() - Constants.startArea.getX() + robotOffset.getX(), Constants.fieldSize.getY());
+
+    public static final double alignOffset = robotSize.getNorm();
     public static final double scoreOffset = Utility.inchesToMeters(6.5);
+
+    public static Pose3d getStartPose() {
+        var thisStartPosition = Constants.blueStartPosition.plus(new Translation2d(0.0, -(Utility.getDriverLocation() * (robotOffset.getY() + startPadding))));
+        var transformedPosition = Utility.transformToAllianceStart(new Translation3d(thisStartPosition));
+        return new Pose3d(transformedPosition, Rotation3d.kZero);
+    }
 
     public static final HashMap<Integer, Integer> reefIndexToTag = new HashMap<Integer, Integer>() {
         {
@@ -93,7 +103,7 @@ public class Constants {
         }
     };
 
-    public static Translation3d getBlueStartFieldPosition(Location location, int index) {
+    public static Translation3d getBlueStartFieldPosition(Group group, Location location, int index) {
         Translation3d selectedLocation = Translation3d.kZero;
         var reefTag = reefIndexToTag.get(index);
 
@@ -101,62 +111,88 @@ public class Constants {
             case Barge:
                 switch (index) {
                     case 1:
-                    selectedLocation = new Translation3d(blueStartPositions[Utility.getDriverLocation() - 1]);
-                    break;
+                        return getStartPose().getTranslation();
                 }
                 break;
             case Waypoint:
                 switch (index) {
                     case 1:
-                        selectedLocation = Utility.projectPerpendicular(getBlueStartFieldPosition(Location.Tag, 19), getBlueStartKnownRotation(Location.Tag, 19), alignOffset);
+                        selectedLocation = Utility.projectPerpendicular(getBlueStartFieldPosition(Group.Any, Location.Tag, 19), getBlueStartKnownRotation(Group.Any, Location.Tag, 19), alignOffset);
                         break;
                     case 3:
-                        selectedLocation = Utility.projectPerpendicular(getBlueStartFieldPosition(Location.Tag, 18), getBlueStartKnownRotation(Location.Tag, 19), alignOffset);
+                        selectedLocation = Utility.projectPerpendicular(getBlueStartFieldPosition(Group.Any, Location.Tag, 18), getBlueStartKnownRotation(Group.Any, Location.Tag, 19), alignOffset);
                         break;
                     case 5:
-                        selectedLocation = Utility.projectPerpendicular(getBlueStartFieldPosition(Location.Tag, 17), getBlueStartKnownRotation(Location.Tag, 19), alignOffset);
+                        selectedLocation = Utility.projectPerpendicular(getBlueStartFieldPosition(Group.Any, Location.Tag, 17), getBlueStartKnownRotation(Group.Any, Location.Tag, 19), alignOffset);
                         break;
                     case 7:
-                        selectedLocation = Utility.projectPerpendicular(getBlueStartFieldPosition(Location.Tag, 22), getBlueStartKnownRotation(Location.Tag, 19), alignOffset);
+                        selectedLocation = Utility.projectPerpendicular(getBlueStartFieldPosition(Group.Any, Location.Tag, 22), getBlueStartKnownRotation(Group.Any, Location.Tag, 19), alignOffset);
                         break;
                     case 9:
-                        selectedLocation = Utility.projectPerpendicular(getBlueStartFieldPosition(Location.Tag, 21), getBlueStartKnownRotation(Location.Tag, 19), alignOffset);
+                        selectedLocation = Utility.projectPerpendicular(getBlueStartFieldPosition(Group.Any, Location.Tag, 21), getBlueStartKnownRotation(Group.Any, Location.Tag, 19), alignOffset);
                         break;
                     case 11:
-                        selectedLocation =  Utility.projectPerpendicular(getBlueStartFieldPosition(Location.Tag, 20), getBlueStartKnownRotation(Location.Tag, 20), alignOffset);
+                        selectedLocation =  Utility.projectPerpendicular(getBlueStartFieldPosition(Group.Any, Location.Tag, 20), getBlueStartKnownRotation(Group.Any, Location.Tag, 20), alignOffset);
+                        break;
+                    case 2:
+                        Pose2d bisectorAngle2 = Utility.perpendicularBisectorAngle(getBlueStartFieldPosition(Group.Any, Location.Tag, 19).toTranslation2d(), getBlueStartFieldPosition(Group.Any, Location.Tag, 18).toTranslation2d());
+                        selectedLocation = Utility.projectParallel(new Translation3d(bisectorAngle2.getTranslation()), bisectorAngle2.getRotation(), alignOffset);
+                        break;
+                    case 4:
+                        Pose2d bisectorAngle4 = Utility.perpendicularBisectorAngle(getBlueStartFieldPosition(Group.Any, Location.Tag, 18).toTranslation2d(), getBlueStartFieldPosition(Group.Any, Location.Tag, 17).toTranslation2d());
+                        selectedLocation = Utility.projectParallel(new Translation3d(bisectorAngle4.getTranslation()), bisectorAngle4.getRotation(), alignOffset);
+                        break;
+                    case 6:
+                        Pose2d bisectorAngle6 = Utility.perpendicularBisectorAngle(getBlueStartFieldPosition(Group.Any, Location.Tag, 17).toTranslation2d(), getBlueStartFieldPosition(Group.Any, Location.Tag, 22).toTranslation2d());
+                        selectedLocation = Utility.projectParallel(new Translation3d(bisectorAngle6.getTranslation()), bisectorAngle6.getRotation(), alignOffset);
+                        break;
+                    case 8:
+                        Pose2d bisectorAngle8 = Utility.perpendicularBisectorAngle(getBlueStartFieldPosition(Group.Any, Location.Tag, 22).toTranslation2d(), getBlueStartFieldPosition(Group.Any, Location.Tag, 21).toTranslation2d());
+                        selectedLocation = Utility.projectParallel(new Translation3d(bisectorAngle8.getTranslation()), bisectorAngle8.getRotation(), alignOffset);
+                        break;
+                    case 10:
+                        Pose2d bisectorAngle10 = Utility.perpendicularBisectorAngle(getBlueStartFieldPosition(Group.Any, Location.Tag, 21).toTranslation2d(), getBlueStartFieldPosition(Group.Any, Location.Tag, 20).toTranslation2d());
+                        selectedLocation = Utility.projectParallel(new Translation3d(bisectorAngle10.getTranslation()), bisectorAngle10.getRotation(), alignOffset);
                         break;
                     case 12:
-                        // TODO find a better way to generate these intermediate positions based on tag locations and rotation
-                        // TODO add other intermediate position
-                        selectedLocation = new Translation3d(Utility.inchesToMeters(176.75), Constants.fieldSize.getY() - alignOffset, 0);
+                        Pose2d bisectorAngle12 = Utility.perpendicularBisectorAngle(getBlueStartFieldPosition(Group.Any, Location.Tag, 20).toTranslation2d(), getBlueStartFieldPosition(Group.Any, Location.Tag, 19).toTranslation2d());
+                        selectedLocation = Utility.projectParallel(new Translation3d(bisectorAngle12.getTranslation()), bisectorAngle12.getRotation(), alignOffset);
                         break;
                     default:
                         break;
                 }
                 break;
             case Reef:
-                selectedLocation = Utility.projectPerpendicular(getBlueStartFieldPosition(Location.Tag, reefTag), getBlueStartKnownRotation(Location.Tag, reefTag), frameCenter.getX());
-                selectedLocation = Utility.projectParallel(selectedLocation, getBlueStartKnownRotation(Location.Tag, reefTag), -scoreOffset);
-                break;
-            case ReefAlign:
-                selectedLocation = Utility.projectPerpendicular(getBlueStartFieldPosition(Location.ReefApproach, index), getBlueStartKnownRotation(Location.Tag, reefTag), alignOffset);
-                break;
-            case ReefApproach:
-                selectedLocation = Utility.projectPerpendicular(getBlueStartFieldPosition(Location.Tag, reefTag), getBlueStartKnownRotation(Location.Tag, reefTag), frameCenter.getX());
-                selectedLocation = Utility.projectParallel(selectedLocation, getBlueStartKnownRotation(Location.Tag, reefTag), alignOffset);
-                break;
-            case Coral:
-                switch (index) {
-                    case 1:
-                        selectedLocation =  Utility.projectPerpendicular(getBlueStartFieldPosition(Location.Tag, 13), getBlueStartKnownRotation(Location.Tag, 13), frameCenter.getX());
+                switch (group) {
+                    case Approach:
+                        selectedLocation = Utility.projectPerpendicular(getBlueStartFieldPosition(Group.Any, Location.Tag, reefTag), getBlueStartKnownRotation(Group.Any, Location.Tag, reefTag), robotCenter.getX());
+                        selectedLocation = Utility.projectParallel(selectedLocation, getBlueStartKnownRotation(Group.Any, Location.Tag, reefTag), alignOffset);
                         break;
-                    case 2:
-                        selectedLocation =  Utility.projectPerpendicular(getBlueStartFieldPosition(Location.Tag, 12), getBlueStartKnownRotation(Location.Tag, 13), frameCenter.getX());
+                    case Align:
+                        selectedLocation = Utility.projectPerpendicular(getBlueStartFieldPosition(Group.Approach, Location.Reef, index), getBlueStartKnownRotation(Group.Any, Location.Tag, reefTag), alignOffset);
+                        break;
+                    default:
+                        selectedLocation = Utility.projectPerpendicular(getBlueStartFieldPosition(Group.Any, Location.Tag, reefTag), getBlueStartKnownRotation(Group.Any, Location.Tag, reefTag), robotCenter.getX());
+                        selectedLocation = Utility.projectParallel(selectedLocation, getBlueStartKnownRotation(Group.Any, Location.Tag, reefTag), index % 2 == 0 ? scoreOffset : -scoreOffset);
                         break;
                 }
                 break;
-            case CoralAlign:
-                selectedLocation = Utility.projectPerpendicular(getBlueStartFieldPosition(Location.Coral, index), getBlueStartKnownRotation(Location.Tag, 13), alignOffset);
+            case Coral:
+                switch (group) {
+                    case Align:
+                        selectedLocation = Utility.projectPerpendicular(getBlueStartFieldPosition(Group.Any, Location.Coral, index), getBlueStartKnownRotation(Group.Any, Location.Tag, 13), alignOffset);
+                        break;
+                    default:
+                        switch (index) {
+                            case 1:
+                                selectedLocation =  Utility.projectPerpendicular(getBlueStartFieldPosition(Group.Any, Location.Tag, 13), getBlueStartKnownRotation(Group.Any, Location.Tag, 13), robotCenter.getX());
+                                break;
+                            case 2:
+                                selectedLocation =  Utility.projectPerpendicular(getBlueStartFieldPosition(Group.Any, Location.Tag, 12), getBlueStartKnownRotation(Group.Any, Location.Tag, 13), robotCenter.getX());
+                                break;
+                        }
+                        break;
+                }
                 break;
             case Tag:
                 switch (index) {
@@ -203,31 +239,31 @@ public class Constants {
         return selectedLocation;
     }
 
-    public static Translation2d getBlueStartFieldPosition2d(Location location, int index) {
-        return getBlueStartFieldPosition(location, index).toTranslation2d();
+    public static Translation2d getBlueStartFieldPosition2d(Group group, Location location, int index) {
+        return getBlueStartFieldPosition(group, location, index).toTranslation2d();
     }
 
-    public static Translation3d getFieldPosition(Location location, int index) {
-        var position = getBlueStartFieldPosition(location, index);
+    public static Translation3d getFieldPosition(Group group, Location location, int index) {
+        var position = getBlueStartFieldPosition(group, location, index);
 
         return Utility.transformToAllianceStart(position);
     }
 
-    public static Translation2d getFieldPosition2d(Location location, int index) {
-        return getFieldPosition(location, index).toTranslation2d();
+    public static Translation2d getFieldPosition2d(Group group, Location location, int index) {
+        return getFieldPosition(group, location, index).toTranslation2d();
     }
 
-    public static Translation3d getRedStartFieldPosition(Location location, int index) {
-        var position = getBlueStartFieldPosition(location, index);
+    public static Translation3d getRedStartFieldPosition(Group group, Location location, int index) {
+        var position = getBlueStartFieldPosition(group, location, index);
 
         return Utility.transformToRedStart(position);
     }
 
-    public static Translation2d getRedStartFieldPosition2d(Location location, int index) {
-        return getRedStartFieldPosition(location, index).toTranslation2d();
+    public static Translation2d getRedStartFieldPosition2d(Group group, Location location, int index) {
+        return getRedStartFieldPosition(group, location, index).toTranslation2d();
     }
 
-    public static Rotation2d getBlueStartKnownRotation(Location location, int index) {
+    public static Rotation2d getBlueStartKnownRotation(Group group, Location location, int index) {
         var selectedRotation = Rotation2d.kZero;
 
         switch (location) {
@@ -269,11 +305,8 @@ public class Constants {
             case Barge:
             case Waypoint:
             case Reef:
-            case ReefAlign:
-            case ReefApproach:
             case Processor:
             case Coral:
-            case CoralAlign:
             case AdHoc:
             case Any:
             case None:
@@ -282,14 +315,14 @@ public class Constants {
         return selectedRotation;
     }
 
-    public static Rotation2d getKnownRotation(Location location, int index) {
-        var rotation = getBlueStartKnownRotation(location, index);
+    public static Rotation2d getKnownRotation(Group group, Location location, int index) {
+        var rotation = getBlueStartKnownRotation(group, location, index);
 
         return Utility.rotateToAllianceStart(rotation);
     }
 
-    public static Rotation2d getRedStartKnownRotation(Location location, int index) {
-        var rotation = getBlueStartKnownRotation(location, index);
+    public static Rotation2d getRedStartKnownRotation(Group group, Location location, int index) {
+        var rotation = getBlueStartKnownRotation(group, location, index);
 
         return Utility.rotateToRedStart(rotation);
     }
