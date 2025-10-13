@@ -154,8 +154,8 @@ public class AutoSequence {
             if (!event.IsComplete()) {
                 notFinished = true;
                 if (!event.HasStarted()) {
-                    System.out.printf("AutoSequence %s starting event %s of type %s\n", label, event.GetLabel(),
-                    event.GetTriggerType().toString());
+                    System.out.printf("%d ms: AutoSequence %s starting event %s of type %s\n",
+                        System.currentTimeMillis(), label, event.GetLabel(), event.GetTriggerType().toString());
                 }
 
                 switch (event.GetTriggerType()) {
@@ -163,8 +163,8 @@ public class AutoSequence {
                         AutoEventTime timeEvent = (AutoEventTime) event;
                         if (elapsedTime % 1000 == 0) {
                             // print every second
-                            System.out.printf("AutoSequence %s waiting on time event %s: elapsed %d ms of %d ms\n",
-                                    label, timeEvent.GetLabel(), elapsedTime, timeEvent.milliseconds);
+                            System.out.printf("%d ms: AutoSequence %s waiting on time event %s: elapsed %d ms of %d ms\n",
+                                System.currentTimeMillis(), label, timeEvent.GetLabel(), elapsedTime, timeEvent.milliseconds);
                         }
 
                         if (elapsedTime < timeEvent.milliseconds) {

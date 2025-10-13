@@ -27,6 +27,7 @@ public class SingleActuatorModule implements RobotModule {
     ArrayList<ActionPose> actionPoses = new ArrayList<ActionPose>();
     double startedAt = 0;
     double holdTime = 2000;
+    ModuleState previousState = ModuleState.Off;
 
     NetworkTable myTable;
     // Cached NT entries
@@ -55,9 +56,19 @@ public class SingleActuatorModule implements RobotModule {
 
     public void EvaluateTargetPose() {
         if (targetPose != null) {
+            var targetState = targetPose.target.State;
+
             if (startedAt == 0) {
+                if (previousState == targetState) {
+                    // we're already there, abandon target and move on
+                    System.out.println("SingleActuatorModule: already in target state, abandoning target");
+                    AbandonTarget();
+                    return;
+                }
+                System.out.printf("SingleActuatorModule: new target state %s; previous target state %s\n", targetState, previousState);
                 startedAt = System.currentTimeMillis();
             } else {
+                // TODO: this is holding up all other action poses even if the state hasn't changed
                 if (System.currentTimeMillis() - startedAt > holdTime) {
                     AbandonTarget();
                     return;
@@ -65,15 +76,17 @@ public class SingleActuatorModule implements RobotModule {
             }
             
             // determine what to do based on target pose - position X > 0 = forward, < 0 = reverse, 0 = off
-            var targetState = targetPose.target.State;
             switch (targetState) {
                 case Off:
-                AbandonTarget();
-                break;
+                    previousState = ModuleState.Off;
+                    AbandonTarget();
+                    break;
                 case Forward:
+                    previousState = ModuleState.Forward;
                     ApplyValue(true);
                     break;
                 case Reverse:
+                    previousState = ModuleState.Reverse;
                     ApplyInverse(true);
                     break;
             }

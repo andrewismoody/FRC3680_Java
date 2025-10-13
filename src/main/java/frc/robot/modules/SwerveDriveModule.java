@@ -503,9 +503,13 @@ public class SwerveDriveModule implements DriveModule {
                     myTable.getEntry("_deltaNorm").setDouble(positionDelta.getNorm());
                     myTable.getEntry("_positionTolerance").setDouble(positionTolerance);
                     if (positionDelta.getNorm() < positionTolerance) {
-                        // travel group we don't want to stop on position, but find next waypoint when we get close
+                        // travel group with lookat rotation we don't want to stop on position, but find next waypoint when we get close
+                        if (pose.HasLookAt)
+                            // other rotation modes may continue to change angle after this.
+                            System.out.printf("%d ms: lookAt travelGroup tolerance reached\n", System.currentTimeMillis());
                         lateralReached = true;
                         forwardReached = true;
+                        settleCount = settleCyclesRequired; // force settle
                     }
                 } else {
                     myTable.getEntry("_deltaNorm").unpublish();
@@ -560,8 +564,10 @@ public class SwerveDriveModule implements DriveModule {
             // TODO: why isn't this called consistently?
             // if we have a lookat and we've reached our position, don't keep trying to find the lookat
             myTable.getEntry("hasLookAt").setBoolean(pose.HasLookAt);
-            if (pose.HasLookAt && lateralReached && forwardReached)
+            if (pose.HasLookAt && lateralReached && forwardReached) {
+                System.out.printf("%d ms: lookat position reached\n", System.currentTimeMillis());
                 rotationReached = true;
+            }
 
             // only process rotation if we have a target and haven't already been overridden this tick
             if (!rotationReached && (pose.HasOrientation || pose.HasLookAt || seekTag)) {
@@ -638,11 +644,13 @@ public class SwerveDriveModule implements DriveModule {
             }
 
             if (lateralReached && forwardReached && rotationReached) {
+                System.out.printf("%d ms: all motion targets reached\n", System.currentTimeMillis());
                 // increment global settle counter; do not abandon until threshold reached
                 if (settleCount < settleCyclesRequired) {
                     settleCount++;
                 }
                 if (settleCount >= settleCyclesRequired) {
+                    System.out.printf("%d ms: settlecount reached\n", System.currentTimeMillis());
                     AbandonTarget();
                 }
             } else {

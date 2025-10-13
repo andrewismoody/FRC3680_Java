@@ -106,7 +106,8 @@ public class AutoEventTime implements AutoEvent {
             autoController.AddSequence(autoEvent);
 
         complete = Complete;
-        System.out.printf("AutoEventTime %s isComplete: %b\n", label, complete);
+        System.out.printf("%d ms: AutoEvent %s of type %s isComplete: %b\n",
+            System.currentTimeMillis(), label, TriggerType.Time.toString(), complete);
     }
 
     public String GetLabel() {

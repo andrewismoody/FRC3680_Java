@@ -131,7 +131,8 @@ public class AutoEventPosition implements AutoEvent {
 
     public void SetComplete(boolean Complete) {
         complete = Complete;
-        System.out.printf("AutoEventTime %s isComplete: %b\n", label, complete);
+        System.out.printf("%d ms: AutoEvent %s of type %s isComplete: %b\n",
+            System.currentTimeMillis(), label, TriggerType.Position.toString(), complete);
     }
 
     public String GetLabel() {

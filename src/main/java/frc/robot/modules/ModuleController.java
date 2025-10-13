@@ -173,13 +173,15 @@ public class ModuleController {
   public boolean GetTarget() {
     boolean hasTarget = false;
 
-    for (RobotModule module : modules.values()) {
-      if (module.GetTarget() != null)
-        hasTarget = true;
+    if (driveModule.GetTarget() != null) {
+      hasTarget = true;
     }
 
-    if (driveModule.GetTarget() != null)
-      hasTarget = true;
+    for (RobotModule module : modules.values()) {
+      if (module.GetTarget() != null) {
+        hasTarget = true;
+      }
+    }
 
     return hasTarget;
   }

@@ -77,11 +77,17 @@ public class AutoEventTarget implements AutoEvent {
     }
 
     public boolean IsTargetReached() {
+        boolean reached = false;
+
         if (targetModule != null)
-            return targetModule.GetTarget() == null;
+            reached = targetModule.GetTarget() == null;
         else if (moduleController != null)
-            return !moduleController.GetTarget();
-        return false;
+            reached =  !moduleController.GetTarget();
+        
+        if (reached)
+            SetComplete(true);
+
+        return reached;
     }
 
     public TriggerType GetTriggerType() {
@@ -98,7 +104,8 @@ public class AutoEventTarget implements AutoEvent {
 
     public void SetComplete(boolean Complete) {
         complete = Complete;
-        System.out.printf("AutoEventTime %s isComplete: %b\n", label, complete);
+        System.out.printf("%d ms: AutoEvent %s of type %s isComplete: %b\n",
+            System.currentTimeMillis(), label, TriggerType.Target.toString(), complete);
     }
 
     public String GetLabel() {

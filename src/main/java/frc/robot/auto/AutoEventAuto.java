@@ -39,7 +39,7 @@ public class AutoEventAuto implements AutoEvent {
     }
 
     public TriggerType GetTriggerType() {
-        return TriggerType.Position;
+        return TriggerType.Auto;
     }
 
     public EventType GetEventType() {
@@ -52,7 +52,8 @@ public class AutoEventAuto implements AutoEvent {
 
     public void SetComplete(boolean Complete) {
         complete = Complete;
-        System.out.printf("AutoEventTime %s isComplete: %b\n", label, complete);
+        System.out.printf("%d ms: AutoEvent %s of type %s isComplete: %b\n",
+            System.currentTimeMillis(), label, TriggerType.Auto.toString(), complete);
     }
 
     public String GetLabel() {

@@ -39,7 +39,7 @@ public class SingleMotorModule implements RobotModule,AutoCloseable {
     double previousEncValue = 0.0;
     double rotationCount = 0.0;
     double previousRotationCount = 0.0;
-    double m_floatTolerance = 0.3f;
+    double m_floatTolerance = 0.04f;
 
     public boolean debug = false;
     double previousDriveSpeed;
@@ -245,7 +245,6 @@ public class SingleMotorModule implements RobotModule,AutoCloseable {
     public void EvaluateTargetPose() {
         // TODO: detect button input and bypass - how would this ever get set to non-zero at this point?
         if (targetPose != null) { //} && currentDriveSpeed != 0.0) {
-            double angleTolerance = 0.00001; // 0.00001;
             var target = targetPose.target;
     
             // we have a target and we're not manually applying a value, try to get to it.
@@ -255,7 +254,7 @@ public class SingleMotorModule implements RobotModule,AutoCloseable {
             targetDistanceEntry.setDouble(targetDistance);
             previousTargetDistance = targetDistance;
 
-            var shouldMove = (Math.abs(targetDistance) > angleTolerance);
+            var shouldMove = (Math.abs(targetDistance) > m_floatTolerance);
             if (!shouldMove) {
                 // increment global settle counter; do not abandon until threshold reached
                 if (settleCount < settleCyclesRequired) {
