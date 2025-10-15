@@ -94,7 +94,6 @@ public class SequenceControllerStartScoreReload extends AutoSequence {
       .Then(event_align1_coral)
       .Then(event_pickup1_coral)
       .Then(event_waitForLoading)
-      .Then(event_waypoint1_reef)
       .Then(event_waypoint2_reef)
       .Then(event_align4_reef)
       .Then(event_approach4_reef)

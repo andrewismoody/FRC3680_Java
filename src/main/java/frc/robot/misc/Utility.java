@@ -21,7 +21,7 @@ public class Utility {
     static void Initialize() {
         if (!initialized) {
             System.out.println("Initializing Utility");
-            
+
             if (fieldSize == Translation2d.kZero)
                 throw new RuntimeException("Utility.fieldSize not set - you must set this to your Constants.fieldSize in RobotInit");
             
@@ -126,7 +126,38 @@ public class Utility {
     public static Translation3d projectParallel(Translation3d base, Rotation2d angle, double distance) {
         return base.plus(new Translation3d(new Translation2d(distance * angle.getCos(), distance * angle.getSin())));
     }
-  
+
+    // Returns the intersection point (in meters) of two infinite lines defined by (p1, a1) and (p2, a2).
+    // Optional.empty() is returned if lines are parallel or nearly parallel.
+    public static Translation2d getIntersection(Pose2d point1, Pose2d point2) {
+        var a1 = point1.getRotation();
+        var a2 = point2.getRotation();
+        var p1 = point1.getTranslation();
+        var p2 = point2.getTranslation();
+
+        final double dx1 = a1.getCos();
+        final double dy1 = a1.getSin();
+        final double dx2 = a2.getCos();
+        final double dy2 = a2.getSin();
+
+        // d1 x d2 (2D cross)
+        final double denom = dx1 * dy2 - dy1 * dx2;
+        if (Math.abs(denom) < 1e-9) {
+            return point1.getTranslation();
+        }
+
+        final double rx = p2.getX() - p1.getX();
+        final double ry = p2.getY() - p1.getY();
+
+        // t along line1: (r x d2) / (d1 x d2)
+        final double t = (rx * dy2 - ry * dx2) / denom;
+
+        final double xi = p1.getX() + t * dx1;
+        final double yi = p1.getY() + t * dy1;
+
+        return new Translation2d(xi, yi);
+    }  
+
     public static Translation3d transformToRedStart(Translation3d point) {
         if (!initialized)
             Initialize();

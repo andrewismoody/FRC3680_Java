@@ -406,11 +406,6 @@ public class SwerveDriveModule implements DriveModule {
     public void AddActionPose(ActionPose pose) {
         if (GetActionPose(pose) == null) {
             actionPoses.add(pose);
-
-            if (pose.target.HasPosition)
-                System.out.printf("%s AddActionPose: %s %d %d %d %s (%f, %f)\n", moduleID, pose.group, pose.location, pose.locationIndex, pose.position, pose.action, Utility.metersToInches(pose.target.Position.getX()), Utility.metersToInches(pose.target.Position.getY()));
-            else
-                System.out.printf("%s AddActionPose: %s %d %d %d %s\n", moduleID, pose.group, pose.location, pose.locationIndex, pose.position, pose.action);
         }
     }
 
