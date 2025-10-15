@@ -10,13 +10,14 @@ import frc.robot.auto.AutoEvent;
 import frc.robot.auto.AutoEventTarget;
 import frc.robot.auto.AutoEventTime;
 import frc.robot.auto.AutoSequence;
+import frc.robot.misc.Utility;
 import frc.robot.modules.SingleActuatorModule;
 
-public class SequenceControllerStartScoreReload extends AutoSequence {
+public class Score3and4 extends AutoSequence {
   private final AutoController autoController;
   private boolean initialized = false;
 
-  public SequenceControllerStartScoreReload(String label, AutoController ac) {
+  public Score3and4(String label, AutoController ac) {
     super(label, ac);
     this.autoController = ac;
     // constructor intentionally does not access modules or poses
@@ -34,16 +35,18 @@ public class SequenceControllerStartScoreReload extends AutoSequence {
     initialized = true;
 
     var modules = autoController.GetModuleController();
+    var driverLocation = Utility.getDriverLocation();
 
     // Target Poses
-    var pose_start1 = new ActionPose(Group.Start, Location.Barge.getValue(), 1, Position.Trough.getValue(), Action.Pickup, null);
+    var pose_start1 = new ActionPose(Group.Start, Location.Barge.getValue(), driverLocation, Position.Trough.getValue(), Action.Pickup, null);
+    var pose_waypoint11_Reef = new ActionPose(Group.Travel, Location.Waypoint.getValue(), 11, Position.Trough.getValue(), Action.Pickup, null);
     var pose_waypoint12_Reef = new ActionPose(Group.Travel, Location.Waypoint.getValue(), 12, Position.Trough.getValue(), Action.Pickup, null);
     var pose_waypoint2_Reef = new ActionPose(Group.Travel, Location.Waypoint.getValue(), 2, Position.Trough.getValue(), Action.Pickup, null);
     var pose_waypoint1_Reef = new ActionPose(Group.Travel, Location.Waypoint.getValue(), 1, Position.Trough.getValue(), Action.Pickup, null);
-    var pose_align3_Reef = new ActionPose(Group.Align, Location.Reef.getValue(), 3, Position.Trough.getValue(), Action.Pickup, null);
-    var pose_align4_Reef = new ActionPose(Group.Align, Location.Reef.getValue(), 4, Position.Trough.getValue(), Action.Pickup, null);
-    var pose_approach3_Reef = new ActionPose(Group.Approach, Location.Reef.getValue(), 3, Position.Trough.getValue(), Action.Pickup, null);
-    var pose_approach4_Reef = new ActionPose(Group.Approach, Location.Reef.getValue(), 4, Position.Trough.getValue(), Action.Pickup, null);
+    var pose_align3_Reef = new ActionPose(Group.AlignLeft, Location.Reef.getValue(), 3, Position.Trough.getValue(), Action.Pickup, null);
+    var pose_align4_Reef = new ActionPose(Group.AlignLeft, Location.Reef.getValue(), 4, Position.Trough.getValue(), Action.Pickup, null);
+    var pose_approach3_Reef = new ActionPose(Group.ApproachLeft, Location.Reef.getValue(), 3, Position.Trough.getValue(), Action.Pickup, null);
+    var pose_approach4_Reef = new ActionPose(Group.ApproachLeft, Location.Reef.getValue(), 4, Position.Trough.getValue(), Action.Pickup, null);
     var pose_score3_Lower = new ActionPose(Group.Score, Location.Reef.getValue(), 3, Position.Lower.getValue(), Action.Pickup, null);
     var pose_score4_Lower = new ActionPose(Group.Score, Location.Reef.getValue(), 4, Position.Lower.getValue(), Action.Pickup, null);
     var pose_score3_Trough = new ActionPose(Group.Score, Location.Any.getValue(), 3, Position.Trough.getValue(), Action.Pickup, null);
@@ -55,6 +58,7 @@ public class SequenceControllerStartScoreReload extends AutoSequence {
     var slide = (SingleActuatorModule) modules.GetModule("slide");
 
     var event_start1 = CreateSyncAwaitEvent("Await Pose Start 1", pose_start1);
+    var event_waypoint11_reef = CreateSyncAwaitEvent("Await Pose Waypoint 11 Reef", pose_waypoint11_Reef);
     var event_waypoint12_reef = CreateSyncAwaitEvent("Await Pose Waypoint 12 Reef", pose_waypoint12_Reef);
     var event_waypoint2_reef = CreateSyncAwaitEvent("Await Pose Waypoint 2 Reef", pose_waypoint2_Reef);
     var event_waypoint1_reef = CreateSyncAwaitEvent("Await Pose Waypoint 1 Reef", pose_waypoint1_Reef);
@@ -79,8 +83,18 @@ public class SequenceControllerStartScoreReload extends AutoSequence {
 
     AutoEventTime event_waitForLoading = new AutoEventTime("Wait For Loading", false, 5000, AutoEvent.EventType.None, autoController);
 
-    BeginWith(event_start1)
-      .Then(event_waypoint12_reef)
+    BeginWith(event_start1);
+
+    switch (driverLocation) {
+      case 1:
+      case 2:
+        break;
+      case 3:
+        Then(event_waypoint11_reef);
+        break;
+    }
+
+    Then(event_waypoint12_reef)
       .Then(event_waypoint1_reef)
       .Then(event_waypoint2_reef)
       .Then(event_align3_reef)

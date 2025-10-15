@@ -9,6 +9,7 @@ import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.geometry.Translation3d;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.DriverStation.Alliance;
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import frc.robot.action.Group;
 
 public class Utility {
@@ -58,10 +59,18 @@ public class Utility {
     public static int getDriverLocation() {
         var driverLocation = 1;
 
-        if (DriverStation.getLocation().isPresent())
+        if (DriverStation.getLocation().isPresent()) {
           driverLocation = DriverStation.getLocation().getAsInt();
+          System.out.printf("Found driver location %d from DS\n", driverLocation);
+        }
 
-        return driverLocation;
+        var myLocation = Integer.parseInt(SmartDashboard.getString("DB/String 6", "0"));
+        System.out.printf("Found driver location %d from dashboard\n", myLocation);
+
+        var returnLocation = myLocation == 0 ? driverLocation : myLocation;
+        System.out.printf("Returning driver location %d\n", returnLocation);
+
+        return returnLocation;
     }
 
     public static double inchesToMeters(double inches) {
@@ -110,7 +119,7 @@ public class Utility {
     }
 
     public static boolean isTravelGroup(Group group) {
-        return group != Group.Score && group != Group.Approach && group != Group.Pickup;
+        return group != Group.Score && group != Group.ApproachLeft && group != Group.ApproachRight && group != Group.Pickup;
     }
 
     // Project perpendicular to angle (left = +90°, right = -90°) in 2D

@@ -6,36 +6,22 @@ import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import frc.robot.auto.AutoController;
 import frc.robot.misc.GameController;
 import frc.robot.modules.ModuleController;
-import frc.robot.z2025.Sequences.SequenceControllerMoveToReef;
-import frc.robot.z2025.Sequences.SequenceControllerScoreReloadScore;
-import frc.robot.z2025.Sequences.SequenceControllerStartScoreReload;
-import frc.robot.z2025.Sequences.SequenceRotateScoreReturn;
+import frc.robot.z2025.Sequences.Score3and4;
+import frc.robot.z2025.Sequences.Score8and4;
 
 public class AutoModes {
     public static Hashtable<String, AutoController> Initialize(Hashtable<String, AutoController> AutoModes, GameController m_controller, ModuleController modules) {
         // TODO: need to move this definition to preferences and initialize in automodes rather than hard coding
 
         AutoModes.clear();
-        
-        AutoController rotateScoreReturn = new AutoController("RotateScoreReturn", m_controller, modules);
-        rotateScoreReturn.AddSequence(new SequenceRotateScoreReturn(rotateScoreReturn.GetLabel(), rotateScoreReturn));
-        AutoModes.put(rotateScoreReturn.GetLabel(), rotateScoreReturn);
 
-        AutoController rotateWaitReturn = new AutoController("RotateWaitReturn", m_controller, modules);
-        rotateWaitReturn.AddSequence(new SequenceRotateScoreReturn(rotateWaitReturn.GetLabel(), rotateWaitReturn));
-        AutoModes.put(rotateWaitReturn.GetLabel(), rotateWaitReturn);
+        AutoController score3and4 = new AutoController("Score3and4", m_controller, modules);
+        score3and4.AddSequence(new Score3and4(score3and4.GetLabel(), score3and4));
+        AutoModes.put(score3and4.GetLabel(), score3and4);
 
-        AutoController controllerScoreReloadScore = new AutoController("ControllerScoreReloadScore", m_controller, modules);
-        controllerScoreReloadScore.AddSequence(new SequenceControllerScoreReloadScore(controllerScoreReloadScore.GetLabel(), controllerScoreReloadScore));
-        AutoModes.put(controllerScoreReloadScore.GetLabel(), controllerScoreReloadScore);
-
-        AutoController controllerMoveToReef = new AutoController("controllerMoveToReef", m_controller, modules);
-        controllerMoveToReef.AddSequence(new SequenceControllerMoveToReef(controllerMoveToReef.GetLabel(), controllerMoveToReef));
-        AutoModes.put(controllerMoveToReef.GetLabel(), controllerMoveToReef);
-
-        AutoController controllerStartScoreReload = new AutoController("controllerStartScoreReload", m_controller, modules);
-        controllerStartScoreReload.AddSequence(new SequenceControllerStartScoreReload(controllerStartScoreReload.GetLabel(), controllerStartScoreReload));
-        AutoModes.put(controllerStartScoreReload.GetLabel(), controllerStartScoreReload);
+        AutoController score8and4 = new AutoController("Score8and4", m_controller, modules);
+        score8and4.AddSequence(new Score8and4(score8and4.GetLabel(), score8and4));
+        AutoModes.put(score8and4.GetLabel(), score8and4);
 
         SmartDashboard.putStringArray("Auto List", new String[] {});
         SmartDashboard.putStringArray("Auto List", AutoModes.keySet().toArray(new String[] {}));
@@ -44,6 +30,11 @@ public class AutoModes {
     }
 
     public static AutoController GetDefault(Hashtable<String, AutoController> AutoModes) {
-        return AutoModes.get("controllerStartScoreReload");
+        var mode = AutoModes.get("Score3and4");
+        if (mode != null)
+            System.out.printf("Default Auto Mode: %s; mode count: %d\n", mode.GetLabel(), AutoModes.size());
+        else
+            System.out.printf("Default Auto Mode: None found; mode count: %d\n", AutoModes.size());
+        return mode;
     }
 }

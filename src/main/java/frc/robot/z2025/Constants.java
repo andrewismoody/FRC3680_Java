@@ -81,8 +81,15 @@ public class Constants {
     public static final double alignOffset = robotSize.getNorm() * 0.75;
     public static final double scoreOffset = Utility.inchesToMeters(6.5);
 
-    public static Pose3d getStartPose() {
-        var thisStartPosition = Constants.blueStartPosition.plus(new Translation2d(0.0, -(Utility.getDriverLocation() * (robotOffset.getY() + startPadding))));
+    public static Pose3d getMyStartPose() {
+        var myLocation = Utility.getDriverLocation();
+        return getStartPose(myLocation);
+    }
+    
+    public static Pose3d getStartPose(int index) {
+        if (index < 1)
+            index = 1;
+        var thisStartPosition = Constants.blueStartPosition.plus(new Translation2d(0.0, -(index * (robotOffset.getY() + startPadding))));
         var transformedPosition = Utility.transformToAllianceStart(new Translation3d(thisStartPosition));
         return new Pose3d(transformedPosition, Rotation3d.kZero);
     }
@@ -118,11 +125,7 @@ public class Constants {
 
         switch (location) {
             case Barge:
-                switch (index) {
-                    case 1:
-                        return getStartPose().getTranslation();
-                }
-                break;
+                selectedLocation = getStartPose(index).getTranslation();
             case Waypoint:
                 switch (index) {
                     case 1:
@@ -179,16 +182,23 @@ public class Constants {
                 break;
             case Reef:
                 switch (group) {
-                    case Approach:
+                    case ApproachLeft:
                         selectedLocation = Utility.projectPerpendicular(getBlueStartFieldPosition(Group.Any, Location.Tag, reefTag), getBlueStartKnownRotation(Group.Any, Location.Tag, reefTag), robotCenter.getX());
                         selectedLocation = Utility.projectParallel(selectedLocation, getBlueStartKnownRotation(Group.Any, Location.Tag, reefTag), alignOffset);
                         break;
-                    case Align:
-                        selectedLocation = Utility.projectPerpendicular(getBlueStartFieldPosition(Group.Approach, Location.Reef, index), getBlueStartKnownRotation(Group.Any, Location.Tag, reefTag), robotCenter.getNorm());
+                    case AlignLeft:
+                        selectedLocation = Utility.projectPerpendicular(getBlueStartFieldPosition(Group.ApproachLeft, Location.Reef, index), getBlueStartKnownRotation(Group.Any, Location.Tag, reefTag), robotCenter.getNorm());
+                        break;
+                    case ApproachRight:
+                        selectedLocation = Utility.projectPerpendicular(getBlueStartFieldPosition(Group.Any, Location.Tag, reefTag), getBlueStartKnownRotation(Group.Any, Location.Tag, reefTag), robotCenter.getX());
+                        selectedLocation = Utility.projectParallel(selectedLocation, getBlueStartKnownRotation(Group.Any, Location.Tag, reefTag), -alignOffset);
+                        break;
+                    case AlignRight:
+                        selectedLocation = Utility.projectPerpendicular(getBlueStartFieldPosition(Group.ApproachRight, Location.Reef, index), getBlueStartKnownRotation(Group.Any, Location.Tag, reefTag), robotCenter.getNorm());
                         break;
                     default:
                         selectedLocation = Utility.projectPerpendicular(getBlueStartFieldPosition(Group.Any, Location.Tag, reefTag), getBlueStartKnownRotation(Group.Any, Location.Tag, reefTag), robotCenter.getX());
-                        selectedLocation = Utility.projectParallel(selectedLocation, getBlueStartKnownRotation(Group.Any, Location.Tag, reefTag), index % 2 == 0 ? scoreOffset : -scoreOffset);
+                        selectedLocation = Utility.projectParallel(selectedLocation, getBlueStartKnownRotation(Group.Any, Location.Tag, reefTag), index % 2 == 0 ? -scoreOffset : scoreOffset);
                         break;
                 }
                 break;

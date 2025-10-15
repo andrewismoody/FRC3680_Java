@@ -6,11 +6,15 @@ public enum Group {
     Pickup(2),
     Start(3),
     Travel(4),
-    Align(5),
-    Approach(6),
-    Idle(7),
-    Any(8),
-    None(9);
+    AlignLeft(5),
+    AlignRight(6),
+    Align(7),
+    ApproachLeft(8),
+    ApproachRight(9),
+    Approach(10),
+    Idle(11),
+    Any(12),
+    None(13);
 
     private final int value;
 

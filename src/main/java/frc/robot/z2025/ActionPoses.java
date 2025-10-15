@@ -17,7 +17,7 @@ public class ActionPoses {
     public static void Initialize(SwerveDriveModule swerveDriveModule, SingleMotorModule elevator, SingleActuatorModule slide) {
         // start, (we don't know where we are yet, so rotate a specific angle to face a tag)
         swerveDriveModule.AddActionPose(new ActionPose(Group.Start, Location.Barge.getValue(), 1, Position.Any.getValue(), Action.Any,
-            new AutoTarget(Utility.getLookat(Constants.getStartPose().getTranslation().toTranslation2d(), Constants.getFieldPosition(Group.Any, Location.Interest, 1).toTranslation2d()).minus(Rotation2d.fromDegrees(90)))));
+            new AutoTarget(Utility.getLookat(Constants.getMyStartPose().getTranslation().toTranslation2d(), Constants.getFieldPosition(Group.Any, Location.Interest, 1).toTranslation2d()).minus(Rotation2d.fromDegrees(90)))));
 
         // this spits out coordinates in format for python plotting
         var outputFormatter = "(\"%s %d %d %d %s\", %f, %f),\n";
@@ -32,14 +32,24 @@ public class ActionPoses {
         for (int i = 1; i <= 12; i++) {
             var reefTag = Constants.reefIndexToTag.get(i);
 
-            // align scoring i, match reefTag rotation
-            var pose = new ActionPose(Group.Align, Location.Reef.getValue(), i, Position.Any.getValue(), Action.Any,
-                new AutoTarget(Constants.getFieldPosition(Group.Align, Location.Reef, i), Constants.getKnownRotation(Group.Any, Location.Tag, reefTag).plus(Rotation2d.fromDegrees(180))));
+            // align left scoring i, match reefTag rotation
+            var pose = new ActionPose(Group.AlignLeft, Location.Reef.getValue(), i, Position.Any.getValue(), Action.Any,
+                new AutoTarget(Constants.getFieldPosition(Group.AlignLeft, Location.Reef, i), Constants.getKnownRotation(Group.Any, Location.Tag, reefTag).plus(Rotation2d.fromDegrees(180))));
             swerveDriveModule.AddActionPose(pose);
             System.out.printf(outputFormatter, pose.group, pose.location, pose.locationIndex, pose.position, pose.action, Utility.metersToInches(pose.target.Position.getX()), Utility.metersToInches(pose.target.Position.getY()));
-                // approach scoring i, match reefTag rotation
-            pose = new ActionPose(Group.Approach, Location.Reef.getValue(), i, Position.Any.getValue(), Action.Any,
-                new AutoTarget(Constants.getFieldPosition(Group.Approach, Location.Reef, i), Constants.getKnownRotation(Group.Any, Location.Tag, reefTag).plus(Rotation2d.fromDegrees(180))));
+                // approach left scoring i, match reefTag rotation
+            pose = new ActionPose(Group.ApproachLeft, Location.Reef.getValue(), i, Position.Any.getValue(), Action.Any,
+                new AutoTarget(Constants.getFieldPosition(Group.ApproachLeft, Location.Reef, i), Constants.getKnownRotation(Group.Any, Location.Tag, reefTag).plus(Rotation2d.fromDegrees(180))));
+            swerveDriveModule.AddActionPose(pose);
+            System.out.printf(outputFormatter, pose.group, pose.location, pose.locationIndex, pose.position, pose.action, Utility.metersToInches(pose.target.Position.getX()), Utility.metersToInches(pose.target.Position.getY()));
+            // align right scoring i, match reefTag rotation
+            pose = new ActionPose(Group.AlignRight, Location.Reef.getValue(), i, Position.Any.getValue(), Action.Any,
+                new AutoTarget(Constants.getFieldPosition(Group.AlignRight, Location.Reef, i), Constants.getKnownRotation(Group.Any, Location.Tag, reefTag).plus(Rotation2d.fromDegrees(180))));
+            swerveDriveModule.AddActionPose(pose);
+            System.out.printf(outputFormatter, pose.group, pose.location, pose.locationIndex, pose.position, pose.action, Utility.metersToInches(pose.target.Position.getX()), Utility.metersToInches(pose.target.Position.getY()));
+            // approach right scoring i, match reefTag rotation
+            pose = new ActionPose(Group.ApproachRight, Location.Reef.getValue(), i, Position.Any.getValue(), Action.Any,
+                new AutoTarget(Constants.getFieldPosition(Group.ApproachRight, Location.Reef, i), Constants.getKnownRotation(Group.Any, Location.Tag, reefTag).plus(Rotation2d.fromDegrees(180))));
             swerveDriveModule.AddActionPose(pose);
             System.out.printf(outputFormatter, pose.group, pose.location, pose.locationIndex, pose.position, pose.action, Utility.metersToInches(pose.target.Position.getX()), Utility.metersToInches(pose.target.Position.getY()));
                 // scoring i, match reefTag rotation
@@ -53,8 +63,8 @@ public class ActionPoses {
             var coralTag = Constants.coralIndexToTag.get(i);
 
             // align coral i, match coralTag rotation
-            var pose = new ActionPose(Group.Align, Location.Coral.getValue(), i, Position.Any.getValue(), Action.Any,
-                new AutoTarget(Constants.getFieldPosition(Group.Align, Location.Coral, i), Constants.getKnownRotation(Group.Any, Location.Tag, coralTag)));
+            var pose = new ActionPose(Group.AlignLeft, Location.Coral.getValue(), i, Position.Any.getValue(), Action.Any,
+                new AutoTarget(Constants.getFieldPosition(Group.AlignLeft, Location.Coral, i), Constants.getKnownRotation(Group.Any, Location.Tag, coralTag)));
             swerveDriveModule.AddActionPose(pose);
             System.out.printf(outputFormatter, pose.group, pose.location, pose.locationIndex, pose.position, pose.action, Utility.metersToInches(pose.target.Position.getX()), Utility.metersToInches(pose.target.Position.getY()));
 

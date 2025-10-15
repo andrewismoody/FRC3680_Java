@@ -12,6 +12,7 @@ import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.networktables.DoubleSubscriber;
 import edu.wpi.first.networktables.NetworkTableInstance;
 import edu.wpi.first.wpilibj.Relay;
+import edu.wpi.first.wpilibj.RobotBase;
 import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
@@ -49,7 +50,7 @@ public class Robot extends TimedRobot {
 
   double elapsedTime;
 
-  final String codeBuildVersion = "2025.10.05-THOR";
+  final String codeBuildVersion = "2025.10.15-THOR";
   boolean initialized = false;
 
   final SparkMax can_drive_lf = new SparkMax(4, MotorType.kBrushless);
@@ -129,7 +130,15 @@ public class Robot extends TimedRobot {
   @Override
   public void robotInit() {
     Utility.fieldSize = Constants.fieldSize;
-    SmartDashboard.putString("DB/String 0", codeBuildVersion);
+    SmartDashboard.putString("DB/String 0", "Code Build Version: ");
+    SmartDashboard.putString("DB/String 5", codeBuildVersion);
+    SmartDashboard.putString("DB/String 1", "Start Location: "); // this is actual start position; if zero, read from driver station
+    if (RobotBase.isReal())
+      SmartDashboard.putString("DB/String 6", "0"); // this is actual start position; if zero, read from driver station
+    else {
+      if (SmartDashboard.getString("DB/String 6", "-1") == "-1")
+        SmartDashboard.putString("DB/String 6", "0"); // this is actual start position; if zero, read from driver station
+    }
     SmartDashboard.putNumber("DB/Slider 0", Constants.speedMod);
     var smartDash = NetworkTableInstance.getDefault().getTable("SmartDashboard");
     slider0Sub= smartDash.getDoubleTopic("DB/Slider 0").subscribe(1.0);
@@ -167,8 +176,7 @@ public class Robot extends TimedRobot {
       // real robot starts at (0,0) so that we know we don't have a vision estimate yet.
       Pose3d startPose = Pose3d.kZero;
 
-      if (Robot.isSimulation())
-        startPose = Constants.getStartPose();
+      startPose = Constants.getMyStartPose();
       System.out.printf("Robot Init: Driver Location %d, Red Alliance %b, Start Pos (%.2f, %.2f)\n", Utility.getDriverLocation(), Utility.IsRedAlliance(), startPose.getX(), startPose.getY());
 
       modules.GetDriveModule().SetCurrentPose(startPose);
@@ -187,13 +195,12 @@ public class Robot extends TimedRobot {
     commonInit();
 
     var selectedMode = currentAutoMode;
-    if (!isSimulation()) {
-      var selectedValue = SmartDashboard.getString("Auto Selector", autoModes.keys().nextElement());
-      System.out.printf("selected auto value '%s'\n", selectedValue);
-      if (selectedValue != null)
-        selectedMode = autoModes.get(selectedValue);
-    }
+    var selectedValue = SmartDashboard.getString("Auto Selector", currentAutoMode.GetLabel());
+    System.out.printf("selected auto value '%s'\n", selectedValue);
+    if (selectedValue != null)
+      selectedMode = autoModes.get(selectedValue);
     System.out.printf("selected auto mode '%s'\n", selectedMode.GetLabel());
+    currentAutoMode = selectedMode;
     selectedMode.Initialize();
 
     // default to field oriented for Auto
