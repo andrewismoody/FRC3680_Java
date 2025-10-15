@@ -29,6 +29,7 @@ import frc.robot.modules.ModuleController;
 import frc.robot.modules.SingleActuatorModule;
 import frc.robot.modules.SingleMotorModule;
 import frc.robot.modules.SwerveDriveModule;
+import frc.robot.modules.SwerveMotorDefinition;
 import frc.robot.modules.SwerveMotorModule;
 import frc.robot.positioner.LimeLightPositioner;
 import frc.robot.positioner.Positioner;
@@ -90,16 +91,20 @@ public class Robot extends TimedRobot {
   SingleMotorModule elevator = new SingleMotorModule("elevator", can_elev, Constants.elevatorSpeed, false, null, null, enc_elev, Constants.elevatorEncoderMultiplier, 0.5, Constants.elevatorDistancePerRotation, Constants.elevatorMaxDistance);
   SingleActuatorModule slide = new SingleActuatorModule("slide", pwm_slide, false);
 
-  // leftFront  software position should be leftrear   hardware position
-  // rightFront software position should be leftFront  hardware position
-  // leftRear   software position should be rightRear  hardware position
-  // rightRear  software position should be rightFront hardware position
+  // leftFront  software position // potentially should be leftrear   hardware position
+  SwerveMotorDefinition leftFrontDef = new SwerveMotorDefinition(can_drive_lf, enc_drive_lf, can_steer_lf, enc_steer_lf);
+  // rightFront software position // potentially should be leftFront  hardware position
+  SwerveMotorDefinition rightFrontDef = new SwerveMotorDefinition(can_drive_rf, enc_drive_rf, can_steer_rf, enc_steer_rf);
+  // leftRear   software position // potentially should be rightRear  hardware position
+  SwerveMotorDefinition leftRearDef = new SwerveMotorDefinition(can_drive_lr, enc_drive_lr, can_steer_lr, enc_steer_lr);
+  // rightRear  software position // potentially should be rightFront hardware position
+  SwerveMotorDefinition rightRearDef = new SwerveMotorDefinition(can_drive_rr, enc_drive_rr, can_steer_rr, enc_steer_rr);
   // total length of robot is 32.375", width is 27.5", centerline is 16.1875" from edge.  Drive axle center is 4" from edge - 12.1875" from center which is 309.56mm or 0.30956 meters
   SwerveDriveModule swerveDriveModule = new SwerveDriveModule("swerveDrive", m_gyro, m_positioner, Constants.driveSpeed, Constants.driveRatio, Constants.steerMotorSpeed, Constants.floatTolerance
-    , new SwerveMotorModule(SwervePosition.LeftFront, new Translation2d(Constants.frameCenter.getX(), Constants.frameCenter.getY()), can_drive_lr, enc_drive_lr, can_steer_lr, enc_steer_lr, Constants.steeringEncoderMultiplier, Constants.floatTolerance, false, false, 0.0)
-    , new SwerveMotorModule(SwervePosition.RightFront, new Translation2d(Constants.frameCenter.getX(), -Constants.frameCenter.getY()), can_drive_lf, enc_drive_lf, can_steer_lf, enc_steer_lf, Constants.steeringEncoderMultiplier, Constants.floatTolerance, false, false, 0.0)
-    , new SwerveMotorModule(SwervePosition.LeftRear, new Translation2d(-Constants.frameCenter.getX(), Constants.frameCenter.getY()), can_drive_rr, enc_drive_rr, can_steer_rr, enc_steer_rr, Constants.steeringEncoderMultiplier, Constants.floatTolerance, false, false, 0.0)
-    , new SwerveMotorModule(SwervePosition.RightRear, new Translation2d(-Constants.frameCenter.getX(), -Constants.frameCenter.getY()), can_drive_rf, enc_drive_rf, can_steer_rf, enc_steer_rf, Constants.steeringEncoderMultiplier, Constants.floatTolerance, false, false, 0.0)
+    , new SwerveMotorModule(SwervePosition.LeftFront, new Translation2d(Constants.frameCenter.getX(), Constants.frameCenter.getY()), leftFrontDef, Constants.steeringEncoderMultiplier, Constants.floatTolerance, true, false, 0.0)
+    , new SwerveMotorModule(SwervePosition.RightFront, new Translation2d(Constants.frameCenter.getX(), -Constants.frameCenter.getY()), rightFrontDef, Constants.steeringEncoderMultiplier, Constants.floatTolerance, true, false, 0.0)
+    , new SwerveMotorModule(SwervePosition.LeftRear, new Translation2d(-Constants.frameCenter.getX(), Constants.frameCenter.getY()), leftRearDef, Constants.steeringEncoderMultiplier, Constants.floatTolerance, true, false, 0.0)
+    , new SwerveMotorModule(SwervePosition.RightRear, new Translation2d(-Constants.frameCenter.getX(), -Constants.frameCenter.getY()), rightRearDef, Constants.steeringEncoderMultiplier, Constants.floatTolerance, true, false, 0.0)
   );
 
   ModuleController modules;

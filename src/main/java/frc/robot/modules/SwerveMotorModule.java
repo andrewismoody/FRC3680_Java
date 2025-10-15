@@ -103,15 +103,15 @@ public class SwerveMotorModule {
   boolean enableDecelComp = false;
   boolean enableGiveUp = false;
 
-  public SwerveMotorModule(Utility.SwervePosition SwervePosition, Translation2d Position, MotorController DriveMotor, Encoder DriveEncoder, MotorController RotationMotor, Encoder AngleEncoder, double EncoderMultiplier, double FloatTolerance, boolean InvertRotation, boolean InvertDrive, double RotationOffset) {
+  public SwerveMotorModule(Utility.SwervePosition SwervePosition, Translation2d Position, SwerveMotorDefinition MotorDefinition, double EncoderMultiplier, double FloatTolerance, boolean InvertRotation, boolean InvertDrive, double RotationOffset) {
     moduleID = SwervePosition.toString();
     swervePosition = SwervePosition;
 
     modulePosition = Position;
-    driveMotor = DriveMotor;
-    rotatorMotor = RotationMotor;
-    angleEncoder = AngleEncoder;
-    driveEncoder = DriveEncoder;
+    driveMotor = MotorDefinition.driveMotor;
+    driveEncoder = MotorDefinition.driveEncoder;
+    rotatorMotor = MotorDefinition.rotatorMotor;
+    angleEncoder = MotorDefinition.angleEncoder;
     floatTolerance = FloatTolerance;
     invertDrive = InvertDrive;
 
@@ -123,11 +123,16 @@ public class SwerveMotorModule {
     // decelFactor = driveModule.rotationSpeed / 1.5;
 
     invertRotation = InvertRotation;
-    if (RotationMotor instanceof SparkMax)
-      ((SparkMax)RotationMotor).configure(new SparkMaxConfig().inverted(invertRotation), ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
-    else
+    if (rotatorMotor instanceof SparkMax)
+      // This sets encoder and motor inversion simultaneously, due to how Spark Max works.
+      // Don't change it permanently, just set it now.
+      // This won't affect other settings nor persist across power cycles, so swapping to a different configuration will be simple
+      ((SparkMax)rotatorMotor).configure(new SparkMaxConfig().inverted(invertRotation), ResetMode.kNoResetSafeParameters, PersistMode.kNoPersistParameters);
+    else {
       // not used for absolute encoders - why?
-      AngleEncoder.setReverseDirection(InvertRotation);
+      angleEncoder.setReverseDirection(InvertRotation);
+      rotatorMotor.setInverted(InvertRotation);
+    }
 
   }
 
@@ -270,11 +275,13 @@ public class SwerveMotorModule {
         motorSpeed += (getAccumulatedMotorSpeed(currentRad, delAngle) * sign);
     }
 
+    /* don't do this along with hardware inversion
     // need to apply the inversion before this point - if we're not turning the right way, our calculations up to this point will be wrong
     // should consider inverting the target angle?
     if (invertRotation)
       motorSpeed *= -1;
-    
+    */
+      
     if (enableDecelComp) {
       // shut off the motor if the target is closer than the deceleration distance
       if (Math.abs(delAngle) < Math.abs(decelDistance))
@@ -383,11 +390,9 @@ public class SwerveMotorModule {
     currentState.speedMetersPerSecond = motorSpeed * driveModule.driveSpeed;
 
     // TODO 1: verify that this is correct
-    double distanceTraveled = useFakeEncoder || driveEncoder == null ?
-      rawMotorSpeed * (elapsedTime / 1000) :
+    currentDistance = useFakeEncoder || driveEncoder == null ?
+      currentDistance + rawMotorSpeed * (elapsedTime / 1000) :
       driveEncoder.getRawValue() * driveModule.driveRatio; // driveRatio is wheelCircumference / gearRatio
-    currentDistance += distanceTraveled;
-    myTable.getEntry("distanceTraveled").setDouble(distanceTraveled);
     myTable.getEntry("rawMotorSpeed").setDouble(rawMotorSpeed);
     myTable.getEntry("currentDistance").setDouble(currentDistance);
 
