@@ -63,9 +63,9 @@ public class Constants {
     // starting line is at X = 7.56m; barge is 3.72m wide
     public static final Translation2d startArea = new Translation2d(fieldSize.getX() / 2 - 7.56, 3.72);
 
-    // flipped x and y so that 'narrow' edge is front
-     // width and length of robot frame (excluding bumpers)
-    public static final Translation2d frameSize = new Translation2d(Utility.inchesToMeters(32.375), Utility.inchesToMeters(27.5));
+    // 'wide' edge is front
+    // width and length of robot frame (excluding bumpers)
+    public static final Translation2d frameSize = new Translation2d(Utility.inchesToMeters(27.5), Utility.inchesToMeters(32.375));
     public static final Translation2d frameCenter = new Translation2d(frameSize.getX() / 2, frameSize.getY() / 2);
 
     public static final double bumperWidth = Utility.inchesToMeters(4);
@@ -189,21 +189,21 @@ public class Constants {
             case Reef:
                 switch (group) {
                     case ApproachLeft:
-                        selectedLocation = Utility.projectPerpendicular(getBlueStartFieldPosition(Group.Any, Location.Tag, reefTag), getBlueStartKnownRotation(Group.Any, Location.Tag, reefTag), robotCenter.getX());
+                        selectedLocation = Utility.projectPerpendicular(getBlueStartFieldPosition(Group.Any, Location.Tag, reefTag), getBlueStartKnownRotation(Group.Any, Location.Tag, reefTag), robotCenter.getY());
                         selectedLocation = Utility.projectParallel(selectedLocation, getBlueStartKnownRotation(Group.Any, Location.Tag, reefTag), alignOffset);
                         break;
                     case AlignLeft:
                         selectedLocation = Utility.projectPerpendicular(getBlueStartFieldPosition(Group.ApproachLeft, Location.Reef, index), getBlueStartKnownRotation(Group.Any, Location.Tag, reefTag), robotCenter.getNorm());
                         break;
                     case ApproachRight:
-                        selectedLocation = Utility.projectPerpendicular(getBlueStartFieldPosition(Group.Any, Location.Tag, reefTag), getBlueStartKnownRotation(Group.Any, Location.Tag, reefTag), robotCenter.getX());
+                        selectedLocation = Utility.projectPerpendicular(getBlueStartFieldPosition(Group.Any, Location.Tag, reefTag), getBlueStartKnownRotation(Group.Any, Location.Tag, reefTag), robotCenter.getY());
                         selectedLocation = Utility.projectParallel(selectedLocation, getBlueStartKnownRotation(Group.Any, Location.Tag, reefTag), -alignOffset);
                         break;
                     case AlignRight:
                         selectedLocation = Utility.projectPerpendicular(getBlueStartFieldPosition(Group.ApproachRight, Location.Reef, index), getBlueStartKnownRotation(Group.Any, Location.Tag, reefTag), robotCenter.getNorm());
                         break;
                     default:
-                        selectedLocation = Utility.projectPerpendicular(getBlueStartFieldPosition(Group.Any, Location.Tag, reefTag), getBlueStartKnownRotation(Group.Any, Location.Tag, reefTag), robotCenter.getX());
+                        selectedLocation = Utility.projectPerpendicular(getBlueStartFieldPosition(Group.Any, Location.Tag, reefTag), getBlueStartKnownRotation(Group.Any, Location.Tag, reefTag), robotCenter.getY());
                         selectedLocation = Utility.projectParallel(selectedLocation, getBlueStartKnownRotation(Group.Any, Location.Tag, reefTag), index % 2 == 0 ? -scoreOffset : scoreOffset);
                         break;
                 }
@@ -214,7 +214,7 @@ public class Constants {
                         selectedLocation = Utility.projectPerpendicular(getBlueStartFieldPosition(Group.Any, Location.Coral, index), getBlueStartKnownRotation(Group.Any, Location.Tag, coralTag), alignOffset);
                         break;
                     default:
-                        selectedLocation =  Utility.projectPerpendicular(getBlueStartFieldPosition(Group.Any, Location.Tag, coralTag), getBlueStartKnownRotation(Group.Any, Location.Tag, coralTag), robotCenter.getX());
+                        selectedLocation =  Utility.projectPerpendicular(getBlueStartFieldPosition(Group.Any, Location.Tag, coralTag), getBlueStartKnownRotation(Group.Any, Location.Tag, coralTag), robotCenter.getY());
                         break;
                 }
                 break;
@@ -289,33 +289,34 @@ public class Constants {
 
     public static Rotation2d getBlueStartKnownRotation(Group group, Location location, int index) {
         var selectedRotation = Rotation2d.kZero;
+        var slideRotation = Rotation2d.fromDegrees(0);
 
         switch (location) {
             case Tag:
                 switch (index) {
                     case 12:
-                        selectedRotation = new Rotation2d(Utility.degreesToRadians(54)).minus(Rotation2d.fromDegrees(90));
+                        selectedRotation = new Rotation2d(Utility.degreesToRadians(54)).minus(slideRotation);
                         break;
                     case 13:
-                        selectedRotation = new Rotation2d(Utility.degreesToRadians(306)).minus(Rotation2d.fromDegrees(90));
+                        selectedRotation = new Rotation2d(Utility.degreesToRadians(306)).minus(slideRotation);
                         break;
                     case 17:
-                        selectedRotation = new Rotation2d(Utility.degreesToRadians(240)).minus(Rotation2d.fromDegrees(90));
+                        selectedRotation = new Rotation2d(Utility.degreesToRadians(240)).minus(slideRotation);
                         break;
                     case 19:
-                        selectedRotation = new Rotation2d(Utility.degreesToRadians(120)).minus(Rotation2d.fromDegrees(90));
+                        selectedRotation = new Rotation2d(Utility.degreesToRadians(120)).minus(slideRotation);
                         break;
                     case 20:
-                        selectedRotation = new Rotation2d(Utility.degreesToRadians(60)).minus(Rotation2d.fromDegrees(90));
+                        selectedRotation = new Rotation2d(Utility.degreesToRadians(60)).minus(slideRotation);
                         break;
                     case 22:
-                        selectedRotation = new Rotation2d(Utility.degreesToRadians(300)).minus(Rotation2d.fromDegrees(90));
+                        selectedRotation = new Rotation2d(Utility.degreesToRadians(300)).minus(slideRotation);
                         break;
                     case 18:
-                        selectedRotation = new Rotation2d(Utility.degreesToRadians(180)).minus(Rotation2d.fromDegrees(90));
+                        selectedRotation = new Rotation2d(Utility.degreesToRadians(180)).minus(slideRotation);
                         break;
                     case 21:
-                        selectedRotation = new Rotation2d().minus(Rotation2d.fromDegrees(90));
+                        selectedRotation = new Rotation2d().minus(slideRotation);
                         break;
                 }
                 break;

@@ -70,7 +70,7 @@ public class SwerveDriveModule implements DriveModule {
     double currentAngle = 0.0;
     double previousAngle = 0.0;
     double fakeGyroRate = 0.6;
-    Pose3d fakeCameraPose = new Pose3d(new Translation3d(0, -0.28, 0.51), new Rotation3d(new Rotation2d(1.566)));
+    Pose3d fakeCameraPose = new Pose3d(new Translation3d(0, -0.28, 0.51), new Rotation3d(new Rotation2d(0)));
 
     boolean isZeroPressed = false;
     boolean isLockPressed = false;
