@@ -75,7 +75,13 @@ public class Constants {
     public static final double startPadding = (Constants.startArea.getX() / 2 - Constants.robotCenter.getX());
     public static final Translation2d robotOffset = robotCenter.plus(new Translation2d(startPadding, startPadding * 2));
 
-    public static final Translation2d blueStartPosition = new Translation2d(Constants.fieldCenter.getX() - Constants.startArea.getX() + robotOffset.getX(), Constants.fieldSize.getY());
+    public static final Translation2d blueStartPosition = new Translation2d(Constants.fieldCenter.getX() - Constants.startArea.getX() + robotOffset.getX(), Constants.fieldCenter.getY());
+    // 3 ft. 5½ in., 7 ft. ⅜ in., 10 ft. 7⅜ in. (~105 cm, ~214 cm, ~324 cm) from mid field to the center 
+    public static final double[] blueStartY = new double[] {
+        Utility.inchesToMeters(127.38),
+        Utility.inchesToMeters(84.03),
+        Utility.inchesToMeters(36.458),
+    };
 
     public static final double waypointOffset = robotSize.getNorm() * 1.25;
     public static final double alignOffset = robotSize.getNorm() * 0.75;
@@ -89,7 +95,7 @@ public class Constants {
     public static Pose3d getStartPose(int index) {
         if (index < 1)
             index = 1;
-        var thisStartPosition = Constants.blueStartPosition.plus(new Translation2d(0.0, -(index * (robotOffset.getY() + startPadding))));
+        var thisStartPosition = Constants.blueStartPosition.plus(new Translation2d(0.0, blueStartY[index - 1]));
         var transformedPosition = Utility.transformToAllianceStart(new Translation3d(thisStartPosition));
         return new Pose3d(transformedPosition, Rotation3d.kZero);
     }
