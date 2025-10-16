@@ -64,7 +64,12 @@ public class Utility {
           System.out.printf("Found driver location %d from DS\n", driverLocation);
         }
 
-        var myLocation = Integer.parseInt(SmartDashboard.getString("DB/String 6", "0"));
+        var myLocation = 0;
+        try {
+            myLocation = Integer.parseInt(SmartDashboard.getString("DB/String 6", "0"));
+        } catch (Exception e) {
+            
+        }
         System.out.printf("Found driver location %d from dashboard\n", myLocation);
 
         var returnLocation = myLocation == 0 ? driverLocation : myLocation;
