@@ -102,10 +102,10 @@ public class Robot extends TimedRobot {
   SwerveMotorDefinition rightRearDef = new SwerveMotorDefinition(can_drive_rr, enc_drive_rr, can_steer_rr, enc_steer_rr);
   // total length of robot is 32.375", width is 27.5", centerline is 16.1875" from edge.  Drive axle center is 4" from edge - 12.1875" from center which is 309.56mm or 0.30956 meters
   SwerveDriveModule swerveDriveModule = new SwerveDriveModule("swerveDrive", m_gyro, m_positioner, Constants.driveSpeed, Constants.driveRatio, Constants.steerMotorSpeed, Constants.floatTolerance
-    , new SwerveMotorModule(SwervePosition.LeftFront, new Translation2d(Constants.frameCenter.getX(), Constants.frameCenter.getY()), leftFrontDef, Constants.steeringEncoderMultiplier, Constants.floatTolerance, true, false, 0.0)
-    , new SwerveMotorModule(SwervePosition.RightFront, new Translation2d(Constants.frameCenter.getX(), -Constants.frameCenter.getY()), rightFrontDef, Constants.steeringEncoderMultiplier, Constants.floatTolerance, true, false, 0.0)
-    , new SwerveMotorModule(SwervePosition.LeftRear, new Translation2d(-Constants.frameCenter.getX(), Constants.frameCenter.getY()), leftRearDef, Constants.steeringEncoderMultiplier, Constants.floatTolerance, true, false, 0.0)
-    , new SwerveMotorModule(SwervePosition.RightRear, new Translation2d(-Constants.frameCenter.getX(), -Constants.frameCenter.getY()), rightRearDef, Constants.steeringEncoderMultiplier, Constants.floatTolerance, true, false, 0.0)
+    , new SwerveMotorModule(SwervePosition.LeftFront, new Translation2d(Constants.frameCenter.getX(), Constants.frameCenter.getY()), rightFrontDef, Constants.steeringEncoderMultiplier, Constants.floatTolerance, true, false, 0.0)
+    , new SwerveMotorModule(SwervePosition.RightFront, new Translation2d(Constants.frameCenter.getX(), -Constants.frameCenter.getY()), rightRearDef, Constants.steeringEncoderMultiplier, Constants.floatTolerance, true, false, 0.0)
+    , new SwerveMotorModule(SwervePosition.LeftRear, new Translation2d(-Constants.frameCenter.getX(), Constants.frameCenter.getY()), leftFrontDef, Constants.steeringEncoderMultiplier, Constants.floatTolerance, true, false, 0.0)
+    , new SwerveMotorModule(SwervePosition.RightRear, new Translation2d(-Constants.frameCenter.getX(), -Constants.frameCenter.getY()), leftRearDef, Constants.steeringEncoderMultiplier, Constants.floatTolerance, true, false, 0.0)
   );
 
   ModuleController modules;
@@ -196,9 +196,10 @@ public class Robot extends TimedRobot {
     var selectedMode = currentAutoMode;
     var selectedValue = SmartDashboard.getString("Auto Selector", currentAutoMode.GetLabel());
     System.out.printf("selected auto value '%s'\n", selectedValue);
-    if (selectedValue != null)
+    if (selectedValue != null) {
       selectedMode = autoModes.get(selectedValue);
-    System.out.printf("selected auto mode '%s'\n", selectedMode.GetLabel());
+      System.out.printf("selected auto mode '%s'\n", selectedMode.GetLabel());
+    }
     currentAutoMode = selectedMode;
     selectedMode.Initialize(m_controller);
 
