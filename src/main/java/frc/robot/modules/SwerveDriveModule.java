@@ -717,13 +717,14 @@ public class SwerveDriveModule implements DriveModule {
             PoseEstimate visionEstimate = positioner.GetPoseEstimate();
             poseEstimator.addVisionMeasurement(visionEstimate.pose, visionEstimate.latency);
 
-            if (!positionInitialized && visionEstimate.pose.getTranslation().getNorm() > 0.0) {
-                positionInitialized = true;
-                if (debug)
-                    myTable.getEntry("positionInitialized").setBoolean(positionInitialized);
+            // TODO 1: Evaluate if this is needed, since we're setting start position now.
+            // if (!positionInitialized && visionEstimate.pose.getTranslation().getNorm() > 0.0) {
+            //     positionInitialized = true;
+            //     if (debug)
+            //         myTable.getEntry("positionInitialized").setBoolean(positionInitialized);
 
-                poseEstimator.resetPose(visionEstimate.pose);
-            }
+            //     poseEstimator.resetPose(visionEstimate.pose);
+            // }
         }
 
         Pose3d currentPose = new Pose3d(poseEstimator.getEstimatedPosition());

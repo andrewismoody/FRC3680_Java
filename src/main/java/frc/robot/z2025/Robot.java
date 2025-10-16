@@ -143,27 +143,26 @@ public class Robot extends TimedRobot {
     var smartDash = NetworkTableInstance.getDefault().getTable("SmartDashboard");
     slider0Sub= smartDash.getDoubleTopic("DB/Slider 0").subscribe(1.0);
 
-    // initialize game controller first because other classes need it.
-    // can't initialize in declaration because of order of initialization issues
-    m_controller = GameController.Initialize();
-
-    modules = new ModuleController(swerveDriveModule, Constants.divider, m_controller);
+    modules = new ModuleController(swerveDriveModule, Constants.divider);
 
     modules.AddModule(elevator);
     modules.AddModule(slide);
-    
-    modules.Initialize();
 
     // modules.SetEnableDrive(true);
     // modules.SetEnableSteer(true);
     // modules.SetEnableDriveTrain(false);
 
     Dashboard.InitializeChoosers();
-    autoModes = AutoModes.Initialize(autoModes, m_controller, modules);
+    autoModes = AutoModes.Initialize(autoModes, modules);
     currentAutoMode = AutoModes.GetDefault(autoModes);
   }
 
   void commonInit() {
+    // initialize game controller first because other classes need it.
+    // This needs to be here in mode init because we may not have a driver station connection during robotinit.
+    m_controller = GameController.Initialize();
+    // initialize modules
+    modules.Initialize(m_controller);
     // Add action poses before button mappings so buttons can drive action poses
     ActionPoses.Initialize(swerveDriveModule, elevator, slide);
     // even tho this runs on every init, we clear it out before every run so we don't mess up
@@ -201,7 +200,7 @@ public class Robot extends TimedRobot {
       selectedMode = autoModes.get(selectedValue);
     System.out.printf("selected auto mode '%s'\n", selectedMode.GetLabel());
     currentAutoMode = selectedMode;
-    selectedMode.Initialize();
+    selectedMode.Initialize(m_controller);
 
     // default to field oriented for Auto
     modules.GetDriveModule().SetFieldOriented(true);

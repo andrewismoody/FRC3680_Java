@@ -26,17 +26,19 @@ public class ModuleController {
   boolean enableDriveTrain = true;
   double speedDilationLimit = 0.75; //0.9;
 
-  public ModuleController(DriveModule DriveModule, double Divider, GameController Controller) {
+  public ModuleController(DriveModule DriveModule, double Divider) {
     driveModule = DriveModule;
     driveModule.SetController(this);
     divider = Divider;
-    controller = Controller;
   }
 
-  public void Initialize() {
+  public void Initialize(GameController Controller) {
+    controller = Controller;
+
     for (RobotModule module : modules.values()) {
       module.Initialize();
     }
+    
     driveModule.Initialize();
   }
 

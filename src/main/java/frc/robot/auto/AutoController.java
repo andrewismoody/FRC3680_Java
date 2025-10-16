@@ -16,9 +16,8 @@ public class AutoController {
     ModuleController moduleController;
     boolean interrupt = false;
 
-    public AutoController(String Label, GameController gameController, ModuleController moduleController) {
+    public AutoController(String Label, ModuleController moduleController) {
         label = Label;
-        this.gameController = gameController;
         this.moduleController = moduleController;
     }
 
@@ -48,7 +47,9 @@ public class AutoController {
         sequences.clear();
     }
 
-    public void Initialize() {
+    public void Initialize(GameController gameController) {
+        this.gameController = gameController;
+
         for (AutoSequence sequence : sequences.values()) {
             sequence.Initialize();
         }
