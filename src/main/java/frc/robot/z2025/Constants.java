@@ -289,34 +289,34 @@ public class Constants {
 
     public static Rotation2d getBlueStartKnownRotation(Group group, Location location, int index) {
         var selectedRotation = Rotation2d.kZero;
-        var slideRotation = Rotation2d.fromDegrees(0);
+        var alignmentRotation = Rotation2d.fromDegrees(90);
 
         switch (location) {
             case Tag:
                 switch (index) {
                     case 12:
-                        selectedRotation = new Rotation2d(Utility.degreesToRadians(54)).minus(slideRotation);
+                        selectedRotation = new Rotation2d(Utility.degreesToRadians(54)).minus(alignmentRotation);
                         break;
                     case 13:
-                        selectedRotation = new Rotation2d(Utility.degreesToRadians(306)).minus(slideRotation);
+                        selectedRotation = new Rotation2d(Utility.degreesToRadians(306)).minus(alignmentRotation);
                         break;
                     case 17:
-                        selectedRotation = new Rotation2d(Utility.degreesToRadians(240)).minus(slideRotation);
+                        selectedRotation = new Rotation2d(Utility.degreesToRadians(240)).minus(alignmentRotation);
                         break;
                     case 19:
-                        selectedRotation = new Rotation2d(Utility.degreesToRadians(120)).minus(slideRotation);
+                        selectedRotation = new Rotation2d(Utility.degreesToRadians(120)).minus(alignmentRotation);
                         break;
                     case 20:
-                        selectedRotation = new Rotation2d(Utility.degreesToRadians(60)).minus(slideRotation);
+                        selectedRotation = new Rotation2d(Utility.degreesToRadians(60)).minus(alignmentRotation);
                         break;
                     case 22:
-                        selectedRotation = new Rotation2d(Utility.degreesToRadians(300)).minus(slideRotation);
+                        selectedRotation = new Rotation2d(Utility.degreesToRadians(300)).minus(alignmentRotation);
                         break;
                     case 18:
-                        selectedRotation = new Rotation2d(Utility.degreesToRadians(180)).minus(slideRotation);
+                        selectedRotation = new Rotation2d(Utility.degreesToRadians(180)).minus(alignmentRotation);
                         break;
                     case 21:
-                        selectedRotation = new Rotation2d().minus(slideRotation);
+                        selectedRotation = new Rotation2d().minus(alignmentRotation);
                         break;
                 }
                 break;
