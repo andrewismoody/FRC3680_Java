@@ -3,6 +3,7 @@ package frc.robot.gyro;
 import com.studica.frc.AHRS;
 import com.studica.frc.AHRS.NavXComType;
 
+import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.wpilibj.RobotBase;
 
 public class AHRSGyro implements Gyro {
@@ -44,10 +45,9 @@ public class AHRSGyro implements Gyro {
 
     @Override
     public double getAngle() {
-        if (RobotBase.isReal())
-            lastAngle = -ahrs.getAngle();
         // NavX2 is left-hand CW positive, we want right-hand CCW positive to match WPILib coordinate systems
-        lastAngle = ((lastAngle % 360.0) + 360.0) % 360.0;
+        if (RobotBase.isReal())
+            lastAngle = -ahrs.getYaw();
 
         return lastAngle;
     }
@@ -56,6 +56,7 @@ public class AHRSGyro implements Gyro {
     public void appendGyroSimValue(double angleDegrees) {
         // we invert the 'real' gyro value, but we not the sim here, because we always want CCW positive responsed from the gyro
         lastAngle += ((angleDegrees % 360.0) + 360.0) % 360.0;
+        lastAngle = Rotation2d.fromDegrees(lastAngle).getDegrees();
     }
 
     @Override
