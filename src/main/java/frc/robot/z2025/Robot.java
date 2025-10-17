@@ -49,7 +49,7 @@ public class Robot extends TimedRobot {
 
   double elapsedTime;
 
-  final String codeBuildVersion = "2025.10.15-THOR";
+  final String codeBuildVersion = "2025.10.17-THOR";
   boolean initialized = false;
 
   final SparkMax can_drive_lf = new SparkMax(4, MotorType.kBrushless);
