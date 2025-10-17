@@ -52,7 +52,7 @@ public class Joystick {
     m_controller.SetValueButtonInversion(ButtonName.LeftThumbstickX, true);
     m_controller.RegisterValueButtonConsumer(ButtonName.LeftThumbstickX, swerveDriveModule::ProcessLateralSpeed);
 
-    m_controller.SetValueButtonInversion(ButtonName.RightThumbstickX, false);
+    m_controller.SetValueButtonInversion(ButtonName.RightThumbstickX, true);
     m_controller.RegisterValueButtonConsumer(ButtonName.RightThumbstickX, swerveDriveModule::ProcessRotationAngle);
   }
 }

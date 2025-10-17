@@ -123,6 +123,8 @@ public class SwerveMotorModule {
     // decelFactor = driveModule.rotationSpeed / 1.5;
 
     invertRotation = InvertRotation;
+    // invert the fake encoder rate too
+    encoderSimRate *= invertRotation ? -1 : 1;
     if (rotatorMotor instanceof SparkMax)
       // This sets encoder and motor inversion simultaneously, due to how Spark Max works.
       // Don't change it permanently, just set it now.
@@ -194,7 +196,7 @@ public class SwerveMotorModule {
     var ki = 0; //kp * 0.1; // ki = 10% of kp
     var kd = 0; // ki * 3; // kd = 3 times ki
     pidController = new PIDController(kp, ki, kd);
-    // pidController.enableContinuousInput(-Math.PI, Math.PI);
+    pidController.enableContinuousInput(-Math.PI, Math.PI);
     // pidController.setTolerance(floatTolerance);
     
     myTable = NetworkTableInstance.getDefault().getTable(driveModule.moduleID).getSubTable(moduleID);
@@ -296,7 +298,8 @@ public class SwerveMotorModule {
 
     if (useFakeEncoder) {
       // fake adjust current angle to simulate encoder input
-      currentAngle = Rotation2d.fromRadians((currentAngle.plus(Rotation2d.fromRadians(rotationOffset)).getRadians() + motorSpeed * encoderSimRate));
+      var angleAccumulation = motorSpeed * encoderSimRate;
+      currentAngle = Rotation2d.fromRadians((currentAngle.plus(Rotation2d.fromRadians(rotationOffset)).getRadians() + angleAccumulation));
     }
   }
 

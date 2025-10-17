@@ -46,7 +46,12 @@ public class AnalogGyro implements Gyro {
 
         return angle;
     }
-  
+
+    @Override
+    public void appendGyroSimValue(double angleDegrees) {
+        angle += ((angleDegrees % 360.0) + 360.0) % 360.0;
+    } 
+
     public double getRate() {
         return 0;
     }

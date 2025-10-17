@@ -66,8 +66,6 @@ public class SwerveDriveModule implements DriveModule {
     double frameNorm = 0.0;
 
     boolean debug;
-    public boolean useFakeGyro = !RobotBase.isReal();
-    double currentAngle = 0.0;
     double previousAngle = 0.0;
     double fakeGyroRate = 0.6;
     Pose3d fakeCameraPose = new Pose3d(new Translation3d(0, -0.28, 0.51), new Rotation3d(new Rotation2d(0)));
@@ -98,7 +96,6 @@ public class SwerveDriveModule implements DriveModule {
 
     // Cached NT entries
     private NetworkTableEntry startupAngleEntry;
-    private NetworkTableEntry useFakeGyroEntry;
     private NetworkTableEntry rotationSpeedEntry;
     private NetworkTableEntry driveSpeedEntry;
     private NetworkTableEntry rotationPidSetpointsEntry;
@@ -124,7 +121,6 @@ public class SwerveDriveModule implements DriveModule {
     private NetworkTableEntry lookTargetPosEntry;
     private NetworkTableEntry currentGyroAngleEntry;
     private NetworkTableEntry currentPositionEntry;
-    private NetworkTableEntry fakeAngleEntry;
     private NetworkTableEntry targetDeltaEntry;
     StructPublisher<Pose3d> currentPosePublisher;
     StructArrayPublisher<SwerveModuleState> swerveModuleReqestPublisher;
@@ -177,10 +173,10 @@ public class SwerveDriveModule implements DriveModule {
         rotationPidController.setTolerance(floatTolerance);
 
         kinematics = new SwerveDriveKinematics(translations);
-        odometry = new SwerveDriveOdometry(kinematics, new Rotation2d(getInvertedGyroValue()), positions);
+        odometry = new SwerveDriveOdometry(kinematics, new Rotation2d(getGyroRadians()), positions);
         fieldPosition = new Field2d();
 
-        poseEstimator = new SwerveDrivePoseEstimator(kinematics, new Rotation2d(getInvertedGyroValue()), positions, Pose2d.kZero);
+        poseEstimator = new SwerveDrivePoseEstimator(kinematics, new Rotation2d(getGyroRadians()), positions, Pose2d.kZero);
     }
 
     public String GetModuleID() {
@@ -229,8 +225,7 @@ public class SwerveDriveModule implements DriveModule {
     }
 
     public void Initialize() {
-        var startupAngle = useFakeGyro ? currentAngle
-        : gyro.getAngle();
+        var startupAngle = getGyroAngle();
         
         if (debug) {
             // instantiate entries
@@ -252,12 +247,10 @@ public class SwerveDriveModule implements DriveModule {
             lookTargetPosEntry = myTable.getEntry("lookTargetPos");
             currentGyroAngleEntry = myTable.getEntry("currentGyroAngle");
             currentPositionEntry = myTable.getEntry("currentPosition");
-            fakeAngleEntry = myTable.getEntry("fakeAngle");
             targetDeltaEntry = myTable.getEntry("targetDelta");
         }
 
         startupAngleEntry = myTable.getEntry("startupAngle");
-        useFakeGyroEntry = myTable.getEntry("useFakeGyro");
         rotationSpeedEntry = myTable.getEntry("rotationSpeed");
         driveSpeedEntry = myTable.getEntry("driveSpeed");
         rotationPidSetpointsEntry = myTable.getEntry("rotationPidSetpoints");
@@ -267,7 +260,6 @@ public class SwerveDriveModule implements DriveModule {
         targetActionPoseEntry = myTable.getEntry("targetActionPose");
 
         startupAngleEntry.setDouble(startupAngle);
-        useFakeGyroEntry.setBoolean(useFakeGyro);
         rotationSpeedEntry.setDouble(rotationSpeed);
         driveSpeedEntry.setDouble(driveSpeed);
         rotationPidSetpointsEntry.setString(String.format("%f %f %f", rotationPidController.getP(), rotationPidController.getI(), rotationPidController.getD()));
@@ -346,13 +338,18 @@ public class SwerveDriveModule implements DriveModule {
     }
 
     public double getGyroAngle() {
-        var newAngle = useFakeGyro ? currentAngle
-        // modulo the result to get rid of rotation count
-        : gyro.getAngle() % 360;
+        // typically returned in degrees
+        var newAngle = gyro.getAngle();
 
         newAngle -= angleOffset;
 
         return newAngle;        
+    }
+
+    public double getGyroRadians() {
+        double gyroRaw = getGyroAngle();
+
+        return Units.degreesToRadians(gyroRaw);  
     }
 
     public void ProcessForwardSpeed(double value) {
@@ -374,20 +371,6 @@ public class SwerveDriveModule implements DriveModule {
         wroteRotationThisTick = true; // mark open-loop write this tick
         if (debug)
             rotationAngleEntry.setDouble(rotationAngle);
-    }
-
-    public double getInvertedGyroValue() {
-        double gyroRaw = getGyroAngle();
-        double inverseAngle = ((-gyroRaw % 360.0) + 360.0) % 360.0;
-
-        return Units.degreesToRadians(inverseAngle);  
-    }
-
-    public double getCurrentGyroValue() {
-        double gyroRaw = getGyroAngle();
-        double newAngle = ((gyroRaw % 360.0) + 360.0) % 360.0;
-
-        return Units.degreesToRadians(newAngle);  
     }
 
     public void StopRotation() {
@@ -597,9 +580,9 @@ public class SwerveDriveModule implements DriveModule {
 
                     if (pose.HasOrientation) {
                         // TODO 1: is this still a problem? might have been fixed with auto selector fixes; this doesn't seem to work if we're on the other side of zero?
-                        var targetRad = (targetRotation.getRadians() + (2 * Math.PI)) % (2 * Math.PI); // wrap to positive angles
-                        var rotationDelta = targetRad - newAngleRad;
                         if (debug) {
+                            var targetRad = (targetRotation.getRadians() + (2 * Math.PI)) % (2 * Math.PI); // wrap to positive angles
+                            var rotationDelta = targetRad - newAngleRad;
                             rotationDeltaEntry.setDouble(rotationDelta);
                             rotationTargetEntry.setDouble(targetRotation.getRadians());
                         }
@@ -641,6 +624,7 @@ public class SwerveDriveModule implements DriveModule {
                                 rotationReached = true;
                             if (debug)
                                 rotationReachedEntry.setBoolean(rotationReached);
+                            System.out.printf("rotationRached: %b\n", rotationReached);
                             ProcessRotationAngle(0.0);
                         } else {
                             ProcessRotationAngle(rotationSpeed);
@@ -709,7 +693,7 @@ public class SwerveDriveModule implements DriveModule {
 
         // Invert the Gyro angle because it rotates opposite of the robot steering, then wrap it to a positive value
         // TODO 1: check this after adjusting coordinate systems
-        double currentGyroAngle = getInvertedGyroValue();
+        double currentGyroAngle = getGyroRadians();
         if (debug)
             currentGyroAngleEntry.setDouble(currentGyroAngle);
 
@@ -825,11 +809,8 @@ public class SwerveDriveModule implements DriveModule {
             }
         }
 
-        // update fake gyro angle
-        currentAngle += -thisRotationSpeed * fakeGyroRate;
-        if (debug)
-            fakeAngleEntry.setDouble(currentAngle);
-        previousAngle = currentAngle;
+        // update fake gyro angle - will append the amount of change from this period to the current value
+        gyro.appendGyroSimValue(thisRotationSpeed * fakeGyroRate);
         previousRotationSpeed = thisRotationSpeed;
 
         // update dashboard
@@ -848,7 +829,7 @@ public class SwerveDriveModule implements DriveModule {
 
     @Override
     public Pose3d GetPosition() {
-        return isPositionerHealthy() ? positioner.GetPose() : new Pose3d(positioner.GetPose().getTranslation(), new Rotation3d(0, 0, getCurrentGyroValue()));
+        return isPositionerHealthy() ? positioner.GetPose() : new Pose3d(positioner.GetPose().getTranslation(), new Rotation3d(0, 0, getGyroRadians()));
         // return new Pose3d(newPosition, new Rotation3d(0, 0, getCurrentGyroValue()));
         // return new Translation3d(currentPosition.getX(), currentPosition.getY(), currentAngle);
     }

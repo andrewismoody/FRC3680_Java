@@ -46,8 +46,7 @@
             "open": true
           },
           "open": true
-        },
-        "open": true
+        }
       },
       "elevator": {
         "open": true
@@ -56,6 +55,15 @@
         "open": true
       },
       "swerveDrive": {
+        "Pose3d##v_/swerveDrive/currentPose": {
+          "Rotation3d##v_rotation": {
+            "Quaternion##v_q": {
+              "open": true
+            },
+            "open": true
+          },
+          "open": true
+        },
         "leftFront": {
           "open": true
         },
