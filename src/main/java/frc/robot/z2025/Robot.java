@@ -7,7 +7,6 @@ package frc.robot.z2025;
 import java.util.Hashtable;
 
 import edu.wpi.first.math.geometry.Pose3d;
-// import edu.wpi.first.cameraserver.CameraServer;
 import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.networktables.DoubleSubscriber;
 import edu.wpi.first.networktables.NetworkTableInstance;
@@ -101,6 +100,7 @@ public class Robot extends TimedRobot {
   // rightRear  software position // potentially should be rightFront hardware position
   SwerveMotorDefinition rightRearDef = new SwerveMotorDefinition(can_drive_rr, enc_drive_rr, can_steer_rr, enc_steer_rr);
   // total length of robot is 32.375", width is 27.5", centerline is 16.1875" from edge.  Drive axle center is 4" from edge - 12.1875" from center which is 309.56mm or 0.30956 meters
+  // motor positions are rotated to make the limelight 'forward', this is just labeling.
   SwerveDriveModule swerveDriveModule = new SwerveDriveModule("swerveDrive", m_gyro, m_positioner, Constants.driveSpeed, Constants.driveRatio, Constants.steerMotorSpeed, Constants.floatTolerance
     , new SwerveMotorModule(SwervePosition.LeftFront, new Translation2d(Constants.frameCenter.getX(), Constants.frameCenter.getY()), rightFrontDef, Constants.steeringEncoderMultiplier, Constants.floatTolerance, true, false, 0.0)
     , new SwerveMotorModule(SwervePosition.RightFront, new Translation2d(Constants.frameCenter.getX(), -Constants.frameCenter.getY()), rightRearDef, Constants.steeringEncoderMultiplier, Constants.floatTolerance, true, false, 0.0)
@@ -117,9 +117,6 @@ public class Robot extends TimedRobot {
 
   public Robot() {
     gc_timer.start();
-
-    // TODO 1: figure out if we actually need this - clogs up the log - for raspi?
-    // CameraServer.startAutomaticCapture();
   }
 
   /**

@@ -145,7 +145,6 @@ public class SwerveDriveModule implements DriveModule {
         floatTolerance = FloatTolerance;
 
         // initialize modules after setting values, as modules lookup values from controller
-        // TODO: maybe make this a little less brittle
         driveModules = new SwerveMotorModule[modules.length];
         for (SwerveMotorModule module : modules) {
             var i = module.GetSwervePosition().getValue();
@@ -290,7 +289,6 @@ public class SwerveDriveModule implements DriveModule {
         }
 
         poseEstimator.resetPose(newPose.toPose2d());
-        //currentAngle = newPose.getRotation().getZ();
 
         positionInitialized = true;
         if (debug)
@@ -570,7 +568,6 @@ public class SwerveDriveModule implements DriveModule {
                 forwardReached = true;
             }
 
-            // TODO: why isn't this called consistently?
             // if we have a lookat and we've reached our position, don't keep trying to find the lookat
             if (debug)
                 myTable.getEntry("hasLookAt").setBoolean(pose.HasLookAt);
@@ -586,7 +583,6 @@ public class SwerveDriveModule implements DriveModule {
                     boolean processAngle = false;
 
                     if (pose.HasOrientation) {
-                        // TODO 1: is this still a problem? might have been fixed with auto selector fixes; this doesn't seem to work if we're on the other side of zero?
                         if (debug) {
                             var targetRad = (targetRotation.getRadians() + (2 * Math.PI)) % (2 * Math.PI); // wrap to positive angles
                             var rotationDelta = targetRad - newAngleRad;
@@ -703,18 +699,17 @@ public class SwerveDriveModule implements DriveModule {
         if (debug)
             currentGyroAngleEntry.setDouble(currentGyroAngle);
 
+        // TODO 1: Identify if this is correct - does it need inverse or does everything use normal?
+        // move this up before fusing vision estimate
+        // yaw is in degrees
+        var limelightAngle = Utility.radiansToDegrees(currentGyroAngle);
+        if (debug)
+            myTable.getEntry("limelightAngleRaw").setDouble(limelightAngle);
+        positioner.SetRobotOrientation("", limelightAngle, 0,0,0,0,0);
+
         if (RobotBase.isReal()) {
             PoseEstimate visionEstimate = positioner.GetPoseEstimate();
             poseEstimator.addVisionMeasurement(visionEstimate.pose, visionEstimate.latency);
-
-            // TODO 1: Evaluate if this is needed, since we're setting start position now.
-            // if (!positionInitialized && visionEstimate.pose.getTranslation().getNorm() > 0.0) {
-            //     positionInitialized = true;
-            //     if (debug)
-            //         myTable.getEntry("positionInitialized").setBoolean(positionInitialized);
-
-            //     poseEstimator.resetPose(visionEstimate.pose);
-            // }
         }
 
         currentPose = new Pose3d(poseEstimator.getEstimatedPosition());
@@ -723,15 +718,6 @@ public class SwerveDriveModule implements DriveModule {
         // update simulator field position
         fieldPosition.setRobotPose(currentPose.toPose2d());
         SmartDashboard.putData("Field", fieldPosition);
-
-        // TODO 1: Identify if this is correct - does it need inverse or does everything use normal?
-        // yaw is in degrees
-        var limelightAngle = Utility.degreesToRadians(currentGyroAngle);
-        if (debug) {
-            myTable.getEntry("limelightAngleRaw").setDouble(limelightAngle);
-            myTable.getEntry("limelightAngleRadAdj").setDouble((limelightAngle + 180) % 360);
-        }
-        positioner.SetRobotOrientation("", limelightAngle, 0,0,0,0,0);
 
         currentPosition = currentPose.getTranslation();
 
@@ -753,7 +739,7 @@ public class SwerveDriveModule implements DriveModule {
         // modifiers only affect open-loop values, not Auto values
         double forwardSpeed = this.forwardSpeed * controller.ApplyModifiers(driveSpeed);
         double lateralSpeed = this.lateralSpeed * controller.ApplyModifiers(driveSpeed);
-        double thisRotationSpeed = rotationAngle * controller.ApplyModifiers(rotationMultiplier); //rotationAngle; // * controller.ApplyModifiers(this.rotationSpeed);
+        double thisRotationSpeed = rotationAngle * controller.ApplyModifiers(rotationMultiplier);
         if (debug)
             rotationSpeedEntry.setDouble(thisRotationSpeed);
 
@@ -762,12 +748,11 @@ public class SwerveDriveModule implements DriveModule {
         ChassisSpeeds speeds = isFieldOriented ?
             ChassisSpeeds.fromFieldRelativeSpeeds(
                 // invert directions if we're red and manually controlling
-                Utility.IsRedAlliance() && DriverStation.isTeleop() ? -forwardSpeed : forwardSpeed, // negate for red teleop (field rotation)
-                Utility.IsRedAlliance() && DriverStation.isTeleop() ? -lateralSpeed : lateralSpeed, // negate for red teleop (field rotation)
+                Utility.IsRedAlliance() && DriverStation.isTeleop() ? -forwardSpeed : forwardSpeed,
+                Utility.IsRedAlliance() && DriverStation.isTeleop() ? -lateralSpeed : lateralSpeed,
                 thisRotationSpeed, currentRotation)
             : new ChassisSpeeds(forwardSpeed,
                 lateralSpeed,
-                //Utility.IsRedAlliance() && DriverStation.isTeleop() ? -lateralSpeed : lateralSpeed, // negate for red teleop (field rotation)
                 thisRotationSpeed);
         chassisSpeedsPublisher.set(speeds);
 
@@ -821,8 +806,6 @@ public class SwerveDriveModule implements DriveModule {
 
         // update dashboard
         SmartDashboard.putNumberArray("RobotDrive Motors", new double[] {driveModules[0].getSpeed(), driveModules[1].getSpeed(), 0.0, 0.0});
-        //SmartDashboard.putNumberArray("My Motors", new double[] {driveModules.get(0).getSpeed(), driveModules.get(1).getSpeed(), 0.0, 0.0});
-        //System.out.printf("leftFront speed: %f\n", driveModules.get(0).getSpeed()); // , driveModules.get(1).getSpeed(), 0.0, 0.0});
 
         wroteForwardThisTick = false;
         wroteLateralThisTick = false;

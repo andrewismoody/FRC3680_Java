@@ -66,7 +66,6 @@ public class ActionPoses {
 
         for (int i = 1; i <= 2; i++) {
             var coralTag = Constants.coralIndexToTag.get(i);
-            // this is a hack to point the back of the robot perpendicular to the tag - we should be using the camera orientation here probably.
             // get perpendicular direction facing away
             var rotation = swerveDriveModule.GetPositionerOffset().getRotation().toRotation2d();
             rotation = Rotation2d.kCCW_90deg.minus(rotation);
