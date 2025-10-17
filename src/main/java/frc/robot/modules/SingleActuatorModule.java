@@ -26,7 +26,7 @@ public class SingleActuatorModule implements RobotModule {
     ActionPose targetPose;
     ArrayList<ActionPose> actionPoses = new ArrayList<ActionPose>();
     double startedAt = 0;
-    double holdTime = 2000;
+    double holdTime = 200;
     ModuleState previousState = ModuleState.Off;
 
     NetworkTable myTable;
@@ -68,7 +68,7 @@ public class SingleActuatorModule implements RobotModule {
                 System.out.printf("SingleActuatorModule: new target state %s; previous target state %s\n", targetState, previousState);
                 startedAt = System.currentTimeMillis();
             } else {
-                // TODO: this is holding up all other action poses even if the state hasn't changed
+                // TODO: the timer shouldn't be built in here, maybe.  This is delaying the auto start time.
                 if (System.currentTimeMillis() - startedAt > holdTime) {
                     AbandonTarget();
                     return;
