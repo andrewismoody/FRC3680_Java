@@ -6,18 +6,18 @@ import frc.robot.action.ActionPose;
 import frc.robot.action.Group;
 import frc.robot.auto.AutoTarget;
 import frc.robot.misc.Utility;
+import frc.robot.modules.DriveModule;
 import frc.robot.modules.ModuleState;
 import frc.robot.modules.SingleActuatorModule;
 import frc.robot.modules.SingleMotorModule;
-import frc.robot.modules.SwerveDriveModule;
 import frc.robot.z2025.action.Location;
 import frc.robot.z2025.action.Position;
 
 public class ActionPoses {
-    public static void Initialize(SwerveDriveModule swerveDriveModule, SingleMotorModule elevator, SingleActuatorModule slide) {
+    public static void Initialize(DriveModule swerveDriveModule, SingleMotorModule elevator, SingleActuatorModule slide) {
         // start, (we don't know where we are yet, so rotate a specific angle to face a tag)
-        // this rotation is a hack to point the robot at the reef, need to update it to use camera orientation
-        var startRotation = Rotation2d.fromDegrees(0);
+        // get facing direction
+        var startRotation = swerveDriveModule.GetPositionerOffset().getRotation().toRotation2d();
         swerveDriveModule.AddActionPose(new ActionPose(Group.Start, Location.Barge.getValue(), 1, Position.Any.getValue(), Action.Any,
             new AutoTarget(Utility.getLookat(Constants.getMyStartPose().getTranslation().toTranslation2d(), Constants.getFieldPosition(Group.Any, Location.Interest, 1).toTranslation2d()).minus(startRotation))));
 
@@ -33,8 +33,9 @@ public class ActionPoses {
 
         for (int i = 1; i <= 12; i++) {
             var reefTag = Constants.reefIndexToTag.get(i);
-            // this is a hack to point the front of the robot perpendicular to the tag - we should be using the camera orientation here probably.
-            var rotation = Rotation2d.fromDegrees(-90);
+            // get perpendicular direction facing toward
+            var rotation = swerveDriveModule.GetPositionerOffset().getRotation().toRotation2d();
+            rotation = Rotation2d.kCW_90deg.minus(rotation);
 
             // align left scoring i, match reefTag rotation
             var pose = new ActionPose(Group.AlignLeft, Location.Reef.getValue(), i, Position.Any.getValue(), Action.Any,
@@ -61,12 +62,14 @@ public class ActionPoses {
                 new AutoTarget(Constants.getFieldPosition(Group.Any, Location.Reef, i), Constants.getKnownRotation(Group.Any, Location.Tag, reefTag).plus(rotation)));
             swerveDriveModule.AddActionPose(pose);
             System.out.printf(outputFormatter, pose.group, pose.location, pose.locationIndex, pose.position, pose.action, Utility.metersToInches(pose.target.Position.getX()), Utility.metersToInches(pose.target.Position.getY()));
-            }
+        }
 
         for (int i = 1; i <= 2; i++) {
             var coralTag = Constants.coralIndexToTag.get(i);
             // this is a hack to point the back of the robot perpendicular to the tag - we should be using the camera orientation here probably.
-            var rotation = Rotation2d.fromDegrees(90);
+            // get perpendicular direction facing away
+            var rotation = swerveDriveModule.GetPositionerOffset().getRotation().toRotation2d();
+            rotation = Rotation2d.kCCW_90deg.minus(rotation);
 
             // align coral i, match coralTag rotation
             var pose = new ActionPose(Group.AlignLeft, Location.Coral.getValue(), i, Position.Any.getValue(), Action.Any,

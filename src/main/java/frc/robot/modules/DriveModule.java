@@ -13,4 +13,5 @@ public interface DriveModule extends RobotModule {
     public boolean IsFieldOriented();
     public void ToggleFieldOriented(boolean value);
     public void SetCurrentPose(Pose3d newPose);
+    public Pose3d GetPositionerOffset();
 }

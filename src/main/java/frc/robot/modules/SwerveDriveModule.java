@@ -68,7 +68,7 @@ public class SwerveDriveModule implements DriveModule {
     boolean debug;
     double previousAngle = 0.0;
     double fakeGyroRate = 0.6;
-    Pose3d fakeCameraPose = new Pose3d(new Translation3d(0, -0.28, 0.51), new Rotation3d(new Rotation2d(0)));
+    Pose3d fakeCameraPose = new Pose3d(new Translation3d(0, -0.28, 0.51), new Rotation3d(Rotation2d.kCCW_90deg));
 
     boolean isZeroPressed = false;
     boolean isLockPressed = false;
@@ -91,6 +91,7 @@ public class SwerveDriveModule implements DriveModule {
 
     SwerveDrivePoseEstimator poseEstimator;
     Field2d fieldPosition;
+    Pose3d currentPose = Pose3d.kZero;
 
     NetworkTable myTable;
 
@@ -457,6 +458,12 @@ public class SwerveDriveModule implements DriveModule {
         return healthy;
     }
 
+    public Pose3d GetPositionerOffset() {
+        var adjustedPos = RobotBase.isReal() ? positioner.GetReferenceInFieldCoords() : fakeCameraPose.transformBy(GetPosition().minus(fakeCameraPose));
+        var referenceAngle = RobotBase.isReal() ? positioner.GetReferenceInRobotCoords().getRotation().getZ() : fakeCameraPose.getRotation().getZ();
+        return new Pose3d(adjustedPos.getTranslation(), new Rotation3d(new Rotation2d(referenceAngle)));
+    }
+
     public void EvaluateTargetPose(Pose3d currentPose, double newAngleRad) {
         if (targetPose != null) {
             if (debug)
@@ -590,11 +597,11 @@ public class SwerveDriveModule implements DriveModule {
                         processAngle = true;
                     } else if (pose.HasLookAt && posNorm > 0.0) {
                         // trying to rotate from the camera's vantage point to ensure that the april tags are always in the center
-                        var adjustedPos = RobotBase.isReal() ? positioner.GetReferenceInFieldCoords() : fakeCameraPose.transformBy(currentPose.minus(fakeCameraPose));
-                        var lookTarget = Utility.getLookat(adjustedPos.getTranslation().toTranslation2d(), pose.LookAt.toTranslation2d()).getRadians();
-                        // adjust rotation for camera rotation offset
+                        var adjustedPos = GetPositionerOffset().getTranslation();
                         // TODO 1: make sure limelight rotation is positive for real
-                        var referenceAngle = RobotBase.isReal() ? positioner.GetReferenceInRobotCoords().getRotation().getZ() : fakeCameraPose.getRotation().getZ();
+                        var referenceAngle = GetPositionerOffset().getRotation().getZ();
+                        var lookTarget = Utility.getLookat(adjustedPos.toTranslation2d(), pose.LookAt.toTranslation2d()).getRadians();
+                        // adjust rotation for camera rotation offset
                         lookTarget = lookTarget - referenceAngle;
                         // wrap to positive and modulo
                         lookTarget = (lookTarget + (2 * Math.PI)) % (2 * Math.PI);
@@ -624,7 +631,6 @@ public class SwerveDriveModule implements DriveModule {
                                 rotationReached = true;
                             if (debug)
                                 rotationReachedEntry.setBoolean(rotationReached);
-                            System.out.printf("rotationRached: %b\n", rotationReached);
                             ProcessRotationAngle(0.0);
                         } else {
                             ProcessRotationAngle(rotationSpeed);
@@ -711,7 +717,7 @@ public class SwerveDriveModule implements DriveModule {
             // }
         }
 
-        Pose3d currentPose = new Pose3d(poseEstimator.getEstimatedPosition());
+        currentPose = new Pose3d(poseEstimator.getEstimatedPosition());
         currentPosePublisher.set(currentPose);
 
         // update simulator field position
@@ -720,7 +726,7 @@ public class SwerveDriveModule implements DriveModule {
 
         // TODO 1: Identify if this is correct - does it need inverse or does everything use normal?
         // yaw is in degrees
-        var limelightAngle = currentGyroAngle / ((Math.PI * 2) / 360);
+        var limelightAngle = Utility.degreesToRadians(currentGyroAngle);
         if (debug) {
             myTable.getEntry("limelightAngleRaw").setDouble(limelightAngle);
             myTable.getEntry("limelightAngleRadAdj").setDouble((limelightAngle + 180) % 360);
@@ -829,8 +835,6 @@ public class SwerveDriveModule implements DriveModule {
 
     @Override
     public Pose3d GetPosition() {
-        return isPositionerHealthy() ? positioner.GetPose() : new Pose3d(positioner.GetPose().getTranslation(), new Rotation3d(0, 0, getGyroRadians()));
-        // return new Pose3d(newPosition, new Rotation3d(0, 0, getCurrentGyroValue()));
-        // return new Translation3d(currentPosition.getX(), currentPosition.getY(), currentAngle);
+        return currentPose;
     }
 }

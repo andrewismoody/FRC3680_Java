@@ -8,14 +8,18 @@ import com.revrobotics.spark.SparkBase.PersistMode;
 import com.revrobotics.spark.config.SparkMaxConfig;
 
 import edu.wpi.first.math.geometry.Pose3d;
+import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Rotation3d;
 import edu.wpi.first.math.geometry.Translation3d;
 import edu.wpi.first.networktables.NetworkTable;
 import edu.wpi.first.networktables.NetworkTableInstance;
+import edu.wpi.first.wpilibj.RobotBase;
 import edu.wpi.first.wpilibj.drive.DifferentialDrive;
 import edu.wpi.first.wpilibj.motorcontrol.MotorController;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import frc.robot.action.Group;
+import frc.robot.gyro.Gyro;
+import frc.robot.positioner.Positioner;
 import frc.robot.action.Action;
 import frc.robot.action.ActionPose;
 
@@ -26,6 +30,9 @@ public class DifferentialDriveModule implements DriveModule {
     DifferentialDrive driveController;
     MotorController leftMotor;
     MotorController rightMotor;
+    Gyro gyro;
+    Positioner positioner;
+    Pose3d fakeCameraPose = new Pose3d(new Translation3d(0, -0.28, 0.51), new Rotation3d(new Rotation2d(0)));
 
     double forwardSpeed = 0.0;
     double rotationAngle = 0.0;
@@ -48,10 +55,12 @@ public class DifferentialDriveModule implements DriveModule {
 
     NetworkTable myTable;
 
-    public DifferentialDriveModule(String ModuleID, MotorController LeftMotor, MotorController RightMotor) {
+    public DifferentialDriveModule(String ModuleID, Gyro Gyro, Positioner Positioner, MotorController LeftMotor, MotorController RightMotor) {
         moduleID = ModuleID;
         leftMotor = LeftMotor;
         rightMotor = RightMotor;
+        positioner = Positioner;
+        gyro = Gyro;
 
         myTable = NetworkTableInstance.getDefault().getTable(moduleID);
 
@@ -108,6 +117,12 @@ public class DifferentialDriveModule implements DriveModule {
 
     public void Initialize() {
 
+    }
+
+    public Pose3d GetPositionerOffset() {
+        var adjustedPos = RobotBase.isReal() ? positioner.GetReferenceInFieldCoords() : fakeCameraPose.transformBy(GetPosition().minus(fakeCameraPose));
+        var referenceAngle = RobotBase.isReal() ? positioner.GetReferenceInRobotCoords().getRotation().getZ() : fakeCameraPose.getRotation().getZ();
+        return new Pose3d(adjustedPos.getTranslation(), new Rotation3d(new Rotation2d(referenceAngle)));
     }
 
     public void SetCurrentPose(Pose3d newPose) {
