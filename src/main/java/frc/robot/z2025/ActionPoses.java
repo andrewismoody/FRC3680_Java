@@ -71,8 +71,8 @@ public class ActionPoses {
             rotation = Rotation2d.kCCW_90deg.minus(rotation);
 
             // align coral i, match coralTag rotation
-            var pose = new ActionPose(Group.AlignLeft, Location.Coral.getValue(), i, Position.Any.getValue(), Action.Any,
-                new AutoTarget(Constants.getFieldPosition(Group.AlignLeft, Location.Coral, i), Constants.getKnownRotation(Group.Any, Location.Tag, coralTag).plus(rotation)));
+            var pose = new ActionPose(Group.Align, Location.Coral.getValue(), i, Position.Any.getValue(), Action.Any,
+                new AutoTarget(Constants.getFieldPosition(Group.Align, Location.Coral, i), Constants.getKnownRotation(Group.Any, Location.Tag, coralTag).plus(rotation)));
             swerveDriveModule.AddActionPose(pose);
             System.out.printf(outputFormatter, pose.group, pose.location, pose.locationIndex, pose.position, pose.action, Utility.metersToInches(pose.target.Position.getX()), Utility.metersToInches(pose.target.Position.getY()));
 
