@@ -49,7 +49,7 @@ public class Robot extends TimedRobot {
 
   double elapsedTime;
 
-  final String codeBuildVersion = "2025.10.17-THOR";
+  final String codeBuildVersion = "2025.10.18-THOR";
   boolean initialized = false;
 
   final SparkMax can_drive_lf = new SparkMax(4, MotorType.kBrushless);
@@ -144,6 +144,9 @@ public class Robot extends TimedRobot {
 
     modules.AddModule(elevator);
     modules.AddModule(slide);
+    
+    // initialize modules
+    modules.Initialize();
 
     // modules.SetEnableDrive(true);
     // modules.SetEnableSteer(true);
@@ -158,8 +161,6 @@ public class Robot extends TimedRobot {
     // initialize game controller first because other classes need it.
     // This needs to be here in mode init because we may not have a driver station connection during robotinit.
     m_controller = GameController.Initialize();
-    // initialize modules
-    modules.Initialize(m_controller);
     // Add action poses before button mappings so buttons can drive action poses
     ActionPoses.Initialize(swerveDriveModule, elevator, slide);
     // even tho this runs on every init, we clear it out before every run so we don't mess up
@@ -238,6 +239,7 @@ public class Robot extends TimedRobot {
     // slider 0 is motor speed
     modules.setSpeedMod(slider0Sub.get());
 
+    m_controller.ProcessButtons();
     modules.ProcessState(false);
   }
 

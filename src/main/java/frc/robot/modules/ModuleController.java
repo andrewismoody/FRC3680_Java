@@ -6,12 +6,10 @@ import edu.wpi.first.math.geometry.Pose3d;
 import frc.robot.action.Action;
 import frc.robot.action.ActionPose;
 import frc.robot.action.Group;
-import frc.robot.misc.GameController;
 
 public class ModuleController {
   Hashtable<String, RobotModule> modules = new Hashtable<String, RobotModule>();
   DriveModule driveModule;
-  GameController controller;
 
   double divider = 0.5;
   double speedMod = 1.0;
@@ -32,9 +30,7 @@ public class ModuleController {
     divider = Divider;
   }
 
-  public void Initialize(GameController Controller) {
-    controller = Controller;
-
+  public void Initialize() {
     for (RobotModule module : modules.values()) {
       module.Initialize();
     }
@@ -133,10 +129,6 @@ public class ModuleController {
   }
 
   public void ProcessState(boolean isAuto) {
-    if (!isAuto) {
-      controller.ProcessButtons();
-    }
-
     ProcessDrive(isAuto);
 
     for (RobotModule module : modules.values()) {
