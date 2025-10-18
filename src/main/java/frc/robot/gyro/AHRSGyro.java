@@ -55,7 +55,7 @@ public class AHRSGyro implements Gyro {
     @Override
     public void appendGyroSimValue(double angleDegrees) {
         // we invert the 'real' gyro value, but we not the sim here, because we always want CCW positive responsed from the gyro
-        lastAngle += ((angleDegrees % 360.0) + 360.0) % 360.0;
+        lastAngle += angleDegrees; // ((angleDegrees % 360.0) + 360.0) % 360.0;
         lastAngle = Rotation2d.fromDegrees(lastAngle).getDegrees();
     }
 

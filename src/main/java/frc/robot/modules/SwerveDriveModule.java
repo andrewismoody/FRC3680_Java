@@ -67,7 +67,7 @@ public class SwerveDriveModule implements DriveModule {
 
     boolean debug;
     double previousAngle = 0.0;
-    double fakeGyroRate = 0.6;
+    double fakeGyroRate = 0.006; // how fast the robot can rotate in radians per timeslice (0.02s)
     Pose3d fakeCameraPose = new Pose3d(new Translation3d(0, -0.28, 0.51), new Rotation3d(Rotation2d.kZero));
 
     boolean isZeroPressed = false;
@@ -245,11 +245,11 @@ public class SwerveDriveModule implements DriveModule {
             rotationTargetEntry = myTable.getEntry("rotationTarget");
             lookTargetAngEntry = myTable.getEntry("lookTargetAng");
             lookTargetPosEntry = myTable.getEntry("lookTargetPos");
-            currentGyroAngleEntry = myTable.getEntry("currentGyroAngle");
             currentPositionEntry = myTable.getEntry("currentPosition");
             targetDeltaEntry = myTable.getEntry("targetDelta");
         }
 
+        currentGyroAngleEntry = myTable.getEntry("currentGyroAngle");
         startupAngleEntry = myTable.getEntry("startupAngle");
         rotationSpeedEntry = myTable.getEntry("rotationSpeed");
         driveSpeedEntry = myTable.getEntry("driveSpeed");
@@ -692,8 +692,7 @@ public class SwerveDriveModule implements DriveModule {
         // Invert the Gyro angle because it rotates opposite of the robot steering, then wrap it to a positive value
         // TODO 1: check this after adjusting coordinate systems
         double currentGyroAngle = getGyroRadians();
-        if (debug)
-            currentGyroAngleEntry.setDouble(currentGyroAngle);
+        currentGyroAngleEntry.setDouble(currentGyroAngle);
 
         // TODO 1: Identify if this is correct - does it need inverse or does everything use normal?
         // move this up before fusing vision estimate
@@ -797,7 +796,7 @@ public class SwerveDriveModule implements DriveModule {
         }
 
         // update fake gyro angle - will append the amount of change from this period to the current value
-        gyro.appendGyroSimValue(thisRotationSpeed * fakeGyroRate);
+        gyro.appendGyroSimValue(Utility.radiansToDegrees(thisRotationSpeed * fakeGyroRate));
         previousRotationSpeed = thisRotationSpeed;
 
         // update dashboard
