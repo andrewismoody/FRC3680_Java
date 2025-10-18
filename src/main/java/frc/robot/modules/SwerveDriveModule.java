@@ -404,6 +404,7 @@ public class SwerveDriveModule implements DriveModule {
                 && (pose.position == position || pose.position == -1)
                 && (pose.action == action || pose.action == Action.Any)
             ) {
+                System.out.printf("%s GetActionPose: Matched %s %d %d %d %s\n", moduleID, pose.group, pose.location, pose.locationIndex, pose.position, pose.action);
                 return pose;
             }
         }
@@ -615,7 +616,8 @@ public class SwerveDriveModule implements DriveModule {
                         if (pose.HasLookAt)
                             rotationSpeed *= 1.5; // boost lookat rotation speed a bit
                         // clamp to real values
-                        rotationSpeed = Math.max(-this.rotationSpeed, Math.min(this.rotationSpeed, rotationSpeed));
+                        // invert rotation for auto - WHY??
+                        rotationSpeed = -Math.max(-this.rotationSpeed, Math.min(this.rotationSpeed, rotationSpeed));
                         // check angle by rotation to avoid mismatched signs and other things from preventing target matching
                         if (Math.abs(new Rotation2d(newAngleRad).minus(new Rotation2d(targetValue)).getRadians()) < floatTolerance) {
                             // only mark 'reached' if we don't have a lookat target or our position is also reached
@@ -704,7 +706,8 @@ public class SwerveDriveModule implements DriveModule {
 
         if (RobotBase.isReal()) {
             PoseEstimate visionEstimate = positioner.GetPoseEstimate();
-            poseEstimator.addVisionMeasurement(visionEstimate.pose, visionEstimate.latency);
+            if (visionEstimate != null)
+                poseEstimator.addVisionMeasurement(visionEstimate.pose, visionEstimate.latency);
         }
 
         currentPose = new Pose3d(poseEstimator.getEstimatedPosition());
@@ -735,7 +738,7 @@ public class SwerveDriveModule implements DriveModule {
         double forwardSpeed = this.forwardSpeed * controller.ApplyModifiers(driveSpeed);
         double lateralSpeed = this.lateralSpeed * controller.ApplyModifiers(driveSpeed);
         double thisRotationSpeed = rotationAngle * controller.ApplyModifiers(rotationMultiplier);
-        if (debug)
+        // if (debug)
             rotationSpeedEntry.setDouble(thisRotationSpeed);
 
         var currentRotation = Rotation2d.fromRadians(currentGyroAngle);

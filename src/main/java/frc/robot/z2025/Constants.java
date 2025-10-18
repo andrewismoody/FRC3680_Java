@@ -29,10 +29,13 @@ public class Constants {
     // Rev NEO empirical motor speed = 5676 rotations per minute; 5676 / 60 = 94.6 rotations per second
     public static final double driveMotorRPM = 5676.0;
      // 4" wheel = 0.1016m diameter
-    public static final double wheelDiameter = Utility.inchesToMeters(4.0);
-    // 0.319m wheel circumference
+     // 3.625" = 0.09271
+    public static final double wheelDiameter = Utility.inchesToMeters(3.5);
+    // 4" 0.319m wheel circumference
+    // 3.625" 0.291078 wheel circumference
     public static final double wheelCircumference = Math.PI * wheelDiameter;
     // 9:1 gearbox with 3:1 gear reduction (27:1 total) on 0.319m circumference = 0.0118 meters per motor rotation
+    // .0107 meters per rotation
     public static final double driveRatio = wheelCircumference / driveGearRatio; 
     // m_driveSpeed should be actual meters per second that is achievable by the drive motor
     // higher numbers result in faster drive speeds. To slow it down, send a higher
