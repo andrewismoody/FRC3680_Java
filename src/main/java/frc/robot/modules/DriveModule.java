@@ -14,4 +14,6 @@ public interface DriveModule extends RobotModule {
     public void ToggleFieldOriented(boolean value);
     public void SetCurrentPose(Pose3d newPose);
     public Pose3d GetPositionerOffset();
+    public void ResetGyro();
+    public void ResetEncoders();
 }

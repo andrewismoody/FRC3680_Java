@@ -183,6 +183,16 @@ public class SwerveMotorModule {
     myTable.getEntry("rotationOffset").setDouble(rotationOffset);
   }
 
+  public void ResetDriveEncoder() {
+    if (driveEncoder != null)
+      driveEncoder.setZeroPosition();
+  }
+
+  public void ResetSteerEncoder() {
+    if (angleEncoder != null)
+      angleEncoder.setZeroPosition();
+  }
+
   public SwerveModulePosition getPosition() {
     return new SwerveModulePosition(currentDistance, currentAngle);
   }

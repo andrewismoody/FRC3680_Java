@@ -35,7 +35,7 @@ public class AHRSGyro implements Gyro {
 
     @Override
     public void reset() {
-        // Not Implemented
+        ahrs.reset();
     }
 
     @Override

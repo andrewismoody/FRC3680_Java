@@ -76,6 +76,14 @@ public class DifferentialDriveModule implements DriveModule {
         driveController.setSafetyEnabled(false);
     }
 
+    public void ResetGyro() {
+        gyro.reset();
+    }
+
+    public void ResetEncoders() {
+        // not implemented
+    }
+
     public String GetModuleID() {
         return moduleID;
     }

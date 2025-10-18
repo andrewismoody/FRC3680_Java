@@ -179,6 +179,17 @@ public class SwerveDriveModule implements DriveModule {
         poseEstimator = new SwerveDrivePoseEstimator(kinematics, new Rotation2d(getGyroRadians()), positions, Pose2d.kZero);
     }
 
+    public void ResetGyro() {
+        gyro.reset();
+    }
+
+    public void ResetEncoders() {
+        for (SwerveMotorModule module : driveModules) {
+            module.ResetDriveEncoder();
+            module.ResetSteerEncoder();
+        }
+    }
+
     public String GetModuleID() {
         return moduleID;
     }

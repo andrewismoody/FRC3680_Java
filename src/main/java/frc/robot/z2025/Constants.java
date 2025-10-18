@@ -30,7 +30,7 @@ public class Constants {
     public static final double driveMotorRPM = 5676.0;
      // 4" wheel = 0.1016m diameter
      // 3.625" = 0.09271
-    public static final double wheelDiameter = Utility.inchesToMeters(3.5);
+    public static final double wheelDiameter = Utility.inchesToMeters(3.5625);
     // 4" 0.319m wheel circumference
     // 3.625" 0.291078 wheel circumference
     public static final double wheelCircumference = Math.PI * wheelDiameter;
@@ -70,6 +70,8 @@ public class Constants {
     // width and length of robot frame (excluding bumpers)
     public static final Translation2d frameSize = new Translation2d(Utility.inchesToMeters(27.5), Utility.inchesToMeters(32.375));
     public static final Translation2d frameCenter = new Translation2d(frameSize.getX() / 2, frameSize.getY() / 2);
+    public static final Translation2d motorOffset = new Translation2d(Utility.inchesToMeters(4.0), Utility.inchesToMeters(4.5));
+    public static final Translation2d motorPosition = frameCenter.minus(motorOffset);
 
     public static final double bumperWidth = Utility.inchesToMeters(4);
     public static final Translation2d robotSize = frameSize.plus(new Translation2d(bumperWidth, bumperWidth));
@@ -88,7 +90,7 @@ public class Constants {
 
     public static final double waypointOffset = robotSize.getNorm() * 1.25;
     public static final double alignOffset = robotSize.getNorm() * 0.75;
-    public static final double scoreOffset = Utility.inchesToMeters(6.5);
+    public static final double scoreOffset = Utility.inchesToMeters(-3);
 
     public static Pose3d getMyStartPose() {
         var myLocation = Utility.getDriverLocation();
