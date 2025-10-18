@@ -189,8 +189,8 @@ public class Robot extends TimedRobot {
   @Override
   public void autonomousInit() {
     commonInit();
-    swerveDriveModule.ResetGyro();
-    swerveDriveModule.ResetEncoders();
+    // swerveDriveModule.ResetGyro();
+    // swerveDriveModule.ResetEncoders();
 
     var selectedMode = currentAutoMode;
     var selectedValue = SmartDashboard.getString("Auto Selector", currentAutoMode.GetLabel());
