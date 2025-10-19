@@ -50,8 +50,10 @@ public class SwerveMotorModule {
   Encoder angleEncoder;
   Encoder driveEncoder;
   public boolean useFakeEncoder = !RobotBase.isReal();
-  double encoderSimRate = 3.0;
-  double encoderSimFactor = 0.03;
+  double angleEncSimRate = 3.0;
+  double angleEncSimFactor = 0.03;
+  double driveEncSimRate = 3.0;
+  double driveEncSimFactor = 9.0;
   double encoderMultiplier = 1.0;
 
   double floatTolerance;
@@ -92,12 +94,8 @@ public class SwerveMotorModule {
   private NetworkTableEntry currentAngleEntry;
   private NetworkTableEntry elapsedTimeEntry;
   private NetworkTableEntry targetRadiansEntry;
-  private NetworkTableEntry deltaAngleEntry;
-  private NetworkTableEntry decelDistanceEntry;
   private NetworkTableEntry pidOutputEntry;
   private NetworkTableEntry steerMotorSpeedEntry;
-  private NetworkTableEntry adjustmentFactorEntry;
-  private NetworkTableEntry accumulatedMotorSpeedEntry;
   private NetworkTableEntry driveMotorSpeedEntry;
 
   boolean enableDecelComp = false;
@@ -120,11 +118,8 @@ public class SwerveMotorModule {
     encoderMultiplier = EncoderMultiplier;
     angleEncoder.setMultiplier(EncoderMultiplier);
 
-    // decelFactor = driveModule.rotationSpeed / 1.5;
-
     invertRotation = InvertRotation;
-    // invert the fake encoder rate too
-    encoderSimRate *= invertRotation ? -1 : 1;
+    // only invert real encoders, fake encoders don't invert because the inversion it match software to hardware behavior
     if (rotatorMotor instanceof SparkMax)
       // This sets encoder and motor inversion simultaneously, due to how Spark Max works.
       // Don't change it permanently, just set it now.
@@ -145,6 +140,8 @@ public class SwerveMotorModule {
   public void Initialize() {
     myTable.getEntry("startupAngle").setDouble(angleEncoder.getDistance());
     angleEncoder.setZeroPosition();
+    if (driveEncoder != null)
+      driveEncoder.setZeroPosition();
 
     // instantiate entries
     startupAngleEntry = myTable.getEntry("startupAngle");
@@ -160,12 +157,8 @@ public class SwerveMotorModule {
     currentAngleEntry = myTable.getEntry("currentAngle");
     elapsedTimeEntry = myTable.getEntry("elapsedTime");
     targetRadiansEntry = myTable.getEntry("targetRadians");
-    deltaAngleEntry = myTable.getEntry("deltaAngle");
-    decelDistanceEntry = myTable.getEntry("decelDistance");
     pidOutputEntry = myTable.getEntry("pidOutput");
     steerMotorSpeedEntry = myTable.getEntry("steerMotorSpeed");
-    adjustmentFactorEntry = myTable.getEntry("adjustmentFactor");
-    accumulatedMotorSpeedEntry = myTable.getEntry("accumulatedMotorSpeed");
     driveMotorSpeedEntry = myTable.getEntry("DriveMotorSpeed");
 
     // initial values
@@ -200,7 +193,8 @@ public class SwerveMotorModule {
   // setDriveModule happens before Initialize
   public void setDriveModule(SwerveDriveModule DriveModule) {
     driveModule = DriveModule;
-    encoderSimRate = driveModule.rotationSpeed * encoderSimFactor;
+    angleEncSimRate = driveModule.rotationSpeed * angleEncSimFactor;
+    driveEncSimRate = driveModule.driveSpeed * driveEncSimFactor;
 
     var kp = 0.333;
     var ki = 0; //kp * 0.1; // ki = 10% of kp
@@ -215,12 +209,7 @@ public class SwerveMotorModule {
   public SwerveModuleState updateModuleValues(SwerveModuleState moduleState, boolean optimize) {
     currentState.angle = currentAngle;
     
-    double distance = useFakeEncoder ?
-      currentAngle.getDegrees()
-      :
-      angleEncoder.getDistance()
-    ;
-
+    double distance = angleEncoder.getDistance();
     currentAngle = Rotation2d.fromDegrees(distance).minus(Rotation2d.fromRadians(rotationOffset));
 
     if (optimize) {
@@ -263,42 +252,9 @@ public class SwerveMotorModule {
     var tarRad = tarAngle.getRadians() + 0.0; // add 0 to prevent negative zero
     targetRadiansEntry.setDouble(tarRad);
 
-    var delAngle = tarAngle.minus(currentAngle).getRadians() + 0.0; // add 0 to prevent negative zero
-    deltaAngleEntry.setDouble(delAngle);
-
-    var decelDistance = primeDecelParams(currentRad);
-    decelDistanceEntry.setDouble(decelDistance);
-
-    primeGiveUpParams(delAngle);
-
     // start rotating wheel to the new optimized angle
     var motorSpeed = pidController.calculate(currentRad, tarRad);
     pidOutputEntry.setDouble(motorSpeed);
-
-    double sign = motorSpeed > 0 ? 1 : -1;
-
-    if (enableDecelComp)
-      motorSpeed *= getAdjustmentFactor(delAngle);
-
-    if (enableGiveUp) {
-      if (gaveUp)
-        motorSpeed = 0.0;
-      else
-        motorSpeed += (getAccumulatedMotorSpeed(currentRad, delAngle) * sign);
-    }
-
-    /* don't do this along with hardware inversion
-    // need to apply the inversion before this point - if we're not turning the right way, our calculations up to this point will be wrong
-    // should consider inverting the target angle?
-    if (invertRotation)
-      motorSpeed *= -1;
-    */
-      
-    if (enableDecelComp) {
-      // shut off the motor if the target is closer than the deceleration distance
-      if (Math.abs(delAngle) < Math.abs(decelDistance))
-        motorSpeed = 0.0;
-    }
 
     steerMotorSpeedEntry.setDouble(motorSpeed);
     rotatorMotor.set(motorSpeed);
@@ -308,81 +264,13 @@ public class SwerveMotorModule {
 
     if (useFakeEncoder) {
       // fake adjust current angle to simulate encoder input
-      var angleAccumulation = motorSpeed * encoderSimRate;
-      currentAngle = Rotation2d.fromRadians((currentAngle.plus(Rotation2d.fromRadians(rotationOffset)).getRadians() + angleAccumulation));
+      var angleAccumulation = motorSpeed * angleEncSimRate;
+      angleEncoder.appendSimValueRad(angleAccumulation);
     }
-  }
-
-  double primeDecelParams(double currentRad) {
-    // attempt to adjust for deceleration
-    // var rate = (previousCurrentAngle - currentRad) / (elapsedTime / 1000);
-    // var decelDistance = rate / decelFactor;
-    // distance = rate * time; remove the time factor and we only have the distance; this is how far it moved in a single time slice:
-    var decelDistance = previousCurrentAngle - currentRad;
-    if (decelDistance > maxDistance) {
-      maxDistance = decelDistance;
-      sampleCount++;
-    }
-    return decelDistance;
-  }
-
-  void primeGiveUpParams(double delAngle) {
-    if (Math.abs(previousDeltaAngle - delAngle) > floatTolerance) {
-
-      // reset give up parameters
-      rotationStartTime = 0;
-      accumulatedMotorSpeed = 0.0;
-      gaveUp = false;
-    }
-
-    previousDeltaAngle = delAngle;
-  }
-
-  double getAdjustmentFactor(double delAngle) {
-    var adjustmentFactor = 1.0;
-
-    // only apply the adjustment factor if we've had enough samples to determine a max distance
-    if (sampleCount > sampleMin && delAngle < maxDistance) {
-      adjustmentFactor = (delAngle / maxDistance);
-    }
-
-    adjustmentFactorEntry.setDouble(adjustmentFactor);
-
-    return adjustmentFactor;
   }
 
   public SwerveModuleState getCurrentState() {
     return currentState;
-  }
-
-  double getAccumulatedMotorSpeed(double currentRad, double delAngle) {
-    // if we haven't moved, and our delta angle is larger than float tolerance, boost the motor voltage
-    if (Math.abs(previousCurrentAngle - currentRad) <= floatTolerance && Math.abs(delAngle) > floatTolerance) {
-      double speedIncrement = 0.01;
-
-      accumulatedMotorSpeed = accumulatedMotorSpeed + speedIncrement;
-      // if (debugAngle)
-      //   System.out.printf("%d | %s increasing speedincrement: %f\n", now, moduleID, accumulatedMotorSpeed);
-
-      if (rotationStartTime == 0)
-        rotationStartTime = System.currentTimeMillis();
-      else if (System.currentTimeMillis() - rotationStartTime > rotationLimitTime) {
-        // don't keep trying if it doesn't move - don't want to burn up the motor
-        if (!gaveUp && debugAngle)
-          System.out.printf("%d | %s giving up\n", now, moduleID);
-        gaveUp = true;
-        accumulatedMotorSpeed = 0.0;
-      }
-    } else {
-      // we moved again, or the delta angle is smaller than our tolerance, reset everything
-      accumulatedMotorSpeed = 0.0;
-      rotationStartTime = 0;
-      gaveUp = false;
-    }
-    
-    accumulatedMotorSpeedEntry.setDouble(accumulatedMotorSpeed);
-
-    return accumulatedMotorSpeed;
   }
 
   void setSpeed(SwerveModuleState state) {
@@ -402,8 +290,12 @@ public class SwerveMotorModule {
     driveMotor.set(motorSpeed);
     currentState.speedMetersPerSecond = motorSpeed * driveModule.driveSpeed;
 
-    // TODO 1: verify that this is correct
-    currentDistance = useFakeEncoder || driveEncoder == null ?
+    if (useFakeEncoder && driveEncoder != null) {
+      // fake adjust current distance to simulate encoder input
+      var distanceAccumulation = rawMotorSpeed * driveEncSimRate;
+      driveEncoder.appendSimValueRad(distanceAccumulation);
+    }
+    currentDistance = driveEncoder == null ?
       currentDistance + rawMotorSpeed * (elapsedTime / 1000) :
       driveEncoder.getRawValue() * driveModule.driveRatio; // driveRatio is wheelCircumference / gearRatio
     myTable.getEntry("rawMotorSpeed").setDouble(rawMotorSpeed);

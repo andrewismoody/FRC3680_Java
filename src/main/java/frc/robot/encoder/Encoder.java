@@ -12,4 +12,5 @@ public interface Encoder {
     public double getAngleOffsetRad();
     public void setMultiplier(double value);
     public double getMultiplier();
+    public void appendSimValueRad(double angleRad);
 }

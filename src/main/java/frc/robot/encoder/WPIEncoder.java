@@ -1,10 +1,13 @@
 package frc.robot.encoder;
 
+import edu.wpi.first.wpilibj.RobotBase;
+
 public class WPIEncoder implements Encoder {
     
     edu.wpi.first.wpilibj.Encoder internalEncoder;
     double angleOffsetRad = 0.0; // angle to subtract from actual angle to zero the encoder
     double multiplier = 1.0;
+    double value = 0.0;
 
     public void setMultiplier(double value) {
         multiplier = value;
@@ -61,10 +64,18 @@ public class WPIEncoder implements Encoder {
         return internalEncoder.getRaw() * multiplier;
     }
 
+    public void appendSimValueRad(double angleRad) {
+        // REV Encoder reports rotations, not radians or degrees
+        value += angleRad / (Math.PI * 2);
+    }
+
     public double getDistance() {
         // TODO: implement angle offset
         
-        return internalEncoder.getDistance();
+        if (RobotBase.isReal())
+            value = internalEncoder.getDistance();
+
+        return value;
     }
 
     public boolean isAbsolute() {

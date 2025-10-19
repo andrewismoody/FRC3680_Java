@@ -55,6 +55,6 @@ public interface Gyro {
 
   public double getYFilteredAccelAngle();
 
-  public void appendGyroSimValue(double angleDegrees);
+  public void appendSimValueDeg(double angleDegrees);
 
 }

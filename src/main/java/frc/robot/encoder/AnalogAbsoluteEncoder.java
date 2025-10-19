@@ -2,6 +2,7 @@ package frc.robot.encoder;
 
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.wpilibj.AnalogInput;
+import edu.wpi.first.wpilibj.RobotBase;
 
 public class AnalogAbsoluteEncoder implements Encoder {
 
@@ -29,6 +30,10 @@ public class AnalogAbsoluteEncoder implements Encoder {
         return angleOffsetRad;
     }
 
+    public void appendSimValueRad(double angleRad) {
+        value += angleRad;
+    }
+
     public void setZeroPosition() {
         // TODO: check if raw value should be rad or deg
         setAngleOffsetRad(-getRawValue());
@@ -43,7 +48,8 @@ public class AnalogAbsoluteEncoder implements Encoder {
     }
 
     public double getRawValue() {
-        value = input.getValue();
+        if (RobotBase.isReal())
+            value = input.getValue();
         double returnValue = 0;
 
         returnValue = value * (6.28 / resolution); // 6.28 / 4096 = 0.001533203125 (radians)

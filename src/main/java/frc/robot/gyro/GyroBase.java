@@ -410,7 +410,7 @@ public class GyroBase implements Gyro, Sendable, AutoCloseable {
     }
 
     @Override
-    public void appendGyroSimValue(double angleDegrees) {
+    public void appendSimValueDeg(double angleDegrees) {
         var newAngle = ((angleDegrees % 360.0) + 360.0) % 360.0;
         switch (m_yaw_axis) {
             case kX:

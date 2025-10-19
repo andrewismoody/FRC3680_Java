@@ -2,11 +2,14 @@ package frc.robot.encoder;
 
 import edu.wpi.first.wpilibj.I2C;
 import edu.wpi.first.wpilibj.I2C.Port;
+import frc.robot.misc.Utility;
+import edu.wpi.first.wpilibj.RobotBase;
 
 public class I2CAbsoluteEncoder implements Encoder {
     private I2C myI2c;
     double angleOffsetRad = 0.0; // angle to subtract from actual angle to zero the encoder
     double multiplier = 1.0;
+    double value = 0.0;
 
     public void setMultiplier(double value) {
         multiplier = value;
@@ -50,24 +53,30 @@ public class I2CAbsoluteEncoder implements Encoder {
         angleOffsetRad = value;
     }
 
+    // getRawValue doesn't support sim values, use getDistance
     public double getRawValue() {
         return readRegister(0x0C) * multiplier;                        // combine bytes to get 12-bit value 11:0
     }
 
+    public void appendSimValueRad(double angleRad) {
+        value += angleRad;
+    }
+
     public double getDistance() {
-        double rawAngle;
-
-        rawAngle = getRawValue();
-
         boolean reportRadians = false;
 
-        // TODO: implement angle offset
-        
-        if (reportRadians)
-            return rawAngle * 0.001533203125; // 6.28 / 4096 = 0.001533203125 (radians)
-        else
-            return rawAngle * 0.087890625; // or 360/4096 = 0.087890625 (degrees)
+        if (RobotBase.isReal()) {
+            double rawAngle = getRawValue();
 
+            // TODO: implement angle offset
+            
+            value = rawAngle * 0.001533203125; // 6.28 / 4096 = 0.001533203125 (radians)
+        }
+
+        if (reportRadians)
+            return value;
+        else
+            return Utility.radiansToDegrees(value);
     }
 
     public void setDistancePerPulse(double dpp) {

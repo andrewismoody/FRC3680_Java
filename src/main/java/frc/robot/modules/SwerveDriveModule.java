@@ -810,7 +810,7 @@ public class SwerveDriveModule implements DriveModule {
         }
 
         // update fake gyro angle - will append the amount of change from this period to the current value
-        gyro.appendGyroSimValue(Utility.radiansToDegrees(thisRotationSpeed * fakeGyroRate));
+        gyro.appendSimValueDeg(Utility.radiansToDegrees(thisRotationSpeed * fakeGyroRate));
         previousRotationSpeed = thisRotationSpeed;
 
         // update dashboard

@@ -1,10 +1,13 @@
 package frc.robot.encoder;
 
+import edu.wpi.first.wpilibj.RobotBase;
+
 public class QuadEncoder implements Encoder {
     
     edu.wpi.first.wpilibj.Encoder internalEncoder;
     double angleOffsetRad = 0.0; // angle to subtract from actual angle to zero the encoder
     double multiplier = 1.0;
+    double value = 0.0;
 
     public void setMultiplier(double value) {
         multiplier = value;
@@ -53,13 +56,24 @@ public class QuadEncoder implements Encoder {
     }
 
     public double getRawValue() {
-        return internalEncoder.getRaw() * multiplier;
+        // TODO not sure raw value should be modifying the output
+        if (RobotBase.isReal())
+            value = internalEncoder.getRaw() * multiplier;
+
+        return value * multiplier;
+    }
+
+    public void appendSimValueRad(double angleRad) {
+        value += angleRad;
     }
 
     public double getDistance() {
         // TODO: implement angle offset
         
-        return internalEncoder.getDistance();
+        if (RobotBase.isReal())
+            value = internalEncoder.getDistance();
+
+        return value;
     }
 
     public double getAngleOffsetRad() {

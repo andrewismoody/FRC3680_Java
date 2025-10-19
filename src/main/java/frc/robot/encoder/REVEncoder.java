@@ -3,12 +3,15 @@ package frc.robot.encoder;
 import com.revrobotics.REVLibError;
 import com.revrobotics.RelativeEncoder;
 
+import edu.wpi.first.wpilibj.RobotBase;
+
 public class REVEncoder implements Encoder {
     
     RelativeEncoder internalEncoder;
     double angleOffsetRad = 0.0; // angle to subtract from actual angle to zero the encoder
     double multiplier = 1.0;
     long giveUpTime = 1000;
+    double value = 0.0;
 
     public void setMultiplier(double value) {
         multiplier = value;
@@ -56,8 +59,17 @@ public class REVEncoder implements Encoder {
         return angleOffsetRad;
     }
 
+    public void appendSimValueRad(double angleRad) {
+        // REV Encoder reports rotations, not radians or degrees
+        value += angleRad / (Math.PI * 2);
+    }
+
     public double getRawValue() {
-        return internalEncoder.getPosition() * multiplier + angleOffsetRad;
+        if (RobotBase.isReal())
+            // REV Encoder reports rotations, not radians or degrees
+            value = internalEncoder.getPosition() * multiplier + (angleOffsetRad / (Math.PI * 2));
+
+        return value;
     }
 
     public double getDistanceDeg() {
@@ -65,6 +77,7 @@ public class REVEncoder implements Encoder {
     }
 
     public void setZeroPosition() {
+        value = angleOffsetRad;
         var result = internalEncoder.setPosition(angleOffsetRad);
         var sleepTime = 10L;
         var elapsedTime = 0L;
