@@ -3,7 +3,6 @@ package frc.robot.misc;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Pose3d;
 import edu.wpi.first.math.geometry.Rotation2d;
-import edu.wpi.first.math.geometry.Rotation3d;
 import edu.wpi.first.math.geometry.Transform3d;
 import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.geometry.Translation3d;
@@ -15,9 +14,18 @@ import frc.robot.action.Group;
 public class Utility {
     static boolean initialized = false;
 
-    public static Translation2d fieldSize = Translation2d.kZero;
+    static Translation2d fieldSize = Translation2d.kZero;
     static Translation2d fieldCenter = new Translation2d(fieldSize.getX() / 2.0, fieldSize.getY() / 2.0);
     static Transform3d redStartTransform = null;
+
+    public static void setRedStartTransform(Transform3d transform) {
+        redStartTransform = transform;
+    }
+
+    public static void setFieldSize(Translation2d size) {
+        fieldSize = size;
+        fieldCenter = new Translation2d(fieldSize.getX() / 2.0, fieldSize.getY() / 2.0);
+    }
 
     static void Initialize() {
         if (!initialized) {
@@ -25,9 +33,6 @@ public class Utility {
 
             if (fieldSize == Translation2d.kZero)
                 throw new RuntimeException("Utility.fieldSize not set - you must set this to your Constants.fieldSize in RobotInit");
-            
-            fieldCenter = new Translation2d(fieldSize.getX() / 2.0, fieldSize.getY() / 2.0);
-            redStartTransform = new Transform3d(new Translation3d(fieldCenter), new Rotation3d(new Rotation2d(Math.PI)));
 
             initialized = true;
         }

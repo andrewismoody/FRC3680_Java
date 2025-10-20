@@ -7,19 +7,33 @@ import com.revrobotics.spark.SparkMax;
 import com.revrobotics.spark.SparkBase.PersistMode;
 import com.revrobotics.spark.config.SparkMaxConfig;
 
+import edu.wpi.first.math.controller.PIDController;
+import edu.wpi.first.math.estimator.DifferentialDrivePoseEstimator;
+import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Pose3d;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Rotation3d;
 import edu.wpi.first.math.geometry.Translation3d;
+import edu.wpi.first.math.kinematics.DifferentialDriveKinematics;
+import edu.wpi.first.math.kinematics.DifferentialDriveWheelPositions;
+import edu.wpi.first.math.util.Units;
 import edu.wpi.first.networktables.NetworkTable;
+import edu.wpi.first.networktables.NetworkTableEntry;
 import edu.wpi.first.networktables.NetworkTableInstance;
+import edu.wpi.first.networktables.StructPublisher;
 import edu.wpi.first.wpilibj.RobotBase;
 import edu.wpi.first.wpilibj.drive.DifferentialDrive;
+import edu.wpi.first.wpilibj.drive.DifferentialDrive.WheelSpeeds;
 import edu.wpi.first.wpilibj.motorcontrol.MotorController;
+import edu.wpi.first.wpilibj.smartdashboard.Field2d;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import frc.robot.action.Group;
+import frc.robot.encoder.Encoder;
 import frc.robot.gyro.Gyro;
+import frc.robot.misc.Utility;
+import frc.robot.positioner.LimelightHelpers.PoseEstimate;
 import frc.robot.positioner.Positioner;
+import frc.robot.z2024.Constants;
 import frc.robot.action.Action;
 import frc.robot.action.ActionPose;
 
@@ -53,14 +67,50 @@ public class DifferentialDriveModule implements DriveModule {
     ArrayList<ActionPose> actionPoses = new ArrayList<ActionPose>();
     ActionPose targetPose;
 
-    NetworkTable myTable;
+    DifferentialDrivePoseEstimator poseEstimator;
+    DifferentialDriveKinematics kinematics;
+    Pose3d currentPose = Pose3d.kZero;
+    Field2d fieldPosition;
 
-    public DifferentialDriveModule(String ModuleID, Gyro Gyro, Positioner Positioner, MotorController LeftMotor, MotorController RightMotor) {
+    double angleOffset = 0.0;
+    double leftDistance = 0.0;
+    double rightDistance = 0.0;
+    double floatTolerance;
+    double fakeGyroRate = 0.06; // how fast the robot can rotate in radians per timeslice (0.02s)
+    double elapsedTime = 0.0;
+    double previousTime = 0.0;
+    double driveRatio = 1.0; // wheelCircumference / gearRatio
+    double driveEncSimRate = 12.0;
+   
+    PIDController forwardPidController;
+    PIDController rotationPidController;
+
+    Encoder leftDriveEncoder;
+    Encoder rightDriveEncoder;
+
+    NetworkTable myTable;
+    private NetworkTableEntry startupAngleEntry;
+    private NetworkTableEntry elapsedTimeEntry;
+    // private NetworkTableEntry rotationSpeedEntry;
+    // private NetworkTableEntry driveSpeedEntry;
+    private NetworkTableEntry rotationPidSetpointsEntry;
+    private NetworkTableEntry forwardPidSetpointsEntry;
+    private NetworkTableEntry fieldOrientedEntry;
+    private NetworkTableEntry targetActionPoseEntry;
+    private NetworkTableEntry currentGyroAngleEntry;
+    StructPublisher<Pose3d> currentPosePublisher;
+
+    public DifferentialDriveModule(String ModuleID, Gyro Gyro, Positioner Positioner, MotorController LeftMotor, Encoder LeftDriveEncoder, MotorController RightMotor, Encoder RightDriveEncoder, double DriveRatio, double FloatTolerance) {
         moduleID = ModuleID;
         leftMotor = LeftMotor;
         rightMotor = RightMotor;
         positioner = Positioner;
         gyro = Gyro;
+        driveRatio = DriveRatio;
+        floatTolerance = FloatTolerance;
+
+        leftDriveEncoder = LeftDriveEncoder;
+        rightDriveEncoder = RightDriveEncoder;
 
         myTable = NetworkTableInstance.getDefault().getTable(moduleID);
 
@@ -74,10 +124,42 @@ public class DifferentialDriveModule implements DriveModule {
 
         driveController = new DifferentialDrive(leftMotor::set, rightMotor::set);
         driveController.setSafetyEnabled(false);
+
+        kinematics = new DifferentialDriveKinematics(Constants.robotSize.getY());
+        poseEstimator = new DifferentialDrivePoseEstimator(kinematics, new Rotation2d(getGyroRadians()), leftDistance, rightDistance, Pose2d.kZero);
+        fieldPosition = new Field2d();
+        
+        var posKp = 2.0; 
+        var posKi = 0; //posKp * 0.10;
+        var posKd = 0; //posKi * 3.0;
+        forwardPidController = new PIDController(posKp, posKi, posKd);
+
+        // bumping this up to 1.0 after adjusting the rotation multiplier from processrotation
+        var rotKp = 1.0;
+        var rotKi = 0; // rotKp * 0.10;
+        var rotKd = 0; //rotKi * 3.0;
+        rotationPidController = new PIDController(rotKp, rotKi, rotKd);
+        rotationPidController.enableContinuousInput(-Math.PI, Math.PI);
+        rotationPidController.setTolerance(floatTolerance);
     }
 
     public void ResetGyro() {
         gyro.reset();
+    }
+
+    public double getGyroAngle() {
+        // typically returned in degrees
+        var newAngle = gyro.getAngle();
+
+        newAngle -= angleOffset;
+
+        return newAngle;        
+    }
+
+    public double getGyroRadians() {
+        double gyroRaw = getGyroAngle();
+
+        return Units.degreesToRadians(gyroRaw);  
     }
 
     public void ResetEncoders() {
@@ -105,26 +187,101 @@ public class DifferentialDriveModule implements DriveModule {
     }
 
     public void ProcessState(boolean isAuto) {        
+        var now = System.currentTimeMillis();
+
+        if (previousTime == 0) {
+            elapsedTime = 0;
+        } else {
+        elapsedTime = now - previousTime;
+        }
+        previousTime = now;
+        elapsedTimeEntry.setDouble(elapsedTime);
+
+        double currentGyroAngle = getGyroRadians();
+        currentGyroAngleEntry.setDouble(currentGyroAngle);
+
+        var limelightAngle = Utility.radiansToDegrees(currentGyroAngle);
+        myTable.getEntry("limelightAngleRaw").setDouble(limelightAngle);
+        positioner.SetRobotOrientation("", limelightAngle, 0,0,0,0,0);
+
+        if (RobotBase.isReal()) {
+            PoseEstimate visionEstimate = positioner.GetPoseEstimate();
+            if (visionEstimate != null)
+                poseEstimator.addVisionMeasurement(visionEstimate.pose, visionEstimate.latency);
+        }
+
+        currentPose = new Pose3d(poseEstimator.getEstimatedPosition());
+        currentPosePublisher.set(currentPose);
+
+        // update simulator field position
+        fieldPosition.setRobotPose(currentPose.toPose2d());
+        SmartDashboard.putData("Field", fieldPosition);
+
+        currentPosition = currentPose.getTranslation();
+        var currentRotation = Rotation2d.fromRadians(currentGyroAngle);
+
         currentForwardSpeed = controller.ApplyModifiers(forwardSpeed);
-        if (debugSpeed && forwardSpeed != previousForwardSpeed) {
-            System.out.printf("%s forwardSpeed: %f\n", moduleID, forwardSpeed);
-            previousForwardSpeed = forwardSpeed;
-        }
-
         currentRotationAngle = controller.ApplyModifiers(rotationAngle);
-        if (debugAngle && rotationAngle != previousRotationAngle) {
-            System.out.printf("%s rotationAngle: %f\n", moduleID, rotationAngle);
-            previousRotationAngle = rotationAngle;
+
+        WheelSpeeds speeds = DifferentialDrive.curvatureDriveIK(currentForwardSpeed, currentRotationAngle, true);
+        myTable.getEntry("leftSpeed").setDouble(speeds.left);
+        myTable.getEntry("rightSpeed").setDouble(speeds.right);
+       
+        var leftDistanceAccumulation = speeds.left * driveEncSimRate;
+        var rightDistanceAccumulation = speeds.right * driveEncSimRate;
+        if (!RobotBase.isReal()) {
+            if (leftDriveEncoder != null) 
+                // fake adjust current distance to simulate encoder input
+                leftDriveEncoder.appendSimValueRad(leftDistanceAccumulation);
+            if (rightDriveEncoder != null)
+                // fake adjust current distance to simulate encoder input
+                rightDriveEncoder.appendSimValueRad(rightDistanceAccumulation);
         }
 
-        driveController.arcadeDrive(currentForwardSpeed, currentRotationAngle);
+        leftDistance = leftDriveEncoder == null ?
+            leftDistance + leftDistanceAccumulation :
+            leftDriveEncoder.getRawValue() * driveRatio; // driveRatio is wheelCircumference / gearRatio
+
+        rightDistance = rightDriveEncoder == null ?
+            rightDistance + rightDistanceAccumulation :
+            rightDriveEncoder.getRawValue() * driveRatio; // driveRatio is wheelCircumference / gearRatio
+  
+        var positions = new DifferentialDriveWheelPositions(leftDistance, rightDistance);
+        //odometry.update(currentRotation, positions);
+        poseEstimator.update(currentRotation, positions);
+
+        // update fake gyro angle - will append the amount of change from this period to the current value
+        gyro.appendSimValueDeg(Utility.radiansToDegrees(currentRotationAngle * fakeGyroRate));
 
         // update dashboard
         SmartDashboard.putNumberArray("RobotDrive Motors", new double[]{leftMotor.get(), rightMotor.get()});
     }
 
     public void Initialize() {
+        var startupAngle = getGyroAngle();
 
+        currentGyroAngleEntry = myTable.getEntry("currentGyroAngle");
+        startupAngleEntry = myTable.getEntry("startupAngle");
+        elapsedTimeEntry = myTable.getEntry("elapsedTime");
+        // rotationSpeedEntry = myTable.getEntry("rotationSpeed");
+        // driveSpeedEntry = myTable.getEntry("driveSpeed");
+        rotationPidSetpointsEntry = myTable.getEntry("rotationPidSetpoints");
+        forwardPidSetpointsEntry = myTable.getEntry("forwardPidSetpoints");
+        fieldOrientedEntry = myTable.getEntry("fieldOriented");
+        targetActionPoseEntry = myTable.getEntry("targetActionPose");
+
+        startupAngleEntry.setDouble(startupAngle);
+        // rotationSpeedEntry.setDouble(rotationSpeed);
+        // driveSpeedEntry.setDouble(driveSpeed);
+        rotationPidSetpointsEntry.setString(String.format("%f %f %f", rotationPidController.getP(), rotationPidController.getI(), rotationPidController.getD()));
+        forwardPidSetpointsEntry.setString(String.format("%f %f %f", forwardPidController.getP(), forwardPidController.getI(), forwardPidController.getD()));
+        fieldOrientedEntry.setBoolean(isFieldOriented);
+        targetActionPoseEntry.setString("none");
+
+        // for AdvantageScope Visualization
+        currentPosePublisher = myTable.getStructTopic("currentPose", Pose3d.struct).publish();
+
+        positioner.Initialize();
     }
 
     public Pose3d GetPositionerOffset() {
@@ -154,6 +311,7 @@ public class DifferentialDriveModule implements DriveModule {
     }
   
     public void ProcessLateralSpeed(double value) {
+        // Not implemented for differential drive
     }
   
     public void ProcessRotationAngle(double value) {
