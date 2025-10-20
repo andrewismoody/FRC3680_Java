@@ -68,11 +68,12 @@ public class Robot extends TimedRobot {
   final Timer gc_timer = new Timer();
 
   final boolean isFieldOriented = true;
+  // TODO 1: make shoot a dual motor module after rewrite
   SingleMotorModule shoot = new SingleMotorModule("shoot", can_shoot, Constants.shootSpeed, false, null, null, null, 1.0, 1.0, Constants.shootDistancePerRotation, 0.0);
   SingleMotorModule feed = new SingleMotorModule("feed", can_feed, Constants.feedSpeed, false, null, null, null, 1.0, 1.0, Constants.feedDistancePerRotation, 0.0);
   SingleMotorModule pickup = new SingleMotorModule("pickup", can_feed, Constants.pickupSpeed, false, null, null, null, 1.0, 1.0, Constants.pickupDistancePerRotation, 0.0);
 
-  DifferentialDriveModule diffDrive = new DifferentialDriveModule("diffDrive", m_gyro, m_positioner, can_drive_left, enc_drive_left, can_drive_right, enc_drive_right, Constants.driveRatio, Constants.floatTolerance);
+  DifferentialDriveModule diffDrive = new DifferentialDriveModule("diffDrive", m_gyro, m_positioner, Constants.driveSpeed, can_drive_left, enc_drive_left, can_drive_right, enc_drive_right, Constants.driveRatio, Constants.floatTolerance, Constants.frameSize.getNorm());
 
   ModuleController modules;
 

@@ -21,7 +21,7 @@ public class ActionPoses {
 
         // this spits out coordinates in format for python plotting
         var outputFormatter = "(\"%s %d %d %d %s\", %f, %f),\n";
-        for (int i = 1; i <= 3; i++) {
+        for (int i = 1; i <= 6; i++) {
             // waypoint i, Lookat stage
             var pose = new ActionPose(Group.Travel, Location.Waypoint.getValue(), i, Position.Any.getValue(), Action.Any,
             new AutoTarget(Constants.getFieldPosition(Group.Any, Location.Waypoint, i), Constants.getFieldPosition(Group.Any, Location.Interest, 1)));
@@ -30,34 +30,34 @@ public class ActionPoses {
         }
 
         for (int i = 1; i <= 3; i++) {
-            var reefTag = Constants.stageIndexToTag.get(i);
+            var stageTag = Constants.stageIndexToTag.get(i);
             // get perpendicular direction facing toward
             var rotation = diffDriveModule.GetPositionerOffset().getRotation().toRotation2d();
             rotation = Rotation2d.kCW_90deg.minus(rotation);
 
             // align left scoring i, match reefTag rotation
             var pose = new ActionPose(Group.AlignLeft, Location.Stage.getValue(), i, Position.Any.getValue(), Action.Any,
-                new AutoTarget(Constants.getFieldPosition(Group.AlignLeft, Location.Stage, i), Constants.getKnownRotation(Group.Any, Location.Tag, reefTag).plus(rotation)));
+                new AutoTarget(Constants.getFieldPosition(Group.AlignLeft, Location.Stage, i), Constants.getKnownRotation(Group.Any, Location.Tag, stageTag).plus(rotation)));
             diffDriveModule.AddActionPose(pose);
             System.out.printf(outputFormatter, pose.group, pose.location, pose.locationIndex, pose.position, pose.action, Utility.metersToInches(pose.target.Position.getX()), Utility.metersToInches(pose.target.Position.getY()));
                 // approach left scoring i, match reefTag rotation
             pose = new ActionPose(Group.ApproachLeft, Location.Stage.getValue(), i, Position.Any.getValue(), Action.Any,
-                new AutoTarget(Constants.getFieldPosition(Group.ApproachLeft, Location.Stage, i), Constants.getKnownRotation(Group.Any, Location.Tag, reefTag).plus(rotation)));
+                new AutoTarget(Constants.getFieldPosition(Group.ApproachLeft, Location.Stage, i), Constants.getKnownRotation(Group.Any, Location.Tag, stageTag).plus(rotation)));
             diffDriveModule.AddActionPose(pose);
             System.out.printf(outputFormatter, pose.group, pose.location, pose.locationIndex, pose.position, pose.action, Utility.metersToInches(pose.target.Position.getX()), Utility.metersToInches(pose.target.Position.getY()));
             // align right scoring i, match reefTag rotation
             pose = new ActionPose(Group.AlignRight, Location.Stage.getValue(), i, Position.Any.getValue(), Action.Any,
-                new AutoTarget(Constants.getFieldPosition(Group.AlignRight, Location.Stage, i), Constants.getKnownRotation(Group.Any, Location.Tag, reefTag).plus(rotation)));
+                new AutoTarget(Constants.getFieldPosition(Group.AlignRight, Location.Stage, i), Constants.getKnownRotation(Group.Any, Location.Tag, stageTag).plus(rotation)));
             diffDriveModule.AddActionPose(pose);
             System.out.printf(outputFormatter, pose.group, pose.location, pose.locationIndex, pose.position, pose.action, Utility.metersToInches(pose.target.Position.getX()), Utility.metersToInches(pose.target.Position.getY()));
             // approach right scoring i, match reefTag rotation
             pose = new ActionPose(Group.ApproachRight, Location.Stage.getValue(), i, Position.Any.getValue(), Action.Any,
-                new AutoTarget(Constants.getFieldPosition(Group.ApproachRight, Location.Stage, i), Constants.getKnownRotation(Group.Any, Location.Tag, reefTag).plus(rotation)));
+                new AutoTarget(Constants.getFieldPosition(Group.ApproachRight, Location.Stage, i), Constants.getKnownRotation(Group.Any, Location.Tag, stageTag).plus(rotation)));
             diffDriveModule.AddActionPose(pose);
             System.out.printf(outputFormatter, pose.group, pose.location, pose.locationIndex, pose.position, pose.action, Utility.metersToInches(pose.target.Position.getX()), Utility.metersToInches(pose.target.Position.getY()));
                 // scoring i, match reefTag rotation
             pose = new ActionPose(Group.Score, Location.Stage.getValue(), i, Position.Any.getValue(), Action.Any,
-                new AutoTarget(Constants.getFieldPosition(Group.Any, Location.Stage, i), Constants.getKnownRotation(Group.Any, Location.Tag, reefTag).plus(rotation)));
+                new AutoTarget(Constants.getFieldPosition(Group.Any, Location.Stage, i), Constants.getKnownRotation(Group.Any, Location.Tag, stageTag).plus(rotation)));
             diffDriveModule.AddActionPose(pose);
             System.out.printf(outputFormatter, pose.group, pose.location, pose.locationIndex, pose.position, pose.action, Utility.metersToInches(pose.target.Position.getX()), Utility.metersToInches(pose.target.Position.getY()));
         }

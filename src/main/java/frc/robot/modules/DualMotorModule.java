@@ -65,6 +65,7 @@ public class DualMotorModule implements RobotModule {
     private NetworkTableEntry ntDriveDistance;
     private NetworkTableEntry ntTargetPose;
 
+    // TODO 1: rewrite this to just instantiate 2 single motor modules instead of rewriting all the logic here
     public DualMotorModule(String ModuleID, MotorController LeftDriveMotor, MotorController RightDriveMotor, double DriveSpeed, boolean InvertLeft, boolean InvertRight, Switch UpperLimit, Switch LowerLimit, Encoder RightEnc, Encoder LeftEnc) {
         moduleID = ModuleID;
         leftDriveMotor = LeftDriveMotor;

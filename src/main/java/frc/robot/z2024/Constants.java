@@ -69,12 +69,12 @@ public class Constants {
     public static final Translation2d blueStartPosition = new Translation2d(robotOffset.getX(), 0.0);
     // 3 ft. 5½ in., 7 ft. ⅜ in., 10 ft. 7⅜ in. (~105 cm, ~214 cm, ~324 cm) from mid field to the center 
     public static final double[] blueStartY = new double[] {
-        Constants.fieldCenter.getY() - Utility.inchesToMeters(36),
+        Constants.fieldSize.getY() - Utility.inchesToMeters(36),
         Utility.inchesToMeters(144),
         Utility.inchesToMeters(72),
     };
 
-    public static final double waypointOffset = robotSize.getNorm() * 1.25;
+    public static final double waypointOffset = robotSize.getNorm() * 1.875;
     public static final double alignOffset = robotSize.getNorm() * 0.75;
     public static final double scoreOffset = Utility.inchesToMeters(-3);
 
@@ -136,23 +136,24 @@ public class Constants {
                     case 2:
                         Pose2d bisectorAngle2 = Utility.perpendicularBisectorAngle(getBlueStartFieldPosition2d(Group.Any, Location.Waypoint, 1), getBlueStartFieldPosition2d(Group.Any, Location.Waypoint, 3));
                         // System.out.printf("bisector 2: (%f, %f)@%f\n", Utility.metersToInches(bisectorAngle2.getX()), Utility.metersToInches(bisectorAngle2.getY()), bisectorAngle2.getRotation().getDegrees());
-                        selectedLocation = Utility.projectParallel(new Translation3d(Utility.getIntersection(getBlueStartFieldPose(Group.Any, Location.Waypoint, 1), getBlueStartFieldPose(Group.Any, Location.Waypoint, 3))), bisectorAngle2.getRotation(), waypointOffset);
+                        selectedLocation = Utility.projectParallel(new Translation3d(Utility.getIntersection(getBlueStartFieldPose(Group.Any, Location.Tag, 15), getBlueStartFieldPose(Group.Any, Location.Tag, 16))), bisectorAngle2.getRotation(), waypointOffset);
                         break;
                     case 4:
                         Pose2d bisectorAngle4 = Utility.perpendicularBisectorAngle(getBlueStartFieldPosition2d(Group.Any, Location.Waypoint, 3), getBlueStartFieldPosition2d(Group.Any, Location.Waypoint, 5));
                         // System.out.printf("bisector 4: (%f, %f)@%f\n", Utility.metersToInches(bisectorAngle4.getX()), Utility.metersToInches(bisectorAngle4.getY()), bisectorAngle4.getRotation().getDegrees());
-                        selectedLocation = Utility.projectParallel(new Translation3d(Utility.getIntersection(getBlueStartFieldPose(Group.Any, Location.Waypoint, 3), getBlueStartFieldPose(Group.Any, Location.Waypoint, 5))), bisectorAngle4.getRotation(), waypointOffset);
+                        selectedLocation = Utility.projectParallel(new Translation3d(Utility.getIntersection(getBlueStartFieldPose(Group.Any, Location.Tag, 16), getBlueStartFieldPose(Group.Any, Location.Tag, 14))), bisectorAngle4.getRotation(), waypointOffset);
                         break;
                     case 6:
                         Pose2d bisectorAngle6 = Utility.perpendicularBisectorAngle(getBlueStartFieldPosition2d(Group.Any, Location.Waypoint, 5), getBlueStartFieldPosition2d(Group.Any, Location.Waypoint, 1));
                         // System.out.printf("bisector 6: (%f, %f)@%f\n", Utility.metersToInches(bisectorAngle6.getX()), Utility.metersToInches(bisectorAngle6.getY()), bisectorAngle6.getRotation().getDegrees());
-                        selectedLocation = Utility.projectParallel(new Translation3d(Utility.getIntersection(getBlueStartFieldPose(Group.Any, Location.Waypoint, 5), getBlueStartFieldPose(Group.Any, Location.Waypoint, 1))), bisectorAngle6.getRotation(), waypointOffset);
+                        selectedLocation = Utility.projectParallel(new Translation3d(Utility.getIntersection(getBlueStartFieldPose(Group.Any, Location.Tag, 14), getBlueStartFieldPose(Group.Any, Location.Tag, 15))), bisectorAngle6.getRotation(), waypointOffset);
                         break;
                     default:
                         break;
                 }
                 break;
             case Stage:
+            // TODO 1: none of these have been evaluated at all for 2024 season
                 switch (group) {
                     case ApproachLeft:
                         selectedLocation = Utility.projectPerpendicular(getBlueStartFieldPosition(Group.Any, Location.Tag, stageTag), getBlueStartKnownRotation(Group.Any, Location.Tag, stageTag), robotCenter.getY());
@@ -175,6 +176,7 @@ public class Constants {
                 }
                 break;
             case Speaker:
+                // TODO 1: none of these have been evaluated at all for 2024 season
                 switch (group) {
                     case Align:
                         selectedLocation = Utility.projectPerpendicular(getBlueStartFieldPosition(Group.Any, Location.Speaker, index), getBlueStartKnownRotation(Group.Any, Location.Tag, speakerTag), alignOffset);
@@ -184,7 +186,8 @@ public class Constants {
                         break;
                 }
                 break;
-                case Source:
+            case Source:
+                // TODO 1: none of these have been evaluated at all for 2024 season
                 switch (group) {
                     case Align:
                         selectedLocation = Utility.projectPerpendicular(getBlueStartFieldPosition(Group.Any, Location.Source, index), getBlueStartKnownRotation(Group.Any, Location.Tag, sourceTag), alignOffset);
@@ -226,7 +229,7 @@ public class Constants {
                 switch (index) {
                     case 1:
                         // center of stage structure
-                        selectedLocation = new Translation3d(Utility.inchesToMeters(Utility.inchesToMeters(121.0)), fieldCenter.getY(), 0);
+                        selectedLocation = new Translation3d(Utility.inchesToMeters(190.0), fieldCenter.getY(), 0);
                         break;
                     case 2:
                         // central speaker scoring position
