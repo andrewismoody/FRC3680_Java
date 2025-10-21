@@ -70,6 +70,7 @@ public class SingleMotorModule implements RobotModule,AutoCloseable {
     private NetworkTableEntry settleCountEntry;
     private NetworkTableEntry lowerLimitEntry;
     private NetworkTableEntry targetDistanceEntry;
+    private NetworkTableEntry deltaDistanceEntry;
     private NetworkTableEntry driveDistanceEntry;
     private NetworkTableEntry rotationCountEntry;
     private NetworkTableEntry currentDriveSpeedEntry;
@@ -115,6 +116,7 @@ public class SingleMotorModule implements RobotModule,AutoCloseable {
         settleCountEntry = myTable.getEntry("settleCount");
         lowerLimitEntry = myTable.getEntry("lowerLimit");
         targetDistanceEntry = myTable.getEntry("targetDistance");
+        deltaDistanceEntry = myTable.getEntry("deltaDistance");
         driveDistanceEntry = myTable.getEntry("driveDistance");
         rotationCountEntry = myTable.getEntry("rotationCount");
         currentDriveSpeedEntry = myTable.getEntry("currentDriveSpeed");
@@ -180,6 +182,7 @@ public class SingleMotorModule implements RobotModule,AutoCloseable {
             targetPoseEntry.setString(String.format("%s %s %d %s %s", group, location, locationIndex, position, action));
 
             this.targetPose = targetPose;
+            targetDistanceEntry.setDouble(targetPose.target.Distance);
 
             // reset settle counter on new target
             settleCount = 0;
@@ -251,8 +254,8 @@ public class SingleMotorModule implements RobotModule,AutoCloseable {
             // we have a target and we're not manually applying a value, try to get to it.
             // the x axis of the position of the pose is the rotation count (distance along the motor axis)
             var targetRotation = target.Distance;
-            var targetDistance = Math.abs(targetRotation - rotationCount);
-            targetDistanceEntry.setDouble(targetDistance);
+            var targetDistance = targetRotation - rotationCount;
+            deltaDistanceEntry.setDouble(targetDistance);
             previousTargetDistance = targetDistance;
 
             var shouldMove = (Math.abs(targetDistance) > m_floatTolerance);
@@ -268,10 +271,10 @@ public class SingleMotorModule implements RobotModule,AutoCloseable {
                 }
             } else {
                 currentDriveSpeed = pidController.calculate(rotationCount, targetRotation);
-                currentDriveSpeed = controller.ApplyModifiers(invert ? -currentDriveSpeed : currentDriveSpeed);
+                currentDriveSpeed = controller.ApplyModifiers(currentDriveSpeed);
             }
 
-            var driveDistance = Math.abs(rotationCount - previousRotationCount);
+            var driveDistance = rotationCount - previousRotationCount;
             driveDistanceEntry.setDouble(driveDistance);
         }
     }

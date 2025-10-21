@@ -35,6 +35,11 @@ public class QuadEncoder implements Encoder {
         setReverseDirection(reverse);
     }
 
+    public double getVelocity() {
+        // Not implemented
+        return 0.0;
+    }
+
     public boolean isAbsolute() {
         return false;
     }

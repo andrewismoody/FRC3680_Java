@@ -12,7 +12,6 @@ import frc.robot.auto.AutoEventTime;
 import frc.robot.auto.AutoSequence;
 import frc.robot.misc.Utility;
 import frc.robot.modules.DualMotorModule;
-import frc.robot.modules.SingleMotorModule;
 
 public class ScoreSpeaker extends AutoSequence {
   private final AutoController autoController;
@@ -39,21 +38,18 @@ public class ScoreSpeaker extends AutoSequence {
     var driverLocation = Utility.getDriverLocation();
 
     // Target Poses
-    var pose_start1 = new ActionPose(Group.Start, Location.Start.getValue(), driverLocation, Position.Trough.getValue(), Action.Pickup, null);
-    var pose_waypoint4_Stage = new ActionPose(Group.Travel, Location.Waypoint.getValue(), 4, Position.Trough.getValue(), Action.Pickup, null);
-    var pose_waypoint3_Stage = new ActionPose(Group.Travel, Location.Waypoint.getValue(), 3, Position.Trough.getValue(), Action.Pickup, null);
-    var pose_waypoint2_Stage = new ActionPose(Group.Travel, Location.Waypoint.getValue(), 2, Position.Trough.getValue(), Action.Pickup, null);
-    var pose_waypoint1_Stage = new ActionPose(Group.Travel, Location.Waypoint.getValue(), 1, Position.Trough.getValue(), Action.Pickup, null);
-    var pose_align3_Reef = new ActionPose(Group.AlignLeft, Location.Stage.getValue(), 3, Position.Trough.getValue(), Action.Pickup, null);
-    var pose_align4_Reef = new ActionPose(Group.AlignLeft, Location.Stage.getValue(), 4, Position.Trough.getValue(), Action.Pickup, null);
-    var pose_approach3_Reef = new ActionPose(Group.ApproachLeft, Location.Stage.getValue(), 3, Position.Trough.getValue(), Action.Pickup, null);
-    var pose_approach4_Reef = new ActionPose(Group.ApproachLeft, Location.Stage.getValue(), 4, Position.Trough.getValue(), Action.Pickup, null);
-    var pose_score3_Lower = new ActionPose(Group.Score, Location.Stage.getValue(), 3, Position.Lower.getValue(), Action.Pickup, null);
-    var pose_score4_Lower = new ActionPose(Group.Score, Location.Stage.getValue(), 4, Position.Lower.getValue(), Action.Pickup, null);
-    var pose_score3_Trough = new ActionPose(Group.Score, Location.Any.getValue(), 3, Position.Trough.getValue(), Action.Pickup, null);
-    var pose_score4_Trough = new ActionPose(Group.Score, Location.Any.getValue(), 4, Position.Trough.getValue(), Action.Pickup, null);
-    var pose_align1_Speaker = new ActionPose(Group.Align, Location.Speaker.getValue(), 1, Position.Trough.getValue(), Action.Pickup, null);
-    var pose_pickup1_Speaker = new ActionPose(Group.Pickup, Location.Speaker.getValue(), 1, Position.Trough.getValue(), Action.Pickup, null);
+    var pose_start1 = new ActionPose(Group.Start, Location.Start.getValue(), driverLocation, Position.Ground.getValue(), Action.Pickup, null);
+    var pose_waypoint4_Stage = new ActionPose(Group.Travel, Location.Waypoint.getValue(), 4, Position.Ground.getValue(), Action.Pickup, null);
+    var pose_waypoint3_Stage = new ActionPose(Group.Travel, Location.Waypoint.getValue(), 3, Position.Ground.getValue(), Action.Pickup, null);
+    var pose_waypoint2_Stage = new ActionPose(Group.Travel, Location.Waypoint.getValue(), 2, Position.Ground.getValue(), Action.Pickup, null);
+    var pose_waypoint1_Stage = new ActionPose(Group.Travel, Location.Waypoint.getValue(), 1, Position.Ground.getValue(), Action.Pickup, null);
+    var pose_align3_Reef = new ActionPose(Group.AlignLeft, Location.Stage.getValue(), 3, Position.Ground.getValue(), Action.Pickup, null);
+    var pose_align4_Reef = new ActionPose(Group.AlignLeft, Location.Stage.getValue(), 4, Position.Ground.getValue(), Action.Pickup, null);
+    var pose_approach3_Reef = new ActionPose(Group.ApproachLeft, Location.Stage.getValue(), 3, Position.Ground.getValue(), Action.Pickup, null);
+    var pose_approach4_Reef = new ActionPose(Group.ApproachLeft, Location.Stage.getValue(), 4, Position.Ground.getValue(), Action.Pickup, null);
+    var pose_score1_Upper = new ActionPose(Group.Score, Location.Speaker.getValue(), 1, Position.Upper.getValue(), Action.Pop, null);
+    var pose_align1_Speaker = new ActionPose(Group.Align, Location.Speaker.getValue(), 1, Position.Ground.getValue(), Action.Pickup, null);
+    var pose_pickup1_Speaker = new ActionPose(Group.Pickup, Location.Speaker.getValue(), 1, Position.Ground.getValue(), Action.Pickup, null);
 
     // var drive = modules.GetDriveModule();
     var shoot = (DualMotorModule) modules.GetModule("shoot");
@@ -70,11 +66,7 @@ public class ScoreSpeaker extends AutoSequence {
     var event_align1_speaker = CreateSyncAwaitEvent("Await Pose Align 1 Speaker", pose_align1_Speaker);
     var event_pickup1_speaker = CreateSyncAwaitEvent("Await Pose Pickup 1 Speaker", pose_pickup1_Speaker);
 
-    AutoEventTarget event_score3_lower = CreateSyncAwaitEvent("Await Pose Score 3 Lower", pose_score3_Lower);
-    AutoEventTarget event_score4_lower = CreateSyncAwaitEvent("Await Pose Score 4 Lower", pose_score4_Lower);
-
-    AutoEventTarget event_score3_trough = CreateSyncAwaitEvent("Await Pose Score 3 Trough", pose_score3_Trough);
-    AutoEventTarget event_score4_trough = CreateSyncAwaitEvent("Await Pose Score 4 Trough", pose_score4_Trough);
+    AutoEventTarget event_score1_upper = CreateSyncAwaitEvent("Await Pose Score 3 Upper", pose_score1_Upper);
 
     AutoEventTime event_openLatch = new AutoEventTime("Open Latch", false, 2000, AutoEvent.EventType.Boolean, autoController);
     event_openLatch.SetBoolEvent(true, shoot::ApplyValue);
@@ -91,30 +83,22 @@ public class ScoreSpeaker extends AutoSequence {
         Then(event_waypoint1_stage);
       case 2:
         Then(event_waypoint2_stage);
+        break;
       case 3:
         Then(event_waypoint3_stage);
+        Then(event_waypoint2_stage);
         break;
     }
 
-    Then(event_waypoint4_stage)
-      .Then(event_align3_reef)
-      .Then(event_approach3_reef)
-      .Then(event_score3_lower)
+    Then(event_align1_speaker)
+      .Then(event_score1_upper)
       .Then(event_openLatch)
       .Then(event_closeLatchAfter)
-      .Then(event_score3_trough)
       .Then(event_waypoint2_stage)
       .Then(event_waypoint1_stage)
       .Then(event_align1_speaker)
       .Then(event_pickup1_speaker)
       .Then(event_waitForLoading)
-      .Then(event_waypoint2_stage)
-      .Then(event_align4_reef)
-      .Then(event_approach4_reef)
-      .Then(event_score4_lower)
-      .Then(event_openLatch)
-      .Then(event_closeLatchAfter)
-      .Then(event_score4_trough)
       .Then(event_waypoint2_stage)
     ;
   }

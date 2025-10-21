@@ -44,6 +44,12 @@
     }
   },
   "NetworkTables": {
+    "Persistent Values": {
+      "open": false
+    },
+    "Retained Values": {
+      "open": false
+    },
     "transitory": {
       "SmartDashboard": {
         "Field": {
@@ -54,6 +60,15 @@
         }
       },
       "elevator": {
+        "open": true
+      },
+      "shoot": {
+        "open": true
+      },
+      "shoot_left": {
+        "open": true
+      },
+      "shoot_right": {
         "open": true
       },
       "slide": {

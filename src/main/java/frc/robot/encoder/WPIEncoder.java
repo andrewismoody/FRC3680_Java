@@ -35,6 +35,11 @@ public class WPIEncoder implements Encoder {
         setReverseDirection(reverse);
     }
 
+    public double getVelocity() {
+        // Not implemented
+        return 0.0;
+    }
+
     public void setAngleOffsetDeg(double value) {
         setAngleOffsetRad(value * 0.0174532);
     }

@@ -51,13 +51,26 @@ public class DualMotorModule implements RobotModule {
         rightDriveMotor.Initialize();
     }
 
-    public void AddActionPose(ActionPose newAction) {
-        if (GetActionPose(newAction.group, newAction.location, newAction.locationIndex, newAction.position, newAction.action) == null) {
-            actionPoses.add(newAction);
+    public void AddActionPose(ActionPose newpose) {
+        if (GetActionPose(newpose) == null) {
+            actionPoses.add(newpose);
         }
 
-        leftDriveMotor.AddActionPose(newAction);
-        rightDriveMotor.AddActionPose(newAction);
+        var inverted = new ActionPose(newpose.group, newpose.location, newpose.locationIndex, newpose.position, newpose.action, new AutoTarget(-newpose.target.Distance));
+
+        if (leftDriveMotor.invert)
+            leftDriveMotor.AddActionPose(inverted);
+        else
+            leftDriveMotor.AddActionPose(newpose);
+
+        if (rightDriveMotor.invert)
+            rightDriveMotor.AddActionPose(inverted);
+        else
+            rightDriveMotor.AddActionPose(newpose);
+    }
+
+    public ActionPose GetActionPose(ActionPose newAction) {
+        return GetActionPose(newAction.group, newAction.location, newAction.locationIndex, newAction.position, newAction.action);
     }
 
     public ActionPose GetActionPose(Group group, int location, int locationIndex, int position, Action action) {
@@ -95,10 +108,16 @@ public class DualMotorModule implements RobotModule {
     public void ProcessState(boolean isAuto) {
         leftDriveMotor.ProcessState(isAuto);
         rightDriveMotor.ProcessState(isAuto);
+
+        if (leftDriveMotor.targetPose == null && rightDriveMotor.targetPose == null)
+            targetPose = null;
     }
 
     public void SetController(ModuleController Controller) {
         controller = Controller;
+
+        leftDriveMotor.SetController(Controller);
+        rightDriveMotor.SetController(Controller);
     }   
 
     public String GetModuleID() {
@@ -120,8 +139,17 @@ public class DualMotorModule implements RobotModule {
     public void OverrideTargetActionPose(ActionPose newpose) {
         targetPose = newpose;
 
-        leftDriveMotor.OverrideTargetActionPose(newpose);
-        rightDriveMotor.OverrideTargetActionPose(newpose);
+        var inverted = new ActionPose(newpose.group, newpose.location, newpose.locationIndex, newpose.position, newpose.action, new AutoTarget(-newpose.target.Distance));
+
+        if (leftDriveMotor.invert)
+            leftDriveMotor.OverrideTargetActionPose(inverted);
+        else
+            leftDriveMotor.OverrideTargetActionPose(newpose);
+
+        if (rightDriveMotor.invert)
+            rightDriveMotor.OverrideTargetActionPose(inverted);
+        else
+            rightDriveMotor.OverrideTargetActionPose(newpose);
     }
 
     public void SetTargetActionPose(ActionPose actionPose) {
@@ -140,7 +168,7 @@ public class DualMotorModule implements RobotModule {
 
     // AddButtonMappedPose adds a position to the array and returns a reference to the function
     // always make a new instance, don't reuse button mappings as they will stomp on each other
-    public Consumer<Boolean> AddButtonMappedPose(ActionPose pose) {        
+    public Consumer<Boolean> AddButtonMappedPose(ActionPose pose) {    
         var setTarget = new Consumer<Boolean>() {
             boolean wasPressed = false;
 

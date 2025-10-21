@@ -5,12 +5,10 @@ public enum Position {
     // Any should always be -1, which is the 'wildcard' value and matches any Position
     Any(-1),
     Ground(0),
-    Trough(1),
-    Lower(2),
-    Middle(3),
-    Upper(4),
-    Processor(5),
-    None(7);
+    Lower(1),
+    Upper(2),
+    Processor(3),
+    None(4);
 
     private final int value;
 

@@ -64,6 +64,10 @@ public class REVEncoder implements Encoder {
         value += angleRad / (Math.PI * 2);
     }
 
+    public double getVelocity() {
+        return internalEncoder.getVelocity();
+    }
+
     public double getRawValue() {
         if (RobotBase.isReal())
             // REV Encoder reports rotations, not radians or degrees

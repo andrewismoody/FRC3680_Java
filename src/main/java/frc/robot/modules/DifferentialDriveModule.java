@@ -600,5 +600,6 @@ public class DifferentialDriveModule implements DriveModule {
 
     public void AbandonTarget() {
         targetPose = null;
+        targetActionPoseEntry.setValue("none");
     }
 }

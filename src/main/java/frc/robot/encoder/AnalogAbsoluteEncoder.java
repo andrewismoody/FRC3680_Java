@@ -26,6 +26,11 @@ public class AnalogAbsoluteEncoder implements Encoder {
         mypin = pin;
     }
 
+    public double getVelocity() {
+        // Not implemented
+        return 0.0;
+    }
+
     public double getAngleOffsetRad() {
         return angleOffsetRad;
     }

@@ -82,8 +82,8 @@ public class ActionPoses {
             System.out.printf(outputFormatter, pose.group, pose.location, pose.locationIndex, pose.position, pose.action, Utility.metersToInches(pose.target.Position.getX()), Utility.metersToInches(pose.target.Position.getY()));
         }
 
-        shoot.AddActionPose(new ActionPose(Group.Score, Location.Any.getValue(), -1, Position.Middle.getValue(), Action.Any, new AutoTarget(1.36)));
+        shoot.AddActionPose(new ActionPose(Group.Score, Location.Any.getValue(), -1, Position.Upper.getValue(), Action.Any, new AutoTarget(1.36)));
         shoot.AddActionPose(new ActionPose(Group.Score, Location.Any.getValue(), -1, Position.Lower.getValue(), Action.Any, new AutoTarget(0.55)));
-        shoot.AddActionPose(new ActionPose(Group.Any, Location.Any.getValue(), -1, Position.Trough.getValue(), Action.Any, new AutoTarget(0.0)));
+        shoot.AddActionPose(new ActionPose(Group.Any, Location.Any.getValue(), -1, Position.Ground.getValue(), Action.Any, new AutoTarget(0.0)));
     }
 }

@@ -45,6 +45,11 @@ public class I2CAbsoluteEncoder implements Encoder {
         setAngleOffsetRad(-getRawValue());
     }
 
+    public double getVelocity() {
+        // Not implemented
+        return 0.0;
+    }
+
     public void setAngleOffsetDeg(double value) {
         setAngleOffsetRad(value * 0.0174532);
     }
