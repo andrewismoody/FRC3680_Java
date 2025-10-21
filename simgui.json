@@ -25,7 +25,9 @@
       "/SmartDashboard/elevator mech": "Mechanism2d",
       "/SmartDashboard/feed mech": "Mechanism2d",
       "/SmartDashboard/pickup mech": "Mechanism2d",
-      "/SmartDashboard/shoot mech": "Mechanism2d"
+      "/SmartDashboard/shoot mech": "Mechanism2d",
+      "/SmartDashboard/shoot_left mech": "Mechanism2d",
+      "/SmartDashboard/shoot_right mech": "Mechanism2d"
     },
     "windows": {
       "/SmartDashboard/Field": {

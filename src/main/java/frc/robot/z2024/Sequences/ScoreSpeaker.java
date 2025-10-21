@@ -11,6 +11,7 @@ import frc.robot.auto.AutoEventTarget;
 import frc.robot.auto.AutoEventTime;
 import frc.robot.auto.AutoSequence;
 import frc.robot.misc.Utility;
+import frc.robot.modules.DualMotorModule;
 import frc.robot.modules.SingleMotorModule;
 
 public class ScoreSpeaker extends AutoSequence {
@@ -55,7 +56,7 @@ public class ScoreSpeaker extends AutoSequence {
     var pose_pickup1_Speaker = new ActionPose(Group.Pickup, Location.Speaker.getValue(), 1, Position.Trough.getValue(), Action.Pickup, null);
 
     // var drive = modules.GetDriveModule();
-    var shoot = (SingleMotorModule) modules.GetModule("shoot");
+    var shoot = (DualMotorModule) modules.GetModule("shoot");
 
     var event_start1 = CreateSyncAwaitEvent("Await Pose Start 1", pose_start1);
     var event_waypoint4_stage = CreateSyncAwaitEvent("Await Pose Waypoint 4 Stage", pose_waypoint4_Stage);

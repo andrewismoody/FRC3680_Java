@@ -46,6 +46,9 @@ public class DualMotorModule implements RobotModule {
         // Initialize table and cache entries
         myTable = NetworkTableInstance.getDefault().getTable(moduleID);
         ntTargetPose = myTable.getEntry("targetPose");
+
+        leftDriveMotor.Initialize();
+        rightDriveMotor.Initialize();
     }
 
     public void AddActionPose(ActionPose newAction) {
