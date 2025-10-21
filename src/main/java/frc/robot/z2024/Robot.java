@@ -28,6 +28,7 @@ import frc.robot.misc.Utility;
 import frc.robot.modules.ModuleController;
 import frc.robot.modules.SingleMotorModule;
 import frc.robot.modules.DifferentialDriveModule;
+import frc.robot.modules.DualMotorModule;
 import frc.robot.positioner.LimeLightPositioner;
 import frc.robot.positioner.Positioner;
 import frc.robot.encoder.Encoder;
@@ -49,15 +50,16 @@ public class Robot extends TimedRobot {
   final String codeBuildVersion = "2025.10.18-THOR";
   boolean initialized = false;
 
-  final SparkMax can_drive_left = new SparkMax(5, MotorType.kBrushless);
-  final SparkMax can_drive_right = new SparkMax(6, MotorType.kBrushless);
+  final SparkMax can_drive_left = new SparkMax(6, MotorType.kBrushless);
+  final SparkMax can_drive_right = new SparkMax(7, MotorType.kBrushless);
 
   final Encoder enc_drive_left = new REVEncoder(can_drive_left.getEncoder());
   final Encoder enc_drive_right = new REVEncoder(can_drive_right.getEncoder());
 
-  final SparkMax can_shoot = new SparkMax(2, MotorType.kBrushless);
-  final SparkMax can_pickup = new SparkMax(3, MotorType.kBrushless);
-  final SparkMax can_feed = new SparkMax(4, MotorType.kBrushless);
+  final SparkMax can_shoot_left = new SparkMax(2, MotorType.kBrushless);
+  final SparkMax can_shoot_right = new SparkMax(3, MotorType.kBrushless);
+  final SparkMax can_pickup = new SparkMax(4, MotorType.kBrushless);
+  final SparkMax can_feed = new SparkMax(5, MotorType.kBrushless);
 
   final Gyro m_gyro = new AHRSGyro();
   final Positioner m_positioner = new LimeLightPositioner(true);
@@ -69,7 +71,9 @@ public class Robot extends TimedRobot {
 
   final boolean isFieldOriented = true;
   // TODO 1: make shoot a dual motor module after rewrite
-  SingleMotorModule shoot = new SingleMotorModule("shoot", can_shoot, Constants.shootSpeed, false, null, null, null, 1.0, 1.0, Constants.shootDistancePerRotation, 0.0);
+  SingleMotorModule shoot_left = new SingleMotorModule("shoot_left", can_shoot_left, Constants.shootSpeed, false, null, null, null, 1.0, 1.0, Constants.shootDistancePerRotation, 0.0);
+  SingleMotorModule shoot_right = new SingleMotorModule("shoot_right", can_shoot_right, Constants.shootSpeed, true, null, null, null, 1.0, 1.0, Constants.shootDistancePerRotation, 0.0);
+  DualMotorModule shoot = new DualMotorModule("shoot", shoot_right, shoot_left);
   SingleMotorModule feed = new SingleMotorModule("feed", can_feed, Constants.feedSpeed, false, null, null, null, 1.0, 1.0, Constants.feedDistancePerRotation, 0.0);
   SingleMotorModule pickup = new SingleMotorModule("pickup", can_feed, Constants.pickupSpeed, false, null, null, null, 1.0, 1.0, Constants.pickupDistancePerRotation, 0.0);
 

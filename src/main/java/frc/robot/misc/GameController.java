@@ -198,6 +198,8 @@ public class GameController {
         RegisterBinaryButtonSupplier(ButtonName.POVDown, this::getPOVDown);
         RegisterBinaryButtonSupplier(ButtonName.POVLeft, this::getPOVLeft);
         RegisterBinaryButtonSupplier(ButtonName.POVRight, this::getPOVRight);
+        RegisterBinaryButtonSupplier(ButtonName.LeftTrigger, this::getLeftTriggerBinaryValue);
+        RegisterBinaryButtonSupplier(ButtonName.RightTrigger, this::getRightTriggerBinaryValue);
 
         RegisterValueButtonSupplier(ButtonName.LeftTrigger, this::getLeftTriggerValue);
         RegisterValueButtonSupplier(ButtonName.RightTrigger, this::getRightTriggerValue);
@@ -382,6 +384,26 @@ public class GameController {
         return value;
     }
  
+    boolean getLeftTriggerBinaryValue() {
+        var value = false;
+
+        switch (Type) {
+            case Xbox:
+                value = xboxController.getLeftTriggerAxis() > 0.1 ? true : false;
+                break;
+            case PS4:
+                value = ps4Controller.getL2Button();
+                break;
+            case FlightStick:
+                value = fsController.getRawAxis(2)> 0.1 ? true : false;
+                break;
+        }
+
+        LeftTriggerNTEntry.setDouble(value == true ? 1.0 : 0.0);
+
+        return value;
+    }
+
     boolean getRightShoulderButton() {
         var value = false;
 
@@ -418,6 +440,26 @@ public class GameController {
         }
 
         RightTriggerNTEntry.setDouble(value);
+
+        return value;
+    }
+ 
+    boolean getRightTriggerBinaryValue() {
+        var value = false;
+
+        switch (Type) {
+            case Xbox:
+                value = xboxController.getRightTriggerAxis() > 0.1 ? true : false;
+                break;
+            case PS4:
+                value = ps4Controller.getR2Button();
+                break;
+            case FlightStick:
+                value = fsController.getRawAxis(3)> 0.1 ? true : false;
+                break;
+        }
+
+        RightTriggerNTEntry.setDouble(value == true ? 1.0 : 0.0);
 
         return value;
     }

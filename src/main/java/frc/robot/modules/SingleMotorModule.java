@@ -80,6 +80,7 @@ public class SingleMotorModule implements RobotModule,AutoCloseable {
     double endDistance = 1.0;
     double distancePerRotation = 0.3;
 
+    // TODO 1: add velocity setpoints and modes similar to position
     public SingleMotorModule(String ModuleID, MotorController DriveMotor, double DriveSpeed, boolean Invert, Switch UpperLimit, Switch LowerLimit, Encoder Enc, double EncoderMultiplier, double ReverseMultiplier, double DistancePerRotation, double EndDistance) {
         moduleID = ModuleID;
         driveMotor = DriveMotor;
@@ -324,6 +325,10 @@ public class SingleMotorModule implements RobotModule,AutoCloseable {
     public String GetModuleID() {
         return moduleID;
     }
+    
+    public void OverrideTargetActionPose(ActionPose newpose) {
+        targetPose = newpose;
+    }
 
     // AddButtonMappedPose adds a position to the array and returns a reference to the function
     // always make a new instance, don't reuse button mappings as they will stomp on each other
@@ -364,7 +369,7 @@ public class SingleMotorModule implements RobotModule,AutoCloseable {
             public void accept(Boolean pressed) {
                 // multiple mapped consumers defeat this logic as one is pressed and one is not.
                 if (pressed && !this.wasPressed) {
-                    targetPose = new ActionPose(Group.Any, -1, -1, -1, Action.Any, new AutoTarget(position));
+                    OverrideTargetActionPose(new ActionPose(Group.Any, -1, -1, -1, Action.Any, new AutoTarget(position)));
                 }
                 this.wasPressed = pressed;
             }

@@ -6,6 +6,7 @@ import frc.robot.action.Group;
 import frc.robot.misc.GameController;
 import frc.robot.misc.GameController.ButtonName;
 import frc.robot.modules.DifferentialDriveModule;
+import frc.robot.modules.DualMotorModule;
 import frc.robot.modules.ModuleController;
 import frc.robot.modules.SingleMotorModule;
 import frc.robot.z2025.action.Location;
@@ -14,7 +15,7 @@ import frc.robot.z2025.action.Position;
 public class Joystick {
   public static void InitializeButtonMappings(GameController m_controller,
     ModuleController modules, DifferentialDriveModule diffDriveModule,
-    SingleMotorModule shoot, SingleMotorModule feed, SingleMotorModule pickup) {
+    DualMotorModule shoot, SingleMotorModule feed, SingleMotorModule pickup) {
     // TODO: need to move button mappings to preferences and initialize in game controller class
     
     m_controller.ClearAllRegistrations();
@@ -38,7 +39,7 @@ public class Joystick {
 
     m_controller.RegisterBinaryButtonConsumer(ButtonName.Start, modules.GetDriveModule()::ToggleFieldOriented);
 
-    m_controller.RegisterValueButtonConsumer(ButtonName.LeftTrigger, modules::ProcessDivider1);
+    m_controller.RegisterBinaryButtonConsumer(ButtonName.LeftTrigger, modules::ProcessInverse);
 
     m_controller.SetValueButtonInversion(ButtonName.RightTrigger, true);
     m_controller.RegisterValueButtonConsumer(ButtonName.RightTrigger, modules::ProcessSpeedDilation);

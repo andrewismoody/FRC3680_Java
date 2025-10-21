@@ -7,12 +7,13 @@ import frc.robot.action.Group;
 import frc.robot.auto.AutoTarget;
 import frc.robot.misc.Utility;
 import frc.robot.modules.DriveModule;
+import frc.robot.modules.DualMotorModule;
 import frc.robot.modules.SingleMotorModule;
 import frc.robot.z2024.action.Location;
 import frc.robot.z2024.action.Position;
 
 public class ActionPoses {
-    public static void Initialize(DriveModule diffDriveModule, SingleMotorModule shoot, SingleMotorModule feed, SingleMotorModule pickup) {
+    public static void Initialize(DriveModule diffDriveModule, DualMotorModule shoot, SingleMotorModule feed, SingleMotorModule pickup) {
         // start, (we don't know where we are yet, so rotate a specific angle to face a tag)
         // get facing direction
         var startRotation = diffDriveModule.GetPositionerOffset().getRotation().toRotation2d();
