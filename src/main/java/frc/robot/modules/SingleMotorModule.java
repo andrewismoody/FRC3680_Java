@@ -40,6 +40,8 @@ public class SingleMotorModule implements RobotModule,AutoCloseable {
     double rotationCount = 0.0;
     double previousRotationCount = 0.0;
     double m_floatTolerance = 0.04f;
+    boolean useVelocity = false;
+    double currentVelocity = 0.0;
 
     public boolean debug = false;
     double previousDriveSpeed;
@@ -74,6 +76,8 @@ public class SingleMotorModule implements RobotModule,AutoCloseable {
     private NetworkTableEntry driveDistanceEntry;
     private NetworkTableEntry rotationCountEntry;
     private NetworkTableEntry currentDriveSpeedEntry;
+    private NetworkTableEntry useVelocityEntry;
+    private NetworkTableEntry velocityEntry;
 
     Mechanism2d mech;
     MechanismRoot2d mechRoot;
@@ -82,13 +86,14 @@ public class SingleMotorModule implements RobotModule,AutoCloseable {
     double distancePerRotation = 0.3;
 
     // TODO 1: add velocity setpoints and modes similar to position
-    public SingleMotorModule(String ModuleID, MotorController DriveMotor, double DriveSpeed, boolean Invert, Switch UpperLimit, Switch LowerLimit, Encoder Enc, double EncoderMultiplier, double ReverseMultiplier, double DistancePerRotation, double EndDistance) {
+    public SingleMotorModule(String ModuleID, MotorController DriveMotor, double DriveSpeed, boolean Invert, Switch UpperLimit, Switch LowerLimit, Encoder Enc, double EncoderMultiplier, double ReverseMultiplier, double DistancePerRotation, double EndDistance, boolean UseVelocity) {
         moduleID = ModuleID;
         driveMotor = DriveMotor;
         driveSpeed = DriveSpeed;
         invert = Invert;
 
         endDistance = EndDistance;
+        useVelocity = UseVelocity;
 
         var kp = 5; // kp = 20% over max motor capability
         var ki = 0; //kp * 0.10; // ki = 10% of kp
@@ -120,17 +125,22 @@ public class SingleMotorModule implements RobotModule,AutoCloseable {
         driveDistanceEntry = myTable.getEntry("driveDistance");
         rotationCountEntry = myTable.getEntry("rotationCount");
         currentDriveSpeedEntry = myTable.getEntry("currentDriveSpeed");
+        useVelocityEntry = myTable.getEntry("useVelocity");
+        velocityEntry = myTable.getEntry("velocity");
 
         // set initial values
         invertEntry.setBoolean(invert);
         encoderMultiplierEntry.setDouble(encoderMultiplier);
         pidSetpointsEntry.setString(String.format("P: %f I: %f D: %f", pidController.getP(), pidController.getI(), pidController.getD()));
+        useVelocityEntry.setBoolean(useVelocity);
+        velocityEntry.setDouble(0.0);
 
         if (enc != null) {
             enc.setMultiplier(encoderMultiplier);
             enc.setZeroPosition();
         }
 
+        // TODO 1: re-evaluate these calculations for velocity
         encoderSimRate = driveSpeed * encoderSimFactor;
         
         var width = 0.5;
@@ -253,12 +263,16 @@ public class SingleMotorModule implements RobotModule,AutoCloseable {
     
             // we have a target and we're not manually applying a value, try to get to it.
             // the x axis of the position of the pose is the rotation count (distance along the motor axis)
-            var targetRotation = target.Distance;
-            var targetDistance = targetRotation - rotationCount;
-            deltaDistanceEntry.setDouble(targetDistance);
-            previousTargetDistance = targetDistance;
+            var targetValue = target.Distance;
+            var measurement = rotationCount;
+            var targetDelta = 0.0;
+            if (useVelocity)
+                measurement = currentVelocity;
+            targetDelta = targetValue - measurement;
+            deltaDistanceEntry.setDouble(targetDelta);
+            previousTargetDistance = targetDelta;
 
-            var shouldMove = (Math.abs(targetDistance) > m_floatTolerance);
+            var shouldMove = (Math.abs(targetDelta) > m_floatTolerance);
             if (!shouldMove) {
                 // increment global settle counter; do not abandon until threshold reached
                 if (settleCount < settleCyclesRequired) {
@@ -270,8 +284,14 @@ public class SingleMotorModule implements RobotModule,AutoCloseable {
                     AbandonTarget();
                 }
             } else {
-                currentDriveSpeed = pidController.calculate(rotationCount, targetRotation);
-                currentDriveSpeed = controller.ApplyModifiers(currentDriveSpeed);
+                var newSpeed = pidController.calculate(measurement, targetValue);
+                if (useVelocity)
+                    currentDriveSpeed = previousDriveSpeed + newSpeed;
+                else
+                    currentDriveSpeed = controller.ApplyModifiers(newSpeed);
+
+                // clamp to real values
+                currentDriveSpeed = Math.max(-1.0, Math.min(1.0, currentDriveSpeed));
             }
 
             var driveDistance = rotationCount - previousRotationCount;
@@ -282,14 +302,15 @@ public class SingleMotorModule implements RobotModule,AutoCloseable {
     @Override
     public void ProcessState(boolean isAuto) {
         if (enc != null) {
-            if (!useFakeEncoder) {
-                if (enc.isAbsolute())
-                    setRotationFromAbsolute();
-                else
-                    rotationCount = enc.getRawValue();
+            if (enc.isAbsolute())
+                setRotationFromAbsolute();
+            else {
+                rotationCount = enc.getRawValue();
+                currentVelocity = enc.getVelocity();
             }
-            rotationCountEntry.setDouble(rotationCount);
         }
+        rotationCountEntry.setDouble(rotationCount);
+        velocityEntry.setDouble(currentVelocity);
 
         EvaluateTargetPose();
 
@@ -311,9 +332,16 @@ public class SingleMotorModule implements RobotModule,AutoCloseable {
 
         previousRotationCount = rotationCount;
 
-        if (useFakeEncoder) {
-            // fake adjust current angle to simulate encoder input
+        // fake adjust current angle to simulate encoder input
+        if (enc != null) {
+            if (useFakeEncoder) {
+                System.out.printf("%s: appendSimValue %f * %f = %f\n", moduleID, currentDriveSpeed, encoderSimRate, currentDriveSpeed * encoderSimRate);
+                enc.appendSimValueRad(currentDriveSpeed * encoderSimRate);
+            }
+        }
+        else {
             rotationCount = rotationCount + currentDriveSpeed * encoderSimRate;
+            currentVelocity = currentDriveSpeed * encoderSimRate;
         }
 
         mechMotion.setLength(rotationCount * distancePerRotation);

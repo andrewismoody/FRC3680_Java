@@ -12,6 +12,7 @@ public class REVEncoder implements Encoder {
     double multiplier = 1.0;
     long giveUpTime = 1000;
     double value = 0.0;
+    double velocity = 0.0;
 
     public void setMultiplier(double value) {
         multiplier = value;
@@ -60,12 +61,18 @@ public class REVEncoder implements Encoder {
     }
 
     public void appendSimValueRad(double angleRad) {
+        var previousValue = value;
         // REV Encoder reports rotations, not radians or degrees
         value += angleRad / (Math.PI * 2);
+        velocity = (value - previousValue) / 0.02 * 60; // assume 20ms loop, result is RPM
+        //System.out.printf("(%f - %f) [%f] / %f * %f [%f] = %f\n", value, previousValue, value - previousValue, 0.02, 60.0, 0.02 * 60, velocity);
     }
 
     public double getVelocity() {
-        return internalEncoder.getVelocity();
+        if (RobotBase.isReal())
+            velocity = internalEncoder.getVelocity();
+
+        return velocity;
     }
 
     public double getRawValue() {

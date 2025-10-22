@@ -53,13 +53,21 @@ public class Robot extends TimedRobot {
   final SparkMax can_drive_left = new SparkMax(6, MotorType.kBrushless);
   final SparkMax can_drive_right = new SparkMax(7, MotorType.kBrushless);
 
-  final Encoder enc_drive_left = new REVEncoder(can_drive_left.getEncoder());
-  final Encoder enc_drive_right = new REVEncoder(can_drive_right.getEncoder());
-
   final SparkMax can_shoot_left = new SparkMax(2, MotorType.kBrushless);
   final SparkMax can_shoot_right = new SparkMax(3, MotorType.kBrushless);
   final SparkMax can_pickup = new SparkMax(4, MotorType.kBrushless);
   final SparkMax can_feed = new SparkMax(5, MotorType.kBrushless);
+  final SparkMax can_lift_left = new SparkMax(8, MotorType.kBrushless);
+  final SparkMax can_lift_right = new SparkMax(9, MotorType.kBrushless);
+
+  final Encoder enc_drive_left = new REVEncoder(can_drive_left.getEncoder());
+  final Encoder enc_drive_right = new REVEncoder(can_drive_right.getEncoder());
+
+  // final Encoder enc_shoot_left = new REVEncoder(can_shoot_left.getEncoder());
+  // final Encoder enc_shoot_right = new REVEncoder(can_shoot_right.getEncoder());
+
+  // final Encoder enc_lift_left = new REVEncoder(can_lift_left.getEncoder());
+  // final Encoder enc_lift_right = new REVEncoder(can_lift_right.getEncoder());
 
   final Gyro m_gyro = new AHRSGyro();
   final Positioner m_positioner = new LimeLightPositioner(true);
@@ -70,12 +78,16 @@ public class Robot extends TimedRobot {
   final Timer gc_timer = new Timer();
 
   final boolean isFieldOriented = true;
-  // TODO 1: make shoot a dual motor module after rewrite
-  SingleMotorModule shoot_left = new SingleMotorModule("shoot_left", can_shoot_left, Constants.shootSpeed, false, null, null, null, 1.0, 1.0, Constants.shootDistancePerRotation, 0.0);
-  SingleMotorModule shoot_right = new SingleMotorModule("shoot_right", can_shoot_right, Constants.shootSpeed, true, null, null, null, 1.0, 1.0, Constants.shootDistancePerRotation, 0.0);
-  DualMotorModule shoot = new DualMotorModule("shoot", shoot_right, shoot_left);
-  SingleMotorModule feed = new SingleMotorModule("feed", can_feed, Constants.feedSpeed, false, null, null, null, 1.0, 1.0, Constants.feedDistancePerRotation, 0.0);
-  SingleMotorModule pickup = new SingleMotorModule("pickup", can_feed, Constants.pickupSpeed, false, null, null, null, 1.0, 1.0, Constants.pickupDistancePerRotation, 0.0);
+  SingleMotorModule shoot_left = new SingleMotorModule("shoot_left", can_shoot_left, Constants.shootSpeed, false, null, null, null, 1.0, 1.0, Constants.shootDistancePerRotation, 0.0, true);
+  SingleMotorModule shoot_right = new SingleMotorModule("shoot_right", can_shoot_right, Constants.shootSpeed, true, null, null, null, 1.0, 1.0, Constants.shootDistancePerRotation, 0.0, true);
+  DualMotorModule shoot = new DualMotorModule("shoot", shoot_left, shoot_right);
+
+  SingleMotorModule lift_left = new SingleMotorModule("lift_left", can_lift_left, Constants.liftSpeed, false, null, null, null, 1.0, 1.0, Constants.liftDistancePerRotation, 0.0, false);
+  SingleMotorModule lift_right = new SingleMotorModule("lift_right", can_shoot_right, Constants.liftSpeed, true, null, null, null, 1.0, 1.0, Constants.liftDistancePerRotation, 0.0, false);
+  DualMotorModule lift = new DualMotorModule("shoot", lift_left, lift_right);
+
+  SingleMotorModule feed = new SingleMotorModule("feed", can_feed, Constants.feedSpeed, false, null, null, null, 1.0, 1.0, Constants.feedDistancePerRotation, 0.0, true);
+  SingleMotorModule pickup = new SingleMotorModule("pickup", can_feed, Constants.pickupSpeed, false, null, null, null, 1.0, 1.0, Constants.pickupDistancePerRotation, 0.0, true);
 
   DifferentialDriveModule diffDrive = new DifferentialDriveModule("diffDrive", m_gyro, m_positioner, Constants.driveSpeed, can_drive_left, enc_drive_left, can_drive_right, enc_drive_right, Constants.driveRatio, Constants.floatTolerance, Constants.frameSize.getNorm());
 
@@ -119,6 +131,7 @@ public class Robot extends TimedRobot {
     modules.AddModule(shoot);
     modules.AddModule(feed);
     modules.AddModule(pickup);
+    modules.AddModule(lift);
 
     // initialize modules
     modules.Initialize();
@@ -136,9 +149,9 @@ public class Robot extends TimedRobot {
     // This needs to be here in mode init because we may not have a driver station connection during robotinit.
     m_controller = GameController.Initialize();
     // Add action poses before button mappings so buttons can drive action poses
-    ActionPoses.Initialize(diffDrive, shoot, feed, pickup);
+    ActionPoses.Initialize(diffDrive, shoot, feed, pickup, lift);
     // even tho this runs on every init, we clear it out before every run so we don't mess up
-    Joystick.InitializeButtonMappings(m_controller, modules, diffDrive, shoot, feed, pickup);
+    Joystick.InitializeButtonMappings(m_controller, modules, diffDrive, shoot, feed, pickup, lift);
 
     // only set start position once per match
     if (!initialized) { 

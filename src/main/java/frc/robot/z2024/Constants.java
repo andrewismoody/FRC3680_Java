@@ -19,6 +19,7 @@ public class Constants {
     public static final double shootSpeed = (5676.0 / 60.0) / 100.0;
     public static final double feedSpeed = (5676.0 / 60.0) / 100.0;
     public static final double pickupSpeed = (5676.0 / 60.0) / 100.0;
+    public static final double liftSpeed = (5676.0 / 60.0) / 100.0;
  
     public static final double divider = 0.5;
     public static final double speedMod = 1.0;
@@ -45,6 +46,7 @@ public class Constants {
     public static final double shootDistancePerRotation = 0.0;
     public static final double feedDistancePerRotation = 0.0;
     public static final double pickupDistancePerRotation = 0.0;
+    public static final double liftDistancePerRotation = 0.0;
   
     // Field Dimensions Y (width) = 8.05, X (length) = 17.55; 
     public static final Translation2d fieldSize = new Translation2d(16.54, 8.21);
