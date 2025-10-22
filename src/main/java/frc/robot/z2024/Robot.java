@@ -83,8 +83,8 @@ public class Robot extends TimedRobot {
   DualMotorModule shoot = new DualMotorModule("shoot", shoot_left, shoot_right);
 
   SingleMotorModule lift_left = new SingleMotorModule("lift_left", can_lift_left, Constants.liftSpeed, false, null, null, null, 1.0, 1.0, Constants.liftDistancePerRotation, 0.0, false);
-  SingleMotorModule lift_right = new SingleMotorModule("lift_right", can_shoot_right, Constants.liftSpeed, true, null, null, null, 1.0, 1.0, Constants.liftDistancePerRotation, 0.0, false);
-  DualMotorModule lift = new DualMotorModule("shoot", lift_left, lift_right);
+  SingleMotorModule lift_right = new SingleMotorModule("lift_right", can_lift_right, Constants.liftSpeed, true, null, null, null, 1.0, 1.0, Constants.liftDistancePerRotation, 0.0, false);
+  DualMotorModule lift = new DualMotorModule("lift", lift_left, lift_right);
 
   SingleMotorModule feed = new SingleMotorModule("feed", can_feed, Constants.feedSpeed, false, null, null, null, 1.0, 1.0, Constants.feedDistancePerRotation, 0.0, true);
   SingleMotorModule pickup = new SingleMotorModule("pickup", can_feed, Constants.pickupSpeed, false, null, null, null, 1.0, 1.0, Constants.pickupDistancePerRotation, 0.0, true);
