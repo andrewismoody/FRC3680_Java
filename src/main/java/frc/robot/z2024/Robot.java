@@ -15,10 +15,9 @@ import edu.wpi.first.networktables.NetworkTableInstance;
 import edu.wpi.first.wpilibj.RobotBase;
 import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj.Timer;
+import edu.wpi.first.wpilibj.motorcontrol.PWMTalonSRX;
+import edu.wpi.first.wpilibj.motorcontrol.Spark;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
-
-import com.revrobotics.spark.SparkLowLevel.MotorType;
-import com.revrobotics.spark.SparkMax;
 
 import frc.robot.auto.AutoController;
 import frc.robot.gyro.AHRSGyro;
@@ -32,7 +31,6 @@ import frc.robot.modules.DualMotorModule;
 import frc.robot.positioner.LimeLightPositioner;
 import frc.robot.positioner.Positioner;
 import frc.robot.encoder.Encoder;
-import frc.robot.encoder.REVEncoder;
 
 /**
  * The VM is configured to automatically run this class, and to call the
@@ -50,18 +48,18 @@ public class Robot extends TimedRobot {
   final String codeBuildVersion = "2025.10.18-THOR";
   boolean initialized = false;
 
-  final SparkMax can_drive_left = new SparkMax(6, MotorType.kBrushless);
-  final SparkMax can_drive_right = new SparkMax(7, MotorType.kBrushless);
+  final PWMTalonSRX can_drive_left = new PWMTalonSRX(5);
+  final PWMTalonSRX can_drive_right = new PWMTalonSRX(4);
 
-  final SparkMax can_shoot_left = new SparkMax(2, MotorType.kBrushless);
-  final SparkMax can_shoot_right = new SparkMax(3, MotorType.kBrushless);
-  final SparkMax can_pickup = new SparkMax(4, MotorType.kBrushless);
-  final SparkMax can_feed = new SparkMax(5, MotorType.kBrushless);
-  final SparkMax can_lift_left = new SparkMax(8, MotorType.kBrushless);
-  final SparkMax can_lift_right = new SparkMax(9, MotorType.kBrushless);
+  final Spark can_shoot_left = new Spark(8);
+  final Spark can_shoot_right = new Spark(9);
+  final Spark can_pickup = new Spark(1);
+  final Spark can_feed = new Spark(0);
+  final Spark can_lift_left = new Spark(6);
+  final Spark can_lift_right = new Spark(7);
 
-  final Encoder enc_drive_left = new REVEncoder(can_drive_left.getEncoder());
-  final Encoder enc_drive_right = new REVEncoder(can_drive_right.getEncoder());
+  final Encoder enc_drive_left = null; // new REVEncoder(can_drive_left.getEncoder());
+  final Encoder enc_drive_right = null; // new REVEncoder(can_drive_right.getEncoder());
 
   // final Encoder enc_shoot_left = new REVEncoder(can_shoot_left.getEncoder());
   // final Encoder enc_shoot_right = new REVEncoder(can_shoot_right.getEncoder());
@@ -87,7 +85,7 @@ public class Robot extends TimedRobot {
   DualMotorModule lift = new DualMotorModule("lift", lift_left, lift_right);
 
   SingleMotorModule feed = new SingleMotorModule("feed", can_feed, Constants.feedSpeed, false, null, null, null, 1.0, 1.0, Constants.feedDistancePerRotation, 0.0, true);
-  SingleMotorModule pickup = new SingleMotorModule("pickup", can_feed, Constants.pickupSpeed, false, null, null, null, 1.0, 1.0, Constants.pickupDistancePerRotation, 0.0, true);
+  SingleMotorModule pickup = new SingleMotorModule("pickup", can_pickup, Constants.pickupSpeed, false, null, null, null, 1.0, 1.0, Constants.pickupDistancePerRotation, 0.0, true);
 
   DifferentialDriveModule diffDrive = new DifferentialDriveModule("diffDrive", m_gyro, m_positioner, Constants.driveSpeed, can_drive_left, enc_drive_left, can_drive_right, enc_drive_right, Constants.driveRatio, Constants.floatTolerance, Constants.frameSize.getNorm());
 

@@ -436,6 +436,9 @@ public class DifferentialDriveModule implements DriveModule {
         WheelSpeeds speeds = DifferentialDrive.curvatureDriveIK(currentForwardSpeed, currentRotationAngle, true);
         myTable.getEntry("leftSpeed").setDouble(speeds.left);
         myTable.getEntry("rightSpeed").setDouble(speeds.right);
+
+        leftMotor.set(speeds.left);
+        rightMotor.set(speeds.right);
        
         var leftDistanceAccumulation = speeds.left * driveEncSimRate;
         var rightDistanceAccumulation = speeds.right * driveEncSimRate;
@@ -459,6 +462,8 @@ public class DifferentialDriveModule implements DriveModule {
         var positions = new DifferentialDriveWheelPositions(leftDistance, rightDistance);
         //odometry.update(currentRotation, positions);
         poseEstimator.update(currentRotation, positions);
+
+        
 
         // update fake gyro angle - will append the amount of change from this period to the current value
         gyro.appendSimValueDeg(Utility.radiansToDegrees(currentRotationAngle * fakeGyroRate));

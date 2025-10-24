@@ -27,8 +27,8 @@ public class Joystick {
     // m_controller.RegisterBinaryButtonConsumer(ButtonName.LeftButton, shoot.AddButtonMappedPose(new ActionPose(Group.Score, Location.Any.getValue(), -1, Position.Lower.getValue(), Action.Any, null)));
     // m_controller.RegisterBinaryButtonConsumer(ButtonName.TopButton, shoot.AddButtonMappedPose(new ActionPose(Group.Score, Location.Any.getValue(), -1, Position.Middle.getValue(), Action.Any, null)));
 
-    m_controller.RegisterBinaryButtonConsumer(ButtonName.BottomButton, shoot::ApplyValue);
-    m_controller.RegisterBinaryButtonConsumer(ButtonName.RightButton, shoot::ApplyInverse);
+    m_controller.RegisterBinaryButtonConsumer(ButtonName.BottomButton, shoot::ApplyInverse);
+    m_controller.RegisterBinaryButtonConsumer(ButtonName.RightButton, shoot::ApplyValue);
 
     m_controller.RegisterBinaryButtonConsumer(ButtonName.LeftButton, feed::ApplyValue);
     m_controller.RegisterBinaryButtonConsumer(ButtonName.LeftButton, pickup::ApplyValue);
@@ -36,8 +36,8 @@ public class Joystick {
     m_controller.RegisterBinaryButtonConsumer(ButtonName.TopButton, feed::ApplyInverse);
     m_controller.RegisterBinaryButtonConsumer(ButtonName.TopButton, pickup::ApplyInverse);
 
-    m_controller.RegisterBinaryButtonConsumer(ButtonName.POVUp, lift::ApplyValue);
-    m_controller.RegisterBinaryButtonConsumer(ButtonName.POVDown, lift::ApplyInverse);
+    // m_controller.RegisterBinaryButtonConsumer(ButtonName.POVUp, lift::ApplyValue);
+    // m_controller.RegisterBinaryButtonConsumer(ButtonName.POVDown, lift::ApplyInverse);
 
     // m_controller.RegisterBinaryButtonConsumer(ButtonName.POVLeft, grabber::ApplyInverse);
     // m_controller.RegisterBinaryButtonConsumer(ButtonName.POVRight, grabber::ApplyValue);
@@ -52,7 +52,7 @@ public class Joystick {
     m_controller.SetValueButtonInversion(ButtonName.LeftThumbstickY, true);
     m_controller.RegisterValueButtonConsumer(ButtonName.LeftThumbstickY, diffDriveModule::ProcessForwardSpeed);
 
-    m_controller.SetValueButtonInversion(ButtonName.RightThumbstickX, false);
+    m_controller.SetValueButtonInversion(ButtonName.RightThumbstickX, true);
     m_controller.RegisterValueButtonConsumer(ButtonName.RightThumbstickX, diffDriveModule::ProcessRotationAngle);
   }
 }
