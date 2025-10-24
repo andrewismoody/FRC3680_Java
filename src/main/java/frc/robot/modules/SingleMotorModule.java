@@ -56,7 +56,7 @@ public class SingleMotorModule implements RobotModule,AutoCloseable {
 
     public boolean useFakeEncoder = !RobotBase.isReal();
     double encoderSimRate = 3.0;
-    double encoderSimFactor = 0.005;
+    double encoderSimFactor = 0.02; // 0.005;
 
     ArrayList<ActionPose> actionPoses = new ArrayList<ActionPose>();
     ActionPose targetPose;
@@ -284,11 +284,15 @@ public class SingleMotorModule implements RobotModule,AutoCloseable {
                     AbandonTarget();
                 }
             } else {
-                var newSpeed = pidController.calculate(measurement, targetValue);
-                if (useVelocity)
-                    currentDriveSpeed = previousDriveSpeed + newSpeed;
-                else
+                if (useVelocity) {
+                    // desired velocity divided by maximum achievable velocity = motor power
+                    currentDriveSpeed = targetValue / (driveSpeed * 60.0);
+                    System.out.printf("%s currentDriveSpeed: %f; targetValue: %f; driveSpeed: %f; driveSpeed * 60.0: %f\n", moduleID, currentDriveSpeed, targetValue, driveSpeed, driveSpeed * 60.0);
+                }
+                else {
+                    var newSpeed = pidController.calculate(measurement, targetValue);
                     currentDriveSpeed = controller.ApplyModifiers(newSpeed);
+                }
 
                 // clamp to real values
                 currentDriveSpeed = Math.max(-1.0, Math.min(1.0, currentDriveSpeed));
@@ -335,13 +339,12 @@ public class SingleMotorModule implements RobotModule,AutoCloseable {
         // fake adjust current angle to simulate encoder input
         if (enc != null) {
             if (useFakeEncoder) {
-                System.out.printf("%s: appendSimValue %f * %f = %f\n", moduleID, currentDriveSpeed, encoderSimRate, currentDriveSpeed * encoderSimRate);
-                enc.appendSimValueRad(currentDriveSpeed * encoderSimRate);
+                enc.appendSimValueRot(currentDriveSpeed * encoderSimRate);
             }
         }
         else {
-            rotationCount = rotationCount + currentDriveSpeed * encoderSimRate;
-            currentVelocity = currentDriveSpeed * encoderSimRate;
+            rotationCount = rotationCount + (currentDriveSpeed * encoderSimRate);
+            currentVelocity = (rotationCount - previousRotationCount) / 0.02 * 60;
         }
 
         mechMotion.setLength(rotationCount * distancePerRotation);

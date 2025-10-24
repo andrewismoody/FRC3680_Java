@@ -74,6 +74,10 @@ public class WPIEncoder implements Encoder {
         value += angleRad / (Math.PI * 2);
     }
 
+    public void appendSimValueRot(double angle) {
+        value += angle;
+    }
+
     public double getDistance() {
         // TODO: implement angle offset
         

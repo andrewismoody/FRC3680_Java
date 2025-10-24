@@ -36,7 +36,12 @@ public class AnalogAbsoluteEncoder implements Encoder {
     }
 
     public void appendSimValueRad(double angleRad) {
+        // TODO: should this be converted to radians here?
         value += angleRad;
+    }
+
+    public void appendSimValueRot(double angle) {
+        value += angle;
     }
 
     public void setZeroPosition() {

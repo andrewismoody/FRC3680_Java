@@ -64,7 +64,15 @@ public class REVEncoder implements Encoder {
         var previousValue = value;
         // REV Encoder reports rotations, not radians or degrees
         value += angleRad / (Math.PI * 2);
-        velocity = (value - previousValue) / 0.02 * 60; // assume 20ms loop, result is RPM
+        velocity = (value - previousValue) / (0.02 * 60); // assume 20ms loop, result is RPM
+        //System.out.printf("(%f - %f) [%f] / %f * %f [%f] = %f\n", value, previousValue, value - previousValue, 0.02, 60.0, 0.02 * 60, velocity);
+    }
+
+    public void appendSimValueRot(double angle) {
+        var previousValue = value;
+        // REV Encoder reports rotations, not radians or degrees
+        value += angle;
+        velocity = (value - previousValue) / (0.02 * 60); // assume 20ms loop, result is RPM
         //System.out.printf("(%f - %f) [%f] / %f * %f [%f] = %f\n", value, previousValue, value - previousValue, 0.02, 60.0, 0.02 * 60, velocity);
     }
 

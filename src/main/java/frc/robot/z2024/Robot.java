@@ -61,8 +61,8 @@ public class Robot extends TimedRobot {
   final Encoder enc_drive_left = null; // new REVEncoder(can_drive_left.getEncoder());
   final Encoder enc_drive_right = null; // new REVEncoder(can_drive_right.getEncoder());
 
-  // final Encoder enc_shoot_left = new REVEncoder(can_shoot_left.getEncoder());
-  // final Encoder enc_shoot_right = new REVEncoder(can_shoot_right.getEncoder());
+  final Encoder enc_shoot_left = null; // new REVEncoder(can_shoot_left.getEncoder());
+  final Encoder enc_shoot_right = null; // new REVEncoder(can_shoot_right.getEncoder());
 
   // final Encoder enc_lift_left = new REVEncoder(can_lift_left.getEncoder());
   // final Encoder enc_lift_right = new REVEncoder(can_lift_right.getEncoder());
@@ -76,8 +76,8 @@ public class Robot extends TimedRobot {
   final Timer gc_timer = new Timer();
 
   final boolean isFieldOriented = true;
-  SingleMotorModule shoot_left = new SingleMotorModule("shoot_left", can_shoot_left, Constants.shootSpeed, false, null, null, null, 1.0, 1.0, Constants.shootDistancePerRotation, 0.0, true);
-  SingleMotorModule shoot_right = new SingleMotorModule("shoot_right", can_shoot_right, Constants.shootSpeed, true, null, null, null, 1.0, 1.0, Constants.shootDistancePerRotation, 0.0, true);
+  SingleMotorModule shoot_left = new SingleMotorModule("shoot_left", can_shoot_left, Constants.shootSpeed, false, null, null, enc_shoot_left, 1.0, 1.0, Constants.shootDistancePerRotation, 0.0, true);
+  SingleMotorModule shoot_right = new SingleMotorModule("shoot_right", can_shoot_right, Constants.shootSpeed, true, null, null, enc_shoot_right, 1.0, 1.0, Constants.shootDistancePerRotation, 0.0, true);
   DualMotorModule shoot = new DualMotorModule("shoot", shoot_left, shoot_right);
 
   SingleMotorModule lift_left = new SingleMotorModule("lift_left", can_lift_left, Constants.liftSpeed, false, null, null, null, 1.0, 1.0, Constants.liftDistancePerRotation, 0.0, false);

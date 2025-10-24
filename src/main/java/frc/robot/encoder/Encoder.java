@@ -13,5 +13,6 @@ public interface Encoder {
     public void setMultiplier(double value);
     public double getMultiplier();
     public void appendSimValueRad(double angleRad);
+    public void appendSimValueRot(double angleRot);
     public double getVelocity();
 }
