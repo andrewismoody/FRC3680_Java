@@ -235,8 +235,8 @@ public class Constants {
                         break;
                     case 2:
                         // central speaker scoring position
-                        var interest2Bisector = Utility.perpendicularBisectorAngle(getBlueStartFieldPosition2d(group, Location.Tag, 7), getBlueStartFieldPosition2d(group, Location.Tag, 8));
-                        selectedLocation = Utility.projectParallel(new Translation3d(Utility.getIntersection(getBlueStartFieldPose(group, Location.Tag, 7), getBlueStartFieldPose(group, Location.Tag, 8))), interest2Bisector.getRotation(), alignOffset);
+                        var interest2Bisector = Utility.perpendicularBisectorAngle(getBlueStartFieldPosition2d(group, Location.Tag, 8), getBlueStartFieldPosition2d(group, Location.Tag, 7));
+                        selectedLocation = Utility.projectParallel(new Translation3d(Utility.getIntersection(getBlueStartFieldPose(group, Location.Tag, 8), getBlueStartFieldPose(group, Location.Tag, 7))), interest2Bisector.getRotation(), alignOffset * 2);
                         break;
                 }
                 break;
@@ -296,7 +296,7 @@ public class Constants {
                         selectedRotation = new Rotation2d(Utility.degreesToRadians(60)).minus(alignmentRotation);
                         break;
                     case 14:
-                        selectedRotation = new Rotation2d(Utility.degreesToRadians(0)).minus(alignmentRotation);
+                        selectedRotation = Rotation2d.kZero.minus(alignmentRotation);
                         break;
                     case 15:
                         selectedRotation = new Rotation2d(Utility.degreesToRadians(120)).minus(alignmentRotation);
@@ -310,6 +310,8 @@ public class Constants {
                 switch (index) {
                     case 1:
                         selectedRotation = new Rotation2d(2.75);
+                    case 2:
+                        selectedRotation = Rotation2d.k180deg;
                     break;
                 }
                 break;

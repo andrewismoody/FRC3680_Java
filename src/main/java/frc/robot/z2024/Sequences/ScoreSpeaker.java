@@ -47,9 +47,10 @@ public class ScoreSpeaker extends AutoSequence {
     var pose_align4_Reef = new ActionPose(Group.AlignLeft, Location.Stage.getValue(), 4, Position.Ground.getValue(), Action.Pickup, null);
     var pose_approach3_Reef = new ActionPose(Group.ApproachLeft, Location.Stage.getValue(), 3, Position.Ground.getValue(), Action.Pickup, null);
     var pose_approach4_Reef = new ActionPose(Group.ApproachLeft, Location.Stage.getValue(), 4, Position.Ground.getValue(), Action.Pickup, null);
-    var pose_score1_Upper = new ActionPose(Group.Score, Location.Speaker.getValue(), 1, Position.Upper.getValue(), Action.Pop, null);
-    var pose_align1_Speaker = new ActionPose(Group.Align, Location.Speaker.getValue(), 1, Position.Ground.getValue(), Action.Pickup, null);
-    var pose_pickup1_Speaker = new ActionPose(Group.Pickup, Location.Speaker.getValue(), 1, Position.Ground.getValue(), Action.Pickup, null);
+    // Interest 2 is Mid-Speaker
+    var pose_score1_Upper = new ActionPose(Group.Score, Location.Interest.getValue(), 2, Position.Upper.getValue(), Action.Pop, null);
+    var pose_align1_Source = new ActionPose(Group.Align, Location.Source.getValue(), 2, Position.Ground.getValue(), Action.Pickup, null);
+    var pose_pickup1_Source = new ActionPose(Group.Pickup, Location.Source.getValue(), 1, Position.Ground.getValue(), Action.Pickup, null);
 
     // var drive = modules.GetDriveModule();
     var shoot = (DualMotorModule) modules.GetModule("shoot");
@@ -63,10 +64,10 @@ public class ScoreSpeaker extends AutoSequence {
     var event_align4_reef = CreateSyncAwaitEvent("Await Pose Align 4 Stage", pose_align4_Reef);
     var event_approach3_reef = CreateSyncAwaitEvent("Await Pose Approach 3 Stage", pose_approach3_Reef);
     var event_approach4_reef = CreateSyncAwaitEvent("Await Pose Approach 4 Stage", pose_approach4_Reef);
-    var event_align1_speaker = CreateSyncAwaitEvent("Await Pose Align 1 Speaker", pose_align1_Speaker);
-    var event_pickup1_speaker = CreateSyncAwaitEvent("Await Pose Pickup 1 Speaker", pose_pickup1_Speaker);
+    var event_align1_source = CreateSyncAwaitEvent("Await Pose Align 1 Source", pose_align1_Source);
+    var event_pickup1_source = CreateSyncAwaitEvent("Await Pose Pickup 1 Source", pose_pickup1_Source);
 
-    AutoEventTarget event_score1_upper = CreateSyncAwaitEvent("Await Pose Score 3 Upper", pose_score1_Upper);
+    AutoEventTarget event_score1_upper = CreateSyncAwaitEvent("Await Pose Score 1 Upper", pose_score1_Upper);
 
     AutoEventTime event_openLatch = new AutoEventTime("Open Latch", false, 2000, AutoEvent.EventType.Boolean, autoController);
     event_openLatch.SetBoolEvent(true, shoot::ApplyValue);
@@ -79,25 +80,22 @@ public class ScoreSpeaker extends AutoSequence {
     BeginWith(event_start1);
 
     switch (driverLocation) {
-      case 1:
-        Then(event_waypoint1_stage);
-      case 2:
-        Then(event_waypoint2_stage);
-        break;
       case 3:
         Then(event_waypoint3_stage);
+      case 2:
         Then(event_waypoint2_stage);
+      case 1:
+        Then(event_waypoint1_stage);
         break;
     }
 
-    Then(event_align1_speaker)
-      .Then(event_score1_upper)
+    Then(event_score1_upper)
       .Then(event_openLatch)
       .Then(event_closeLatchAfter)
       .Then(event_waypoint2_stage)
       .Then(event_waypoint1_stage)
-      .Then(event_align1_speaker)
-      .Then(event_pickup1_speaker)
+      .Then(event_align1_source)
+      .Then(event_pickup1_source)
       .Then(event_waitForLoading)
       .Then(event_waypoint2_stage)
     ;

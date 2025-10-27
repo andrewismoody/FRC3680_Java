@@ -14,14 +14,20 @@ import frc.robot.z2024.action.Position;
 
 public class ActionPoses {
     public static void Initialize(DriveModule diffDriveModule, DualMotorModule shoot, SingleMotorModule feed, SingleMotorModule pickup, DualMotorModule lift) {
+        // this spits out coordinates in format for python plotting
+        var outputFormatter = "(\"%s %d %d %d %s\", %f, %f),\n";
+        var outputRotFormatter = "(\"%s %d %d %d %s\", %f, %f), # rotation: %f\n";
+
         // start, (we don't know where we are yet, so rotate a specific angle to face a tag)
         // get facing direction
         var startRotation = diffDriveModule.GetPositionerOffset().getRotation().toRotation2d();
         diffDriveModule.AddActionPose(new ActionPose(Group.Start, Location.Start.getValue(), 1, Position.Any.getValue(), Action.Any,
             new AutoTarget(Utility.getLookat(Constants.getMyStartPose().getTranslation().toTranslation2d(), Constants.getFieldPosition(Group.Any, Location.Interest, 1).toTranslation2d()).minus(startRotation))));
+        var scorepose = new ActionPose(Group.Any, Location.Interest.getValue(), 2, Position.Any.getValue(), Action.Any,
+            new AutoTarget(Constants.getFieldPosition(Group.Any, Location.Interest, 2), Constants.getKnownRotation(Group.Any, Location.Interest, 2)));
+        diffDriveModule.AddActionPose(scorepose);
+        System.out.printf(outputFormatter, scorepose.group, scorepose.location, scorepose.locationIndex, scorepose.position, scorepose.action, Utility.metersToInches(scorepose.target.Position.getX()), Utility.metersToInches(scorepose.target.Position.getY()));
 
-        // this spits out coordinates in format for python plotting
-        var outputFormatter = "(\"%s %d %d %d %s\", %f, %f),\n";
         for (int i = 1; i <= 6; i++) {
             // waypoint i, Lookat stage
             var pose = new ActionPose(Group.Travel, Location.Waypoint.getValue(), i, Position.Any.getValue(), Action.Any,
@@ -33,8 +39,7 @@ public class ActionPoses {
         for (int i = 1; i <= 3; i++) {
             var stageTag = Constants.stageIndexToTag.get(i);
             // get perpendicular direction facing toward
-            var rotation = diffDriveModule.GetPositionerOffset().getRotation().toRotation2d();
-            rotation = Rotation2d.kCW_90deg.minus(rotation);
+            var rotation = Rotation2d.kCCW_90deg;
 
             // align left scoring i, match reefTag rotation
             var pose = new ActionPose(Group.AlignLeft, Location.Stage.getValue(), i, Position.Any.getValue(), Action.Any,
@@ -66,20 +71,43 @@ public class ActionPoses {
         for (int i = 1; i <= 2; i++) {
             var speakerTag = Constants.speakerIndexToTag.get(i);
             // get perpendicular direction facing away
-            var rotation = diffDriveModule.GetPositionerOffset().getRotation().toRotation2d();
-            rotation = Rotation2d.kCCW_90deg.minus(rotation);
+            // don't adjust for positioner offset, as scoring is from back of robot
+            var rotation = Rotation2d.kCW_90deg;
+            var tagRotation = Constants.getKnownRotation(Group.Any, Location.Tag, speakerTag);
+            tagRotation = tagRotation.plus(rotation);
 
-            // align coral i, match speakerTag rotation
+            // align speaker i, match speakerTag rotation
             var pose = new ActionPose(Group.Align, Location.Speaker.getValue(), i, Position.Any.getValue(), Action.Any,
-                new AutoTarget(Constants.getFieldPosition(Group.Align, Location.Speaker, i), Constants.getKnownRotation(Group.Any, Location.Tag, speakerTag).plus(rotation)));
+                new AutoTarget(Constants.getFieldPosition(Group.Align, Location.Speaker, i), tagRotation));
             diffDriveModule.AddActionPose(pose);
-            System.out.printf(outputFormatter, pose.group, pose.location, pose.locationIndex, pose.position, pose.action, Utility.metersToInches(pose.target.Position.getX()), Utility.metersToInches(pose.target.Position.getY()));
+            System.out.printf(outputRotFormatter, pose.group, pose.location, pose.locationIndex, pose.position, pose.action, Utility.metersToInches(pose.target.Position.getX()), Utility.metersToInches(pose.target.Position.getY()), pose.target.Orientation.getDegrees());
 
-            // coral i, match speakerTag rotation
+            // speaker i, match speakerTag rotation
             pose = new ActionPose(Group.Pickup, Location.Speaker.getValue(), i, Position.Any.getValue(), Action.Any,
-                new AutoTarget(Constants.getFieldPosition(Group.Any, Location.Speaker, i), Constants.getKnownRotation(Group.Any, Location.Tag, speakerTag).plus(rotation)));
+                new AutoTarget(Constants.getFieldPosition(Group.Any, Location.Speaker, i), tagRotation));
             diffDriveModule.AddActionPose(pose);
-            System.out.printf(outputFormatter, pose.group, pose.location, pose.locationIndex, pose.position, pose.action, Utility.metersToInches(pose.target.Position.getX()), Utility.metersToInches(pose.target.Position.getY()));
+            System.out.printf(outputRotFormatter, pose.group, pose.location, pose.locationIndex, pose.position, pose.action, Utility.metersToInches(pose.target.Position.getX()), Utility.metersToInches(pose.target.Position.getY()), pose.target.Orientation.getDegrees());
+        }
+
+        for (int i = 1; i <= 2; i++) {
+            var sourceTag = Constants.sourceIndexToTag.get(i);
+            // get perpendicular direction facing away
+            // don't adjust for positioner offset, as scoring is from back of robot
+            var rotation = Rotation2d.kCW_90deg;
+            var tagRotation = Constants.getKnownRotation(Group.Any, Location.Tag, sourceTag);
+            tagRotation = tagRotation.plus(rotation);
+
+            // align source i, match sourceTag rotation
+            var pose = new ActionPose(Group.Align, Location.Source.getValue(), i, Position.Any.getValue(), Action.Any,
+                new AutoTarget(Constants.getFieldPosition(Group.Align, Location.Source, i), tagRotation));
+            diffDriveModule.AddActionPose(pose);
+            System.out.printf(outputRotFormatter, pose.group, pose.location, pose.locationIndex, pose.position, pose.action, Utility.metersToInches(pose.target.Position.getX()), Utility.metersToInches(pose.target.Position.getY()), pose.target.Orientation.getDegrees());
+
+            // source i, match sourceTag rotation
+            pose = new ActionPose(Group.Pickup, Location.Source.getValue(), i, Position.Any.getValue(), Action.Any,
+                new AutoTarget(Constants.getFieldPosition(Group.Any, Location.Source, i), tagRotation));
+            diffDriveModule.AddActionPose(pose);
+            System.out.printf(outputRotFormatter, pose.group, pose.location, pose.locationIndex, pose.position, pose.action, Utility.metersToInches(pose.target.Position.getX()), Utility.metersToInches(pose.target.Position.getY()), pose.target.Orientation.getDegrees());
         }
 
         shoot.AddActionPose(new ActionPose(Group.Score, Location.Any.getValue(), -1, Position.Upper.getValue(), Action.Any, new AutoTarget(1.36)));

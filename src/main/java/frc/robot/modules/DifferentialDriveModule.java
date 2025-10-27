@@ -46,7 +46,7 @@ public class DifferentialDriveModule implements DriveModule {
     MotorController rightMotor;
     Gyro gyro;
     Positioner positioner;
-    Pose3d fakeCameraPose = new Pose3d(new Translation3d(0, -0.28, 0.51), new Rotation3d(new Rotation2d(90)));
+    Pose3d fakeCameraPose = new Pose3d(new Translation3d(0, -0.28, 0.51), new Rotation3d(Rotation2d.fromDegrees(90)));
 
     double forwardSpeed = 0.0;
     double rotationAngle = 0.0;
@@ -80,7 +80,7 @@ public class DifferentialDriveModule implements DriveModule {
     double elapsedTime = 0.0;
     double previousTime = 0.0;
     double driveRatio = 1.0; // wheelCircumference / gearRatio
-    double driveEncSimRate = 12.0;
+    double driveEncSimRate = (Math.PI * 2) / 360; // degrees to radians
     double frameNorm = 0.0;
     double driveSpeed;
    
@@ -462,8 +462,6 @@ public class DifferentialDriveModule implements DriveModule {
         var positions = new DifferentialDriveWheelPositions(leftDistance, rightDistance);
         //odometry.update(currentRotation, positions);
         poseEstimator.update(currentRotation, positions);
-
-        
 
         // update fake gyro angle - will append the amount of change from this period to the current value
         gyro.appendSimValueDeg(Utility.radiansToDegrees(currentRotationAngle * fakeGyroRate));
