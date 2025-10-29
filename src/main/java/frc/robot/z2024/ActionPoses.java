@@ -110,8 +110,9 @@ public class ActionPoses {
             System.out.printf(outputRotFormatter, pose.group, pose.location, pose.locationIndex, pose.position, pose.action, Utility.metersToInches(pose.target.Position.getX()), Utility.metersToInches(pose.target.Position.getY()), pose.target.Orientation.getDegrees());
         }
 
-        shoot.AddActionPose(new ActionPose(Group.Score, Location.Any.getValue(), -1, Position.Upper.getValue(), Action.Any, new AutoTarget(1.36)));
-        shoot.AddActionPose(new ActionPose(Group.Score, Location.Any.getValue(), -1, Position.Lower.getValue(), Action.Any, new AutoTarget(0.55)));
+        // shoot uses velocity targets, so it will try to reach the 28.8 m/s, then sustain that velocity until told otherwise
+        shoot.AddActionPose(new ActionPose(Group.Any, Location.Any.getValue(), -1, Position.Upper.getValue(), Action.Any, new AutoTarget(28.8)));
+        shoot.AddActionPose(new ActionPose(Group.Any, Location.Any.getValue(), -1, Position.Lower.getValue(), Action.Any, new AutoTarget(14.4)));
         shoot.AddActionPose(new ActionPose(Group.Any, Location.Any.getValue(), -1, Position.Ground.getValue(), Action.Any, new AutoTarget(0.0)));
     }
 }

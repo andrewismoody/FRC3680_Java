@@ -42,6 +42,7 @@ public class SingleMotorModule implements RobotModule,AutoCloseable {
     double m_floatTolerance = 0.04f;
     boolean useVelocity = false;
     double currentVelocity = 0.0;
+    double sustainedDriveSpeed = 0.0;
 
     public boolean debug = false;
     double previousDriveSpeed;
@@ -243,14 +244,18 @@ public class SingleMotorModule implements RobotModule,AutoCloseable {
     @Override
     public void ApplyInverse(boolean isPressed) {
         if (isPressed) {
-            AbandonTarget();
+            sustainedDriveSpeed = 0.0;
+            myTable.getEntry("sustainedDriveSpeed").setDouble(sustainedDriveSpeed);
             currentDriveSpeed += controller.ApplyModifiers(invert ? driveSpeed : -driveSpeed) * reverseMultiplier;
+            AbandonTarget();
         }
     }
 
     @Override
     public void ApplyValue(boolean isPressed) {
         if (isPressed) {
+            sustainedDriveSpeed = 0.0;
+            myTable.getEntry("sustainedDriveSpeed").setDouble(sustainedDriveSpeed);
             currentDriveSpeed += controller.ApplyModifiers(invert ? -driveSpeed : driveSpeed);
             AbandonTarget();
         }
@@ -260,6 +265,10 @@ public class SingleMotorModule implements RobotModule,AutoCloseable {
         // TODO: detect button input and bypass - how would this ever get set to non-zero at this point?
         if (targetPose != null) { //} && currentDriveSpeed != 0.0) {
             var target = targetPose.target;
+
+            // reset sustained drive speed on new target
+            sustainedDriveSpeed = 0.0;
+            myTable.getEntry("sustainedDriveSpeed").setDouble(sustainedDriveSpeed);
     
             // we have a target and we're not manually applying a value, try to get to it.
             // the x axis of the position of the pose is the rotation count (distance along the motor axis)
@@ -278,6 +287,11 @@ public class SingleMotorModule implements RobotModule,AutoCloseable {
                 if (settleCount < settleCyclesRequired) {
                     settleCount++;
                     settleCountEntry.setNumber(settleCount);
+                    if (useVelocity && previousDriveSpeed != 0.0) {
+                        // keep our target velocity
+                        sustainedDriveSpeed = previousDriveSpeed;
+                        myTable.getEntry("sustainedDriveSpeed").setDouble(sustainedDriveSpeed);
+                    }
                 }
 
                 if (settleCount >= settleCyclesRequired) {
@@ -349,7 +363,7 @@ public class SingleMotorModule implements RobotModule,AutoCloseable {
 
         mechMotion.setLength(rotationCount * distancePerRotation);
 
-        currentDriveSpeed = 0.0;
+        currentDriveSpeed = sustainedDriveSpeed;
     }
 
     public void SetController(ModuleController Controller) {
