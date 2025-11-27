@@ -56,7 +56,7 @@ public class DualMotorModule implements RobotModule {
             actionPoses.add(newpose);
         }
 
-        var inverted = new ActionPose(newpose.group, newpose.location, newpose.locationIndex, newpose.position, newpose.action, new AutoTarget(-newpose.target.Distance));
+        var inverted = new ActionPose(newpose.group, newpose.location, newpose.locationIndex, newpose.position, newpose.action, new AutoTarget(-newpose.target.Measurement));
 
         if (leftDriveMotor.invert)
             leftDriveMotor.AddActionPose(inverted);
@@ -139,7 +139,7 @@ public class DualMotorModule implements RobotModule {
     public void OverrideTargetActionPose(ActionPose newpose) {
         targetPose = newpose;
 
-        var inverted = new ActionPose(newpose.group, newpose.location, newpose.locationIndex, newpose.position, newpose.action, new AutoTarget(-newpose.target.Distance));
+        var inverted = new ActionPose(newpose.group, newpose.location, newpose.locationIndex, newpose.position, newpose.action, new AutoTarget(-newpose.target.Measurement));
 
         if (leftDriveMotor.invert)
             leftDriveMotor.OverrideTargetActionPose(inverted);

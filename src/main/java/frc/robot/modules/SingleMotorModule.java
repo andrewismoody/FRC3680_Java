@@ -48,7 +48,7 @@ public class SingleMotorModule implements RobotModule,AutoCloseable {
     double previousDriveSpeed;
     double currentDriveSpeed;
 
-    double previousTargetDistance = 0.0;
+    double previousTargetMeasurement = 0.0;
     double encoderMultiplier = 1.0;
     double reverseMultiplier = 1.0;
 
@@ -72,8 +72,8 @@ public class SingleMotorModule implements RobotModule,AutoCloseable {
     private NetworkTableEntry targetPoseEntry;
     private NetworkTableEntry settleCountEntry;
     private NetworkTableEntry lowerLimitEntry;
-    private NetworkTableEntry targetDistanceEntry;
-    private NetworkTableEntry deltaDistanceEntry;
+    private NetworkTableEntry targetMeasurementEntry;
+    private NetworkTableEntry deltaMeasurementEntry;
     private NetworkTableEntry driveDistanceEntry;
     private NetworkTableEntry rotationCountEntry;
     private NetworkTableEntry currentDriveSpeedEntry;
@@ -121,8 +121,8 @@ public class SingleMotorModule implements RobotModule,AutoCloseable {
         targetPoseEntry = myTable.getEntry("targetPose");
         settleCountEntry = myTable.getEntry("settleCount");
         lowerLimitEntry = myTable.getEntry("lowerLimit");
-        targetDistanceEntry = myTable.getEntry("targetDistance");
-        deltaDistanceEntry = myTable.getEntry("deltaDistance");
+        targetMeasurementEntry = myTable.getEntry("targetMeasurement");
+        deltaMeasurementEntry = myTable.getEntry("deltaMeasurement");
         driveDistanceEntry = myTable.getEntry("driveDistance");
         rotationCountEntry = myTable.getEntry("rotationCount");
         currentDriveSpeedEntry = myTable.getEntry("currentDriveSpeed");
@@ -193,7 +193,7 @@ public class SingleMotorModule implements RobotModule,AutoCloseable {
             targetPoseEntry.setString(String.format("%s %s %d %s %s", group, location, locationIndex, position, action));
 
             this.targetPose = targetPose;
-            targetDistanceEntry.setDouble(targetPose.target.Distance);
+            targetMeasurementEntry.setDouble(targetPose.target.Measurement);
 
             // reset settle counter on new target
             settleCount = 0;
@@ -272,14 +272,14 @@ public class SingleMotorModule implements RobotModule,AutoCloseable {
     
             // we have a target and we're not manually applying a value, try to get to it.
             // the x axis of the position of the pose is the rotation count (distance along the motor axis)
-            var targetValue = target.Distance;
+            var targetValue = target.Measurement;
             var measurement = rotationCount;
             var targetDelta = 0.0;
             if (useVelocity)
                 measurement = currentVelocity;
             targetDelta = targetValue - measurement;
-            deltaDistanceEntry.setDouble(targetDelta);
-            previousTargetDistance = targetDelta;
+            deltaMeasurementEntry.setDouble(targetDelta);
+            previousTargetMeasurement = targetDelta;
 
             var shouldMove = (Math.abs(targetDelta) > m_floatTolerance);
             if (!shouldMove) {

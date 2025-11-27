@@ -5,8 +5,9 @@ import edu.wpi.first.math.geometry.Translation3d;
 import frc.robot.modules.ModuleState;
 
 public class AutoTarget {
-    public double Distance = 0.0;
-    public boolean HasDistance = false;
+    // Measurement is either Distance or Velocity, depending on the needs of the module
+    public double Measurement = 0.0;
+    public boolean HasMeasurement = false;
 
     public ModuleState State = ModuleState.Off;
     public boolean HasState = false;
@@ -20,9 +21,9 @@ public class AutoTarget {
     public Translation3d LookAt = null;
     public boolean HasLookAt = false;
 
-    public AutoTarget(double distance) {
-        Distance = distance;
-        HasDistance = true;
+    public AutoTarget(double measurement) {
+        Measurement = measurement;
+        HasMeasurement = true;
     }
 
     public AutoTarget(ModuleState state) {
