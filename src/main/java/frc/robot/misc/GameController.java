@@ -19,12 +19,14 @@ public class GameController {
     PS4Controller ps4Controller;
     XboxController xboxController;
     Joystick fsController;
+    Joystick switch2ProController;
     double thumbstickDeadZone = 0.2;
 
     public enum ControllerType {
         Xbox,
         PS4,
         FlightStick,
+        Switch2Pro,
     }
 
     public enum ButtonName {
@@ -49,6 +51,10 @@ public class GameController {
         Select,
         Logo,
         Any,
+        Capture,
+        Chat,
+        GripLeft,
+        GripRight,
     }
 
     Hashtable<ButtonName, Supplier<Boolean>> BinaryButtonSuppliers = new Hashtable<GameController.ButtonName,Supplier<Boolean>>();
@@ -83,6 +89,10 @@ public class GameController {
     NetworkTableEntry SelectNTEntry;
     NetworkTableEntry LogoNTEntry;
     NetworkTableEntry AnyButtonNTEntry;
+    NetworkTableEntry CaptureNTEntry;
+    NetworkTableEntry ChatNTEntry;
+    NetworkTableEntry GripLeftNTEntry;
+    NetworkTableEntry GripRightNTEntry;
 
     void RegisterBinaryButtonSupplier(ButtonName button, Supplier<Boolean> func) {
         BinaryButtonSuppliers.put(button, func);
@@ -183,6 +193,9 @@ public class GameController {
             case FlightStick:
                 fsController = new Joystick(index);
                 break;
+            case Switch2Pro:
+                switch2ProController = new Joystick(index);
+                break;
         }
 
         RegisterBinaryButtonSupplier(ButtonName.TopButton, this::getTopButton);
@@ -200,6 +213,10 @@ public class GameController {
         RegisterBinaryButtonSupplier(ButtonName.POVRight, this::getPOVRight);
         RegisterBinaryButtonSupplier(ButtonName.LeftTrigger, this::getLeftTriggerBinaryValue);
         RegisterBinaryButtonSupplier(ButtonName.RightTrigger, this::getRightTriggerBinaryValue);
+        RegisterBinaryButtonSupplier(ButtonName.Capture, this::getCaptureButton);
+        RegisterBinaryButtonSupplier(ButtonName.Chat, this::getChatButton);
+        RegisterBinaryButtonSupplier(ButtonName.GripLeft, this::getGripLeftButton);
+        RegisterBinaryButtonSupplier(ButtonName.GripRight, this::getGripRightButton); 
 
         RegisterValueButtonSupplier(ButtonName.LeftTrigger, this::getLeftTriggerValue);
         RegisterValueButtonSupplier(ButtonName.RightTrigger, this::getRightTriggerValue);
@@ -234,6 +251,10 @@ public class GameController {
         SelectNTEntry = myTable.getEntry(ButtonName.Select.toString());
         LogoNTEntry = myTable.getEntry(ButtonName.Logo.toString());
         AnyButtonNTEntry = myTable.getEntry(ButtonName.Any.toString());
+        CaptureNTEntry = myTable.getEntry(ButtonName.Capture.toString());
+        ChatNTEntry = myTable.getEntry(ButtonName.Chat.toString());
+        GripLeftNTEntry = myTable.getEntry(ButtonName.GripLeft.toString());
+        GripRightNTEntry = myTable.getEntry(ButtonName.GripRight.toString());
     }
 
     // TODO 1: this doesn't seem to interrupt motion (especially seektag) -make sure this doesn't break teleop after auto
@@ -277,6 +298,9 @@ public class GameController {
             case FlightStick:
                 value = fsController.getRawButton(0);
                 break;
+            case Switch2Pro:
+                value = switch2ProController.getRawButton(3);
+                break;
         }
 
         LeftButtonNTEntry.setBoolean(value);
@@ -297,6 +321,10 @@ public class GameController {
             case FlightStick:
                 value = fsController.getRawButton(1);
                 break;
+            case Switch2Pro:
+                value = switch2ProController.getRawButton(4);
+                break;
+
         }
 
         TopButtonNTEntry.setBoolean(value);
@@ -316,6 +344,9 @@ public class GameController {
                 break;
             case FlightStick:
                 value = fsController.getRawButton(2);
+                break;
+            case Switch2Pro:
+                value = switch2ProController.getRawButton(2);
                 break;
         }
 
@@ -337,6 +368,9 @@ public class GameController {
             case FlightStick:
                 value = fsController.getRawButton(3);
                 break;
+            case Switch2Pro:
+                value = switch2ProController.getRawButton(1);
+                break;
         }
 
         BottomButtonNTEntry.setBoolean(value);
@@ -356,6 +390,9 @@ public class GameController {
                 break;
             case FlightStick:
                 value = fsController.getRawButton(4);
+                break;
+            case Switch2Pro:
+                value = switch2ProController.getRawButton(13);
                 break;
         }
 
@@ -377,6 +414,9 @@ public class GameController {
             case FlightStick:
                 value = fsController.getRawAxis(2);
                 break;
+            case Switch2Pro:
+                value = switch2ProController.getRawButton(14) ? 1.0 : 0.0;
+                break;
         }
 
         LeftTriggerNTEntry.setDouble(value);
@@ -396,6 +436,9 @@ public class GameController {
                 break;
             case FlightStick:
                 value = fsController.getRawAxis(2)> 0.1 ? true : false;
+                break;
+            case Switch2Pro:
+                value = switch2ProController.getRawButton(14);
                 break;
         }
 
@@ -417,6 +460,9 @@ public class GameController {
             case FlightStick:
                 value = fsController.getRawButton(5);
                 break;
+            case Switch2Pro:
+                value = switch2ProController.getRawButton(5);
+                break;
         }
 
         RightShoulderButtonNTEntry.setBoolean(value);
@@ -436,6 +482,9 @@ public class GameController {
                 break;
             case FlightStick:
                 value = fsController.getRawAxis(3);
+                break;
+            case Switch2Pro:
+                value = switch2ProController.getRawButton(6) ? 1.0 : 0.0;
                 break;
         }
 
@@ -457,6 +506,9 @@ public class GameController {
             case FlightStick:
                 value = fsController.getRawAxis(3)> 0.1 ? true : false;
                 break;
+            case Switch2Pro:
+                value = switch2ProController.getRawButton(6);
+                break;
         }
 
         RightTriggerNTEntry.setDouble(value == true ? 1.0 : 0.0);
@@ -477,7 +529,10 @@ public class GameController {
             case FlightStick:
                 value = fsController.getRawAxis(0);
                 break;
-        }
+            case Switch2Pro:
+                value = -switch2ProController.getRawAxis(3);
+                break;
+            }
 
         value = Math.abs(value) > thumbstickDeadZone ? value : 0.0;
 
@@ -498,6 +553,9 @@ public class GameController {
                 break;
             case FlightStick:
                 value = fsController.getRawAxis(1);
+                break;
+            case Switch2Pro:
+                value = switch2ProController.getRawAxis(2);
                 break;
         }
 
@@ -521,7 +579,9 @@ public class GameController {
             case FlightStick:
                 value = fsController.getRawAxis(0);
                 break;
-        }
+            case Switch2Pro:
+                value = -switch2ProController.getRawAxis(1);
+            }
 
         value = Math.abs(value) > thumbstickDeadZone ? value : 0.0;
 
@@ -543,6 +603,8 @@ public class GameController {
             case FlightStick:
                 value = fsController.getRawAxis(1);
                 break;
+            case Switch2Pro:
+                value = switch2ProController.getRawAxis(0);
         }
 
         value = Math.abs(value) > thumbstickDeadZone ? value : 0.0;
@@ -564,6 +626,9 @@ public class GameController {
                 break;
             case FlightStick:
                 value = fsController.getPOV();
+                break;
+            case Switch2Pro:
+                value = mapDirectionToPOV(switch2ProController, 11, 10, 12, 9);
                 break;
         }
 
@@ -631,8 +696,11 @@ public class GameController {
             case PS4:
                 value = ps4Controller.getShareButton();
                 break;
-             case FlightStick:
+            case FlightStick:
                 value = fsController.getTop();
+                break;
+            case Switch2Pro:
+                value = switch2ProController.getRawButton(7);
                 break;
        }
 
@@ -654,7 +722,10 @@ public class GameController {
              case FlightStick:
                 value = fsController.getTrigger();
                 break;
-        }
+            case Switch2Pro:
+                value = switch2ProController.getRawButton(15);
+                break;
+            }
 
         SelectNTEntry.setBoolean(value);
 
@@ -672,13 +743,124 @@ public class GameController {
                 break;
              case FlightStick:
                 break;
+            case Switch2Pro:
+                value = switch2ProController.getRawButton(17);
+                break;
         }
 
         LogoNTEntry.setBoolean(value);
 
         return value;
     }
-    
+ 
+    boolean getCaptureButton() {
+        var value = false;
+        
+        switch (Type) {
+            case Xbox:
+                break;
+            case PS4:
+                break;
+             case FlightStick:
+                break;
+            case Switch2Pro:
+                value = switch2ProController.getRawButton(18);
+                break;
+        }
+
+        CaptureNTEntry.setBoolean(value);
+
+        return value;
+    }
+ 
+    boolean getChatButton() {
+        var value = false;
+        
+        switch (Type) {
+            case Xbox:
+                break;
+            case PS4:
+                break;
+             case FlightStick:
+                break;
+            case Switch2Pro:
+                value = switch2ProController.getRawButton(21);
+                break;
+        }
+
+        ChatNTEntry.setBoolean(value);
+
+        return value;
+    }
+ 
+    boolean getGripLeftButton() {
+        var value = false;
+        
+        switch (Type) {
+            case Xbox:
+                break;
+            case PS4:
+                break;
+             case FlightStick:
+                break;
+            case Switch2Pro:
+                value = switch2ProController.getRawButton(20);
+                break;
+        }
+
+        GripLeftNTEntry.setBoolean(value);
+        return value;
+    }
+ 
+    boolean getGripRightButton() {
+        var value = false;
+        
+        switch (Type) {
+            case Xbox:
+                break;
+            case PS4:
+                break;
+             case FlightStick:
+                break;
+            case Switch2Pro:
+                value = switch2ProController.getRawButton(19);
+                break;
+        }
+
+        GripRightNTEntry.setBoolean(value);
+        return value;
+    }
+
+    int mapDirectionToPOV(Joystick joystick, int POVleft, int POVright, int POVup, int POVdown) {
+        if (joystick.getRawButton(POVleft) && !joystick.getRawButton(POVright) &&
+            !joystick.getRawButton(POVup) && !joystick.getRawButton(POVdown)) {
+            return 270; // 270 degrees
+        } else if (!joystick.getRawButton(POVleft) && joystick.getRawButton(POVright) &&
+                   !joystick.getRawButton(POVup) && !joystick.getRawButton(POVdown)) {
+            return 90; // 90 degrees
+        } else if (!joystick.getRawButton(POVleft) && !joystick.getRawButton(POVright) &&
+                   joystick.getRawButton(POVup) && !joystick.getRawButton(POVdown)) {
+            return 0; // 0 degrees
+        } else if (!joystick.getRawButton(POVleft) && !joystick.getRawButton(POVright) &&
+                   !joystick.getRawButton(POVup) && joystick.getRawButton(POVdown)) {
+            return 180; // 180 degrees
+        } else if (joystick.getRawButton(POVleft) && !joystick.getRawButton(POVright) &&
+            joystick.getRawButton(POVup) && !joystick.getRawButton(POVdown)) {
+            return 315; // 315 degrees
+        } else if (!joystick.getRawButton(POVleft) && joystick.getRawButton(POVright) &&
+                   joystick.getRawButton(POVup) && !joystick.getRawButton(POVdown)) {
+            return 45; // 45 degrees
+        } else if (joystick.getRawButton(POVleft) && !joystick.getRawButton(POVright) &&
+                   !joystick.getRawButton(POVup) && joystick.getRawButton(POVdown)) {
+            return 225; // 225 degrees
+        } else if (!joystick.getRawButton(POVleft) && joystick.getRawButton(POVright) &&
+                   !joystick.getRawButton(POVup) && joystick.getRawButton(POVdown)) {
+            return 135; // 135 degrees
+        } else {
+            return -1; // No direction or multiple directions pressed
+        }
+    }
+
     public static GameController Initialize() {
         GameController m_controller = null;
 
@@ -704,6 +886,10 @@ public class GameController {
                     m_controller = new GameController(j, ControllerType.PS4);
                     break JoystickIndexLoop;
                     }
+                case kHIDJoystick:
+                    System.out.printf("Joystick on port %d is a generic controller, assuming Switch2Pro controller\n", j);
+                    m_controller = new GameController(j, ControllerType.Switch2Pro);
+                    break JoystickIndexLoop;
                 }
             } else {
                 System.out.printf("Joystick is not connected on port %d\n", j);
