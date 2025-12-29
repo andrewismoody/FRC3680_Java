@@ -93,6 +93,7 @@ public class GameController {
     NetworkTableEntry ChatNTEntry;
     NetworkTableEntry GripLeftNTEntry;
     NetworkTableEntry GripRightNTEntry;
+    NetworkTableEntry JoystickTypeNTEntry;
 
     void RegisterBinaryButtonSupplier(ButtonName button, Supplier<Boolean> func) {
         BinaryButtonSuppliers.put(button, func);
@@ -255,6 +256,9 @@ public class GameController {
         ChatNTEntry = myTable.getEntry(ButtonName.Chat.toString());
         GripLeftNTEntry = myTable.getEntry(ButtonName.GripLeft.toString());
         GripRightNTEntry = myTable.getEntry(ButtonName.GripRight.toString());
+        JoystickTypeNTEntry = myTable.getEntry("JoystickType");
+
+        JoystickTypeNTEntry.setString(Type.toString());
     }
 
     // TODO 1: this doesn't seem to interrupt motion (especially seektag) -make sure this doesn't break teleop after auto

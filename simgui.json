@@ -53,6 +53,12 @@
       "open": false
     },
     "transitory": {
+      "GameController": {
+        "open": true
+      },
+      "LiveWindow": {
+        "open": true
+      },
       "SmartDashboard": {
         "Field": {
           "double[]##v_/SmartDashboard/Field/Robot": {
@@ -95,6 +101,12 @@
   },
   "NetworkTables Info": {
     "Clients": {
+      "open": true
+    },
+    "Server": {
+      "Subscribers": {
+        "open": true
+      },
       "open": true
     },
     "visible": true

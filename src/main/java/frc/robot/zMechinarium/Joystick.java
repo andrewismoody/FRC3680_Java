@@ -31,8 +31,8 @@ public class Joystick {
     m_controller.RegisterBinaryButtonConsumer(ButtonName.POVDown, elevator::ApplyInverse);
     m_controller.RegisterBinaryButtonConsumer(ButtonName.POVUp, elevator::ApplyValue);
 
-    // m_controller.RegisterBinaryButtonConsumer(ButtonName.POVLeft, grabber::ApplyInverse);
-    // m_controller.RegisterBinaryButtonConsumer(ButtonName.POVRight, grabber::ApplyValue);
+    //m_controller.RegisterBinaryButtonConsumer(ButtonName.POVLeft, grabber::ApplyInverse);
+    //m_controller.RegisterBinaryButtonConsumer(ButtonName.POVRight, grabber::ApplyValue);
 
     // m_controller.RegisterBinaryButtonConsumer(ButtonName.LeftButton, swerveDriveModule::LockPosition);
     m_controller.RegisterBinaryButtonConsumer(ButtonName.Select, swerveDriveModule::ReturnToZero);
@@ -54,5 +54,20 @@ public class Joystick {
 
     m_controller.SetValueButtonInversion(ButtonName.RightThumbstickX, false);
     m_controller.RegisterValueButtonConsumer(ButtonName.RightThumbstickX, swerveDriveModule::ProcessRotationAngle);
+
+    m_controller.SetValueButtonInversion(ButtonName.RightThumbstickX, false);
+    m_controller.RegisterValueButtonConsumer(ButtonName.RightThumbstickX, swerveDriveModule::ProcessRotationAngle);
+
+    // m_controller.SetValueButtonInversion(ButtonName.Chat, null);
+    // m_controller.RegisterValueButtonConsumer(ButtonName.Chat, modules::ProcessChat);
+
+    // m_controller.SetValueButtonInversion(ButtonName.GripLeft, true);
+    // m_controller.RegisterValueButtonConsumer(ButtonName.GripLeft, modules::ProcessGripLeft);
+
+    // m_controller.SetValueButtonInversion(ButtonName.GripRight, false);
+    // m_controller.RegisterValueButtonConsumer(ButtonName.GripRight, modules::ProcessGripRight);
+
+    // m_controller.SetValueButtonInversion(ButtonName.Capture, null);
+    // m_controller.RegisterValueButtonConsumer(ButtonName.Capture, modules::ProcessCapture);
   }
 }
