@@ -2,10 +2,22 @@ package frc.robot.encoder;
 
 import edu.wpi.first.wpilibj.I2C;
 import edu.wpi.first.wpilibj.I2C.Port;
+import frc.robot.misc.Utility;
+import edu.wpi.first.wpilibj.RobotBase;
 
 public class I2CAbsoluteEncoder implements Encoder {
     private I2C myI2c;
     double angleOffsetRad = 0.0; // angle to subtract from actual angle to zero the encoder
+    double multiplier = 1.0;
+    double value = 0.0;
+
+    public void setMultiplier(double value) {
+        multiplier = value;
+    }
+
+    public double getMultiplier() {
+        return multiplier;
+    }
 
     public I2CAbsoluteEncoder() {
         this(Port.kOnboard, 0x36);
@@ -24,6 +36,20 @@ public class I2CAbsoluteEncoder implements Encoder {
         myI2c = new I2C(myPort, myAddr);
     }
 
+    public double getAngleOffsetRad() {
+        return angleOffsetRad;
+    }
+
+    public void setZeroPosition() {
+        // TODO: check if raw value should be rad or deg
+        setAngleOffsetRad(-getRawValue());
+    }
+
+    public double getVelocity() {
+        // Not implemented
+        return 0.0;
+    }
+
     public void setAngleOffsetDeg(double value) {
         setAngleOffsetRad(value * 0.0174532);
     }
@@ -32,24 +58,35 @@ public class I2CAbsoluteEncoder implements Encoder {
         angleOffsetRad = value;
     }
 
+    // getRawValue doesn't support sim values, use getDistance
     public double getRawValue() {
-        return readRegister(0x0C);                        // combine bytes to get 12-bit value 11:0
+        return readRegister(0x0C) * multiplier;                        // combine bytes to get 12-bit value 11:0
+    }
+
+    public void appendSimValueRad(double angleRad) {
+        // TODO: should this be converted to radians here?
+        value += angleRad;
+    }
+
+    public void appendSimValueRot(double angle) {
+        value += angle;
     }
 
     public double getDistance() {
-        double rawAngle;
-
-        rawAngle = getRawValue();
-
         boolean reportRadians = false;
 
-        // TODO: implement angle offset
-        
-        if (reportRadians)
-            return rawAngle * 0.001533203125; // 6.28 / 4096 = 0.001533203125 (radians)
-        else
-            return rawAngle * 0.087890625; // or 360/4096 = 0.087890625 (degrees)
+        if (RobotBase.isReal()) {
+            double rawAngle = getRawValue();
 
+            // TODO: implement angle offset
+            
+            value = rawAngle * 0.001533203125; // 6.28 / 4096 = 0.001533203125 (radians)
+        }
+
+        if (reportRadians)
+            return value;
+        else
+            return Utility.radiansToDegrees(value);
     }
 
     public void setDistancePerPulse(double dpp) {
@@ -82,5 +119,9 @@ public class I2CAbsoluteEncoder implements Encoder {
             myI2c.close();
             myI2c = null;
         }  
+    }
+
+    public boolean isAbsolute() {
+        return true;
     }
 }

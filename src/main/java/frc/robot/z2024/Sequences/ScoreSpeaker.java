@@ -1,0 +1,111 @@
+package frc.robot.z2024.Sequences;
+
+import frc.robot.action.Action;
+import frc.robot.action.ActionPose;
+import frc.robot.action.Group;
+import frc.robot.z2024.action.Location;
+import frc.robot.z2024.action.Position;
+import frc.robot.auto.AutoController;
+import frc.robot.auto.AutoEvent;
+import frc.robot.auto.AutoEventTarget;
+import frc.robot.auto.AutoEventTime;
+import frc.robot.auto.AutoSequence;
+import frc.robot.misc.Utility;
+import frc.robot.modules.DualMotorModule;
+
+public class ScoreSpeaker extends AutoSequence {
+  private final AutoController autoController;
+  private boolean initialized = false;
+
+  public ScoreSpeaker(String label, AutoController ac) {
+    super(label, ac);
+    this.autoController = ac;
+    // constructor intentionally does not access modules or poses
+  }
+
+  // Call this after modules and poses have been registered
+  @Override
+  public void Initialize() {
+    super.Initialize();
+
+    if (initialized) {
+      System.out.printf("Sequence %s already initialized; skipping duplicate init\n", GetLabel());
+      return;
+    }
+    initialized = true;
+
+    var modules = autoController.GetModuleController();
+    var driverLocation = Utility.getDriverLocation();
+
+    // Target Poses
+    var pose_start1 = new ActionPose(Group.Start, Location.Start.getValue(), driverLocation, Position.Ground.getValue(), Action.Pickup, null);
+    var pose_waypoint4_Stage = new ActionPose(Group.Travel, Location.Waypoint.getValue(), 4, Position.Ground.getValue(), Action.Pickup, null);
+    var pose_waypoint3_Stage = new ActionPose(Group.Travel, Location.Waypoint.getValue(), 3, Position.Ground.getValue(), Action.Pickup, null);
+    var pose_waypoint2_Stage = new ActionPose(Group.Travel, Location.Waypoint.getValue(), 2, Position.Ground.getValue(), Action.Pickup, null);
+    var pose_waypoint1_Stage = new ActionPose(Group.Travel, Location.Waypoint.getValue(), 1, Position.Ground.getValue(), Action.Pickup, null);
+    var pose_align3_Reef = new ActionPose(Group.AlignLeft, Location.Stage.getValue(), 3, Position.Ground.getValue(), Action.Pickup, null);
+    var pose_align4_Reef = new ActionPose(Group.AlignLeft, Location.Stage.getValue(), 4, Position.Ground.getValue(), Action.Pickup, null);
+    var pose_approach3_Reef = new ActionPose(Group.ApproachLeft, Location.Stage.getValue(), 3, Position.Ground.getValue(), Action.Pickup, null);
+    var pose_approach4_Reef = new ActionPose(Group.ApproachLeft, Location.Stage.getValue(), 4, Position.Ground.getValue(), Action.Pickup, null);
+    // Interest 2 is Mid-Speaker
+    var pose_score1_Upper = new ActionPose(Group.Score, Location.Interest.getValue(), 2, Position.Upper.getValue(), Action.Pop, null);
+    var pose_align1_Source = new ActionPose(Group.Align, Location.Source.getValue(), 2, Position.Ground.getValue(), Action.Pickup, null);
+    var pose_pickup1_Source = new ActionPose(Group.Pickup, Location.Source.getValue(), 1, Position.Ground.getValue(), Action.Pickup, null);
+
+    // var drive = modules.GetDriveModule();
+    var shoot = (DualMotorModule) modules.GetModule("shoot");
+
+    var event_start1 = CreateSyncAwaitEvent("Await Pose Start 1", pose_start1);
+    var event_waypoint4_stage = CreateSyncAwaitEvent("Await Pose Waypoint 4 Stage", pose_waypoint4_Stage);
+    var event_waypoint3_stage = CreateSyncAwaitEvent("Await Pose Waypoint 3 Stage", pose_waypoint3_Stage);
+    var event_waypoint2_stage = CreateSyncAwaitEvent("Await Pose Waypoint 2 Stage", pose_waypoint2_Stage);
+    var event_waypoint1_stage = CreateSyncAwaitEvent("Await Pose Waypoint 1 Stage", pose_waypoint1_Stage);
+    var event_align3_reef = CreateSyncAwaitEvent("Await Pose Align 3 Stage", pose_align3_Reef);
+    var event_align4_reef = CreateSyncAwaitEvent("Await Pose Align 4 Stage", pose_align4_Reef);
+    var event_approach3_reef = CreateSyncAwaitEvent("Await Pose Approach 3 Stage", pose_approach3_Reef);
+    var event_approach4_reef = CreateSyncAwaitEvent("Await Pose Approach 4 Stage", pose_approach4_Reef);
+    var event_align1_source = CreateSyncAwaitEvent("Await Pose Align 1 Source", pose_align1_Source);
+    var event_pickup1_source = CreateSyncAwaitEvent("Await Pose Pickup 1 Source", pose_pickup1_Source);
+
+    AutoEventTarget event_score1_upper = CreateSyncAwaitEvent("Await Pose Score 1 Upper", pose_score1_Upper);
+
+    AutoEventTime event_openLatch = new AutoEventTime("Open Latch", false, 2000, AutoEvent.EventType.Boolean, autoController);
+    event_openLatch.SetBoolEvent(true, shoot::ApplyValue);
+
+    AutoEventTime event_closeLatchAfter = new AutoEventTime("Close Latch (after 2s)", false, 60, AutoEvent.EventType.Boolean, autoController);
+    event_closeLatchAfter.SetBoolEvent(true, shoot::ApplyInverse);
+
+    AutoEventTime event_waitForLoading = new AutoEventTime("Wait For Loading", false, 5000, AutoEvent.EventType.None, autoController);
+
+    BeginWith(event_start1);
+
+    switch (driverLocation) {
+      case 3:
+        Then(event_waypoint3_stage);
+      case 2:
+        Then(event_waypoint2_stage);
+      case 1:
+        Then(event_waypoint1_stage);
+        break;
+    }
+
+    Then(event_score1_upper)
+      .Then(event_openLatch)
+      .Then(event_closeLatchAfter)
+      .Then(event_waypoint2_stage)
+      .Then(event_waypoint1_stage)
+      .Then(event_align1_source)
+      .Then(event_pickup1_source)
+      .Then(event_waitForLoading)
+      .Then(event_waypoint2_stage)
+    ;
+  }
+
+  AutoEventTarget CreateSyncAwaitEvent(String name, ActionPose pose) {
+    return new AutoEventTarget(name, false, pose, AutoEvent.EventType.AwaitTarget, autoController);
+  }
+
+  AutoEventTarget CreateAsyncAwaitEvent(String name, ActionPose pose) {
+    return new AutoEventTarget(name, true, pose, AutoEvent.EventType.AwaitTarget, autoController);
+  }
+}

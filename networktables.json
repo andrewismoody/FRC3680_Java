@@ -1,1 +1,10 @@
-[]
+[
+  {
+    "name": "/Preferences/DriveSelection",
+    "type": "string",
+    "value": "Swerve",
+    "properties": {
+      "persistent": true
+    }
+  }
+]

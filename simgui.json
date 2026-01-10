@@ -3,11 +3,11 @@
     "Other Devices": {
       "AnalogGyro[0]": {
         "header": {
-          "open": true
+          "open": false
         }
       }
     },
-    "PWM Outputs": {
+    "RoboRIO": {
       "window": {
         "visible": true
       }
@@ -15,10 +15,100 @@
   },
   "NTProvider": {
     "types": {
-      "/FMSInfo": "FMSInfo"
+      "/FMSInfo": "FMSInfo",
+      "/SmartDashboard/Field": "Field2d",
+      "/SmartDashboard/SendableChooser[0]": "String Chooser",
+      "/SmartDashboard/SendableChooser[1]": "String Chooser",
+      "/SmartDashboard/SendableChooser[2]": "String Chooser",
+      "/SmartDashboard/SendableChooser[3]": "String Chooser",
+      "/SmartDashboard/SendableChooser[4]": "String Chooser",
+      "/SmartDashboard/elevator mech": "Mechanism2d",
+      "/SmartDashboard/feed mech": "Mechanism2d",
+      "/SmartDashboard/lift_left mech": "Mechanism2d",
+      "/SmartDashboard/lift_right mech": "Mechanism2d",
+      "/SmartDashboard/pickup mech": "Mechanism2d",
+      "/SmartDashboard/shoot mech": "Mechanism2d",
+      "/SmartDashboard/shoot_left mech": "Mechanism2d",
+      "/SmartDashboard/shoot_right mech": "Mechanism2d"
+    },
+    "windows": {
+      "/SmartDashboard/Field": {
+        "bottom": 1476,
+        "height": 8.210550308227539,
+        "left": 150,
+        "right": 2961,
+        "top": 79,
+        "width": 16.541748046875,
+        "window": {
+          "visible": true
+        }
+      }
+    }
+  },
+  "NetworkTables": {
+    "Persistent Values": {
+      "open": false
+    },
+    "Retained Values": {
+      "open": false
+    },
+    "transitory": {
+      "GameController": {
+        "open": true
+      },
+      "LiveWindow": {
+        "open": true
+      },
+      "SmartDashboard": {
+        "Field": {
+          "double[]##v_/SmartDashboard/Field/Robot": {
+            "open": true
+          },
+          "open": true
+        }
+      },
+      "elevator": {
+        "open": true
+      },
+      "shoot": {
+        "open": true
+      },
+      "shoot_left": {
+        "open": true
+      },
+      "shoot_right": {
+        "open": true
+      },
+      "slide": {
+        "open": true
+      },
+      "swerveDrive": {
+        "Pose3d##v_/swerveDrive/currentPose": {
+          "Rotation3d##v_rotation": {
+            "Quaternion##v_q": {
+              "open": true
+            },
+            "open": true
+          },
+          "open": true
+        },
+        "leftFront": {
+          "open": true
+        },
+        "open": true
+      }
     }
   },
   "NetworkTables Info": {
+    "Clients": {
+      "open": true
+    },
+    "Server": {
+      "Subscribers": {
+        "open": true
+      },
+      "open": true
+    },
     "visible": true
   }
 }

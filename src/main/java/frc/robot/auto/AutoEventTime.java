@@ -2,6 +2,7 @@ package frc.robot.auto;
 
 import java.util.function.Consumer;
 
+// AutoEventTime represents an auto event that occurs based on a time trigger.
 public class AutoEventTime implements AutoEvent {
     boolean complete;
     boolean parallel;
@@ -21,35 +22,66 @@ public class AutoEventTime implements AutoEvent {
     Runnable voidEvent;
 
     AutoSequence autoEvent;
+    boolean hasStarted = false;
     
+    // AutoEventTime will trigger an event for the specified number of milliseconds.  If an AutoEvent is supplied, it will be triggered at the end of the time period.
     public AutoEventTime(String Label, boolean Parallel, long Milliseconds, EventType EventType, AutoController AutoController) {
         label = Label;
         parallel = Parallel;
-        milliseconds = Milliseconds;
+        // make 60 the minimum to ensure it always fires
+        milliseconds = Milliseconds < 60 ? 60 : Milliseconds;
         autoController = AutoController;
 
         eventType = EventType;
     }
 
+    public void SetDoubleEvent(double Value, Consumer<Double> Event) {
+        doubleValue = Value;
+        doubleEvent = Event;
+    }
+
+    public void SetBoolEvent(boolean Value, Consumer<Boolean> Event) {
+        boolValue = Value;
+        boolEvent = Event;
+    }
+
+    public void SetAutoEvent(AutoSequence AutoEvent) {
+        autoEvent = AutoEvent;
+    }
+
+    public void SetVoidEvent(Runnable Event) {
+        voidEvent = Event;
+    }
+
+    public boolean HasStarted() {
+        return hasStarted;
+    }
+
     public void Run() {
+        if (!hasStarted)
+            hasStarted = true;
+
         switch (eventType) {
             case Void:
-                voidEvent.run();
+                if (voidEvent != null)
+                    voidEvent.run();
                 break;
             case Boolean:
-                boolEvent.accept(boolValue);
+                if (boolEvent != null)
+                    boolEvent.accept(boolValue);
                 break;
             case Double:
-                doubleEvent.accept(doubleValue);
+                if (doubleEvent != null)
+                    doubleEvent.accept(doubleValue);
                 break;
             case Auto:
-                autoController.AddSequence(autoEvent);
-                break;
-            case Adaptive:
-                // not implemented - shouldn't be used for Time triggers, as there's no target to meet.
+                // only trigger auto event at the end of the time period (setcomplete=true)
+            case SetTarget:
+            case AwaitTarget:
+            case None:
+                // not implemented for Time Event Type
                 break;
         }
-        complete = true;
     }
 
     public long GetMilliseconds() {
@@ -69,7 +101,13 @@ public class AutoEventTime implements AutoEvent {
     }
 
     public void SetComplete(boolean Complete) {
+        // trigger the next autoevent at the end of the time period
+        if (Complete && autoEvent != null)
+            autoController.AddSequence(autoEvent);
+
         complete = Complete;
+        System.out.printf("%d ms: AutoEvent %s of type %s isComplete: %b\n",
+            System.currentTimeMillis(), label, TriggerType.Time.toString(), complete);
     }
 
     public String GetLabel() {

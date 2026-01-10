@@ -408,7 +408,27 @@ public class GyroBase implements Gyro, Sendable, AutoCloseable {
               return 0.0;
         }
     }
-  
+
+    @Override
+    public void appendSimValueDeg(double angleDegrees) {
+        var newAngle = ((angleDegrees % 360.0) + 360.0) % 360.0;
+        switch (m_yaw_axis) {
+            case kX:
+                newAngle += m_simGyroAngleX.get();
+                m_simGyroAngleX.set(newAngle);
+                break;
+            case kY:
+                newAngle += m_simGyroAngleY.get();
+                m_simGyroAngleY.set(newAngle);
+                break;
+            case kZ:
+            default:
+                newAngle += m_simGyroAngleZ.get();
+                m_simGyroAngleZ.set(newAngle);
+                break;
+        }
+    } 
+
     public double getRate() {
         switch (m_yaw_axis) {
             case kX:
