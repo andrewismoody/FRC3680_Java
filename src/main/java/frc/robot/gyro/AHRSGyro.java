@@ -1,0 +1,144 @@
+package frc.robot.gyro;
+
+import com.studica.frc.AHRS;
+import com.studica.frc.AHRS.NavXComType;
+
+import edu.wpi.first.math.geometry.Rotation2d;
+import edu.wpi.first.wpilibj.RobotBase;
+
+public class AHRSGyro implements Gyro {
+
+    AHRS ahrs = new AHRS(NavXComType.kUSB1);
+    // private long lastAngleGetTs = 0L;
+    private double lastAngle = 0.0;
+    
+    @Override
+    public void calibrate() {
+        // Not implemented
+    }
+
+    @Override
+    public int setYawAxis(GyroAxis yaw_axis) {
+        // Not implemented
+        return 0;
+    }
+
+    @Override
+    public int readRegister(int reg) {
+        throw new UnsupportedOperationException("Unimplemented method 'readRegister'");
+    }
+
+    @Override
+    public void writeRegister(int reg, int val) {
+        throw new UnsupportedOperationException("Unimplemented method 'writeRegister'");
+    }
+
+    @Override
+    public void reset() {
+        ahrs.reset();
+    }
+
+    @Override
+    public void acquire() {
+        throw new UnsupportedOperationException("Unimplemented method 'acquire'");
+    }
+
+    @Override
+    public double getAngle() {
+        // NavX2 is left-hand CW positive, we want right-hand CCW positive to match WPILib coordinate systems
+        if (RobotBase.isReal())
+            lastAngle = -ahrs.getYaw();
+
+        return lastAngle;
+    }
+
+    @Override
+    public void appendSimValueDeg(double angleDegrees) {
+        // we invert the 'real' and 'sim' values even tho I originally thought we shouldn't invert the sim gyro
+        lastAngle += -angleDegrees; // ((angleDegrees % 360.0) + 360.0) % 360.0;
+        lastAngle = Rotation2d.fromDegrees(lastAngle).getDegrees();
+    }
+
+    @Override
+    public double getRate() {
+        return ahrs.getRate();
+    }
+
+    @Override
+    public GyroAxis getYawAxis() {
+        return GyroAxis.kZ;
+    }
+
+    @Override
+    public double getGyroAngleX() {
+        return ahrs.getRawGyroX();
+    }
+
+    @Override
+    public double getGyroAngleY() {
+        return ahrs.getRawGyroY();
+    }
+
+    @Override
+    public double getGyroAngleZ() {
+        return ahrs.getRawGyroZ();
+    }
+
+    @Override
+    public double getGyroRateX() {
+        // Not implemented
+        return 0.0;
+    }
+
+    @Override
+    public double getGyroRateY() {
+        // Not implemented
+        return 0.0;
+    }
+
+    @Override
+    public double getGyroRateZ() {
+        // Not implemented
+        return 0.0;
+    }
+
+    @Override
+    public double getAccelX() {
+        return ahrs.getRawAccelX();
+    }
+
+    @Override
+    public double getAccelY() {
+        return ahrs.getRawAccelY();
+    }
+
+    @Override
+    public double getAccelZ() {
+        return ahrs.getRawAccelZ();
+    }
+
+    @Override
+    public double getXComplementaryAngle() {
+        // Not implemented
+        return 0.0;
+    }
+
+    @Override
+    public double getYComplementaryAngle() {
+        // Not implemented
+        return 0.0;
+    }
+
+    @Override
+    public double getXFilteredAccelAngle() {
+        // Not implemented
+        return 0.0;
+    }
+
+    @Override
+    public double getYFilteredAccelAngle() {
+        // Not implemented
+        return 0.0;
+    }
+    
+}

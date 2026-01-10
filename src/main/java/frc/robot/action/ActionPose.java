@@ -1,23 +1,21 @@
 package frc.robot.action;
 
-import edu.wpi.first.math.geometry.Pose3d;
+import frc.robot.auto.AutoTarget;
 
 public class ActionPose {
+    public Group group;
+    public int location;
+    public int locationIndex;
+    public int position;
     public Action action;
-    public int primary;
-    public int secondary;
-    public Pose3d position;
+    public AutoTarget target;
 
-    public ActionPose(Action Action, int Primary, int Secondary, Pose3d Position) {
-        action = Action;
-        primary = Primary;
-        secondary = Secondary;
+    public ActionPose(Group Group, int Location, int LocationIndex, int Position, Action Action, AutoTarget Target) {
+        group = Group;
+        location = Location;
+        locationIndex = LocationIndex;
         position = Position;
-    }
-
-    public ActionPose(Action Action, int Primary, int Secondary) {
         action = Action;
-        primary = Primary;
-        secondary = Secondary;
+        target = Target;
     }
 }

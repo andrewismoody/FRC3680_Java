@@ -1,0 +1,36 @@
+{
+  "Clients": {
+    "open": true
+  },
+  "Connections": {
+    "open": true
+  },
+  "NetworkTables Settings": {
+    "mode": "Client (NT3)",
+    "serverTeam": "3680"
+  },
+  "Server": {
+    "open": true
+  },
+  "transitory": {
+    "SmartDashboard": {
+      "SendableChooser[0]": {
+        "string[]##v_/SmartDashboard/SendableChooser[0]/options": {
+          "open": true
+        }
+      },
+      "double[]##v_/SmartDashboard/RobotDrive Motors": {
+        "open": true
+      }
+    },
+    "swerveDrive": {
+      "leftRear": {
+        "open": true
+      },
+      "open": true,
+      "rightRear": {
+        "open": true
+      }
+    }
+  }
+}

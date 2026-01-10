@@ -2,10 +2,12 @@ package frc.robot.auto;
 
 import edu.wpi.first.math.geometry.Translation3d;
 
+// AutoEventAuto represents a nested AutoSequence event within an autonomous routine.
 public class AutoEventAuto implements AutoEvent {
     boolean complete;
     boolean parallel;
     String label;
+    boolean hasStarted = false;
 
     Translation3d target;
 
@@ -21,7 +23,14 @@ public class AutoEventAuto implements AutoEvent {
         autoEvent = AutoEvent;
     }
 
+    public boolean HasStarted() {
+        return hasStarted;
+    }
+
     public void Run() {
+        if (!hasStarted)
+            hasStarted = true;
+
         complete = true;
     }
 
@@ -30,7 +39,7 @@ public class AutoEventAuto implements AutoEvent {
     }
 
     public TriggerType GetTriggerType() {
-        return TriggerType.Position;
+        return TriggerType.Auto;
     }
 
     public EventType GetEventType() {
@@ -43,6 +52,8 @@ public class AutoEventAuto implements AutoEvent {
 
     public void SetComplete(boolean Complete) {
         complete = Complete;
+        System.out.printf("%d ms: AutoEvent %s of type %s isComplete: %b\n",
+            System.currentTimeMillis(), label, TriggerType.Auto.toString(), complete);
     }
 
     public String GetLabel() {

@@ -1,9 +1,9 @@
 package frc.robot.action;
 
 public enum Action {
-    Stage,
-    Score,
+    Drop,
+    Pop,
     Pickup,
-    Start,
-    Idle,
+    Raise,
+    Any,
 }

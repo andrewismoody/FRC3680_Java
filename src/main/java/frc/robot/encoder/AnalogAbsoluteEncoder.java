@@ -2,6 +2,7 @@ package frc.robot.encoder;
 
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.wpilibj.AnalogInput;
+import edu.wpi.first.wpilibj.RobotBase;
 
 public class AnalogAbsoluteEncoder implements Encoder {
 
@@ -10,10 +11,42 @@ public class AnalogAbsoluteEncoder implements Encoder {
     double value = 0;
     int mypin = -1;
     double angleOffsetRad = 0.0; // angle to subtract from actual angle to zero the encoder
+    double multiplier = 1.0;
+
+    public void setMultiplier(double value) {
+        multiplier = value;
+    }
+
+    public double getMultiplier() {
+        return multiplier;
+    }
 
     public AnalogAbsoluteEncoder(int pin) {
         input = new AnalogInput(pin);
         mypin = pin;
+    }
+
+    public double getVelocity() {
+        // Not implemented
+        return 0.0;
+    }
+
+    public double getAngleOffsetRad() {
+        return angleOffsetRad;
+    }
+
+    public void appendSimValueRad(double angleRad) {
+        // TODO: should this be converted to radians here?
+        value += angleRad;
+    }
+
+    public void appendSimValueRot(double angle) {
+        value += angle;
+    }
+
+    public void setZeroPosition() {
+        // TODO: check if raw value should be rad or deg
+        setAngleOffsetRad(-getRawValue());
     }
 
     public void setAngleOffsetDeg(double value) {
@@ -25,7 +58,8 @@ public class AnalogAbsoluteEncoder implements Encoder {
     }
 
     public double getRawValue() {
-        value = input.getValue();
+        if (RobotBase.isReal())
+            value = input.getValue();
         double returnValue = 0;
 
         returnValue = value * (6.28 / resolution); // 6.28 / 4096 = 0.001533203125 (radians)
@@ -35,7 +69,7 @@ public class AnalogAbsoluteEncoder implements Encoder {
             
         //System.out.printf("pin %d, encoder value: %f\n", mypin, returnValue);
 
-        return returnValue;
+        return returnValue * multiplier;
     }
 
     public double getDistance() {

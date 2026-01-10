@@ -42,11 +42,16 @@ public class AnalogGyro implements Gyro {
     public double getAngle() {
         value = input.getValue();
 
-        angle = value / 4096.0; // convert from 12-bit to degrees
+        angle = (value - 2048) * (360.0 / 2048); // convert from 12-bit to degrees
 
         return angle;
     }
-  
+
+    @Override
+    public void appendSimValueDeg(double angleDegrees) {
+        angle += ((angleDegrees % 360.0) + 360.0) % 360.0;
+    } 
+
     public double getRate() {
         return 0;
     }
