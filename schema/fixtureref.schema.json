@@ -1,0 +1,18 @@
+{
+    "$id": "fixtureref.schema.json",
+    "$schema": "https://json-schema.org/draft-07/schema",
+    "description": "Schema to define a reference to a previously defined fixture",
+    "type": "object",
+    "required": [ "type", "index" ],
+    "additionalProperties": false,
+    "properties": {
+        "type": {
+            "type": "string",
+            "description": "The type of the fixture being referenced"
+        },
+        "index": {
+            "type": "integer",
+            "description": "The index of the the fixture being referenced"
+        }
+    }
+}

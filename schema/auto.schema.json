@@ -1,0 +1,100 @@
+{
+    "$id": "auto.schema.json",
+    "$schema": "https://json-schema.org/draft-07/schema",
+    "description": "Schema to define auto actions for a particular season",
+    "type": "object",
+    "required": [ "season", "version", "description", "poses", "groups", "locations", "positions", "actions", "events", "targets", "fixtures", "sequences" ],
+    "additionalProperties": false,
+    "properties": {
+      "$schema": {
+        "type": "string",
+        "description": "The schema version this file adheres to"
+      },
+      "season": {
+        "type": "string",
+        "description": "The season this auto definition is for"
+      },
+      "version": {
+        "type": "string",
+        "description": "The version of the auto definition"
+      },
+      "description": {
+        "type": "string",
+        "description": "A description of this auto definition"
+      },
+      "poses": {
+        "type": "array",
+        "description": "Definitions of poses that will be referenced by events and actions",
+        "items": {
+          "$ref": "pose.schema.json"
+        },
+        "minItems": 1
+      },
+      "groups": {
+        "type": "array",
+        "description": "Group labels that will be referenced by poses",
+        "items": {
+          "type": "string"
+        },
+        "minItems": 1
+      },
+      "locations": {
+        "type": "array",
+        "description": "Location labels that will be referenced by poses",
+        "items": {
+          "type": "string"
+        },
+        "minItems": 1
+      },
+      "positions": {
+        "type": "array",
+        "description": "Position labels that will be referenced by poses",
+        "items": {
+          "type": "string"
+        },
+        "minItems": 1
+      },
+      "actions": {
+        "type": "array",
+        "description": "Action labels that will be referenced by poses",
+        "items": {
+          "type": "string"
+        },
+        "minItems": 1
+      },
+      "fixtures": {
+        "type": "array",
+        "description": "Definitions of field fixtures that may be interacted with during auto",
+        "items": {
+          "$ref": "fixture.schema.json"
+        },
+        "minItems": 1
+      },
+      "events": {
+        "type": "array",
+        "description": "Definitions of events that will trigger targets",
+        "items": {
+          "$ref": "event.schema.json"
+        },
+        "minItems": 1
+      },
+      "targets": {
+        "type": "array",
+        "description": "Definitions of targets to be pursued during auto",
+        "items": {
+          "$ref": "target.schema.json"
+        },
+        "minItems": 1
+      },
+      "sequences": {
+        "type": "array",
+        "description": "Definitions of sequences of events to be executed during auto",
+        "items": {
+          "$ref": "sequence.schema.json"
+        },
+        "minItems": 1
+      }
+    }
+  }
+  
+  

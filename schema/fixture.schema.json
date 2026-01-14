@@ -1,0 +1,32 @@
+{
+    "$id": "fixture.schema.json",
+    "$schema": "https://json-schema.org/draft-07/schema",
+    "description": "Schema to define a game field fixture",
+    "type": "object",
+    "required": [ "type", "index" ],
+    "additionalProperties": false,
+    "properties": {
+        "type": {
+            "type": "string",
+            "description": "The type of the fixture being defined"
+        },
+        "index": {
+            "type": "integer",
+            "description": "The index of the the fixture being defined"
+        },
+        "translation": {
+            "$ref": "translation.schema.json"
+        },
+        "derivedFrom": {
+            "$ref": "derivedFrom.schema.json"
+        }
+    },
+    "oneOf": [
+        {
+            "required": [ "translation" ]
+        },
+        {
+            "required": [ "derivedFrom" ]
+        }
+    ]
+}

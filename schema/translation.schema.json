@@ -1,0 +1,40 @@
+{
+    "$id": "translation.schema.json",
+    "$schema": "https://json-schema.org/draft-07/schema",
+    "description": "Schema to define a position and rotation",
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+        "position": {
+            "type": "array",
+            "description": "An array of floating point values representing the X, Y, Z coordinates",
+            "items": {
+                "type": "number"
+            }
+        },
+        "positionUnits": {
+            "type": "string",
+            "description": "The units for the position values ('meters' or 'inches'), inches if not specified",
+            "default": "inches",
+            "enum": [ "meters", "inches" ]
+        },
+        "rotation": {
+            "type": "number",
+            "description": "A floating point value representing the rotation in radians"
+        },
+        "rotationUnits": {
+            "type": "string",
+            "description": "The units for the rotation value ('radians' or 'degrees'), degrees if not specified",
+            "default": "degrees",
+            "enum": [ "radians", "degrees" ]
+        }
+    },
+    "anyOf": [
+        {
+            "required": [ "position" ]
+        },
+        {
+            "required": [ "rotation" ]
+        }
+    ]
+}

@@ -1,0 +1,127 @@
+{
+    "$schema": "auto.schema.json",
+    "season": "2025",
+    "version": "1.0.0",
+    "description": "Example autonomous routine for the 2025 season",
+    "groups": [
+        "start",
+        "pickup",
+        "score"
+    ],
+    "locations": [
+        "start",
+        "waypoint",
+        "score"
+    ],
+    "positions": [
+        "ground",
+        "trough",
+        "lower"
+    ],
+    "actions": [
+        "pickup",
+        "drop"
+    ],
+    "poses": [
+        {
+            "name": "start1",
+            "group": "start",
+            "location": "start",
+            "index": 1,
+            "position": "ground",
+            "action": "pickup"
+        }
+    ],
+    "events": [
+        {
+            "name": "Open_Latch",
+            "type": "time",
+            "parallel": false,
+            "milliseconds": 2000,
+            "triggerType": "boolean",
+            "triggerValueBool": true,
+            "triggerModule": "latch"
+        }
+    ],
+    "targets":[
+        {
+            "module": "latch",
+            "position": "upper",
+            "measurement": 28.8
+        },
+        {
+            "module": "drive",
+            "group": "pickup",
+            "location": "source",
+            "index": 1,
+            "fixture": {
+                "type": "tag",
+                "index": 5
+            }
+        }
+    ],
+    "fixtures": [
+        {
+            "type": "tag",
+            "index": 5,
+            "translation": {
+                "position": [100.0, 50.0, 0.0],
+                "rotation": 1.57
+            }
+        },
+        {
+            "type": "reef",
+            "index": 1,
+            "derivedFrom": {
+                "fixture": {
+                    "type": "tag",
+                    "index": 5
+                },
+                "function": "parallel",
+                "offset": 5.0
+            }
+        },
+        {
+            "type": "scoring",
+            "index": 1,
+            "derivedFrom": {
+                "derivedFrom": {
+                    "fixture": {
+                        "type": "reef",
+                        "index": 1
+                    },
+                    "function": "none"
+                },
+                "function": "parallel",
+                "offset": 10.0
+            }
+        },
+        {
+            "type": "approach",
+            "index": 1,
+            "derivedFrom": {
+                "derivedFrom": {
+                    "fixture": {
+                        "type": "reef",
+                        "index": 1
+                    },
+                    "fixture2":{
+                        "type": "reef",
+                        "index": 2
+                    },
+                    "function": "bisector"
+                },
+                "function": "perpendicular",
+                "offset": 10.0
+            }
+        }
+    ],
+    "sequences": [
+        {
+            "name": "Start_to_Pickup",
+            "events": [
+                "Open_Latch"
+            ]
+        }
+    ]
+}

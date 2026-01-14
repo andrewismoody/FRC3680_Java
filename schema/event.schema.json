@@ -1,0 +1,78 @@
+{
+    "$id": "event.schema.json",
+    "$schema": "https://json-schema.org/draft-07/schema",
+    "description": "Schema to define an event for a particular season",
+    "type": "object",
+    "required": [ "name", "type", "parallel" ],
+    "additionalProperties": false,
+    "properties": {
+        "name": {
+            "type": "string",
+            "description": "The name of this event"
+        },
+        "type": {
+            "type": "string",
+            "description": "The type of event this object represents",
+            "enum": [ "await", "time" ]
+        },
+        "parallel": {
+            "type": "boolean",
+            "description": "Whether this event can run in parallel with other events" 
+        },
+        "pose": {
+            "type": "string",
+            "description": "The name of the pose associated with this event",
+            "nullable": true
+        },
+        "milliseconds": {
+            "type": "integer",
+            "description": "The duration of this event in milliseconds",
+            "minimum": 0,
+            "nullable": true
+        },
+        "triggerType": {
+            "type": "string",
+            "description": "The type of trigger for this event",
+            "enum": [ "boolean", "double" ],
+            "nullable": true
+        },
+        "triggerValueDouble": {
+            "type": "number",
+            "description": "The floating point value associated with the trigger for this event",
+            "nullable": true
+        },
+        "triggerValueBool": {
+            "type": "boolean",
+            "description": "The boolean value associated with the trigger for this event",
+            "nullable": true
+        },
+        "triggerModule": {
+            "type": "string",
+            "description": "The name of the module associated with the trigger for this event",
+            "nullable": true
+        },
+        "triggerInvert": {
+            "type": "boolean",
+            "description": "Whether to invert the trigger condition for this event",
+            "default": false
+        }
+    },
+    "if": {
+        "properties": { "type": { "const": "await" } }
+    },
+    "then": {
+        "required": [ "pose" ]
+    },
+    "else" : {
+        "if": {
+            "properties": { "triggerType": { "const": "boolean" } },
+            "required": [ "triggerType" ]
+        },
+        "then": {
+            "required": [ "milliseconds", "triggerModule", "triggerValueBool" ]
+        },
+        "else": {
+            "required": [ "milliseconds", "triggerModule", "triggerValueDouble" ]
+        }
+    }
+}

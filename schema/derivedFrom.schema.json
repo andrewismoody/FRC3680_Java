@@ -1,0 +1,76 @@
+{
+    "$id": "derivedFrom.schema.json",
+    "$schema": "https://json-schema.org/draft-07/schema",
+    "description": "Schema to define a derived translation",
+    "type": "object",
+    "required": [ "function" ],
+    "additionalProperties": false,
+    "properties": {
+        "fixture": {
+            "$ref": "fixtureref.schema.json"
+        },
+        "fixture2": {
+            "$ref": "fixtureref.schema.json",
+            "description": "The second fixture reference needed for certain derivation functions"
+        },
+        "derivedFrom": {
+            "$ref": "derivedFrom.schema.json"
+        },
+        "derivedFrom2": {
+            "$ref": "derivedFrom.schema.json",
+            "description": "The second derivedFrom reference needed for certain derivation functions"
+        },
+        "function": {
+            "type": "string",
+            "description": "The function to derive a translation from the referenced fixture",
+            "enum": [ "parallel", "perpendicular", "bisector", "none" ]
+        },
+        "offset": {
+            "type": "number",
+            "description": "The offset distance to apply when deriving the translation - defaults to 0 if not provided",
+            "default": 0
+        }
+    },
+    "if": {
+        "properties": {
+            "function": {
+                "const": "bisector"
+            }
+        },
+        "required": [ "function" ]
+    },
+    "then": {
+        "allOf": [
+            {
+                "oneOf": [
+                    {
+                        "required": [ "fixture" ]
+                    },
+                    {
+                        "required": [ "derivedFrom" ]
+                    }
+                ]
+            },
+            {
+                "oneOf": [
+                    {
+                        "required": [ "fixture2" ]
+                    },
+                    {
+                        "required": [ "derivedFrom2" ]
+                    }
+                ]
+            }
+        ]
+    },
+    "else" : {
+        "oneOf": [
+            {
+                "required": [ "fixture" ]
+            },
+            {
+                "required": [ "derivedFrom" ]
+            }
+        ]
+    }
+}

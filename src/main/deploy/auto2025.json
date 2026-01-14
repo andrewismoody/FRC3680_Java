@@ -1,0 +1,155 @@
+{
+    "$schema": "../../../schema/auto.schema.json",
+    "season": "2025",
+    "version": "1.0.0",
+    "description": "Autonomous routine for 2025 season",
+    "groups": [
+        "any",
+        "stage",
+        "score",
+        "pickup",
+        "start",
+        "travel",
+        "alignLeft",
+        "alignRight",
+        "align",
+        "approachLeft",
+        "approachRight",
+        "approach",
+        "idle",
+        "none"
+    ],
+    "locations": [
+        "any",
+        "reef",
+        "processor",
+        "coral",
+        "barge",
+        "adHoc",
+        "waypoint",
+        "tag",
+        "interest",
+        "none"
+    ],
+    "positions": [
+        "any",
+        "ground",
+        "trough",
+        "lower",
+        "middle",
+        "upper",
+        "processor",
+        "none"
+    ],
+    "actions": [
+        "any",
+        "drop",
+        "pop",
+        "pickup",
+        "raise"
+    ],
+    "fixtures": [
+        {
+            "type": "tag",
+            "index": 12,
+            "translation": {
+                "position": [33.51, 25.80, 0],
+                "rotation": 54
+            }
+        },
+        {
+            "type": "tag",
+            "index": 13,
+            "translation": {
+                "position": [33.51, 291.20, 0],
+                "rotation": 306
+            }
+        },
+        {
+            "type": "tag",
+            "index": 17,
+            "translation": {
+                "position": [160.39, 130.17, 0],
+                "rotation": 240
+            }
+        },
+        {
+            "type": "tag",
+            "index": 18,
+            "translation": {
+                "position": [144, 158.50, 0],
+                "rotation": 180
+            }
+        },
+        {
+            "type": "tag",
+            "index": 19,
+            "translation": {
+                "position": [160.39, 186.83, 0],
+                "rotation": 120
+            }
+        },
+        {
+            "type": "tag",
+            "index": 20,
+            "translation": {
+                "position": [193.10, 186.83, 0],
+                "rotation": 60
+            }
+        },
+        {
+            "type": "tag",
+            "index": 21,
+            "translation": {
+                "position": [209.49, 158.50, 0],
+                "rotation": 0
+            }
+        },
+        {
+            "type": "tag",
+            "index": 22,
+            "translation": {
+                "position": [193.10, 130.17, 0],
+                "rotation": 300
+            }
+        }
+    ],
+    "poses": [
+        {
+            "name": "start_1",
+            "group": "start",
+            "location": "tag",
+            "index": 12,
+            "position": "ground",
+            "action": "none"
+        }
+    ],
+    "events": [
+        {
+            "name": "Await Pose Start 1",
+            "type": "await",
+            "pose": "start_1",
+            "parallel": false
+        }
+    ],
+    "targets": [
+        {
+            "module": "drive",
+            "group": "start",
+            "location": "start",
+            "index": 1,
+            "fixture": {
+                "type": "start",
+                "index": 1
+            }
+        }
+    ],
+    "sequences": [
+        {
+            "name": "Auto Routine 1",
+            "events": [
+                "Await Pose Start 1"
+            ]
+        }
+    ]
+}

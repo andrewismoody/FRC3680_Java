@@ -1,0 +1,57 @@
+{
+    "$id": "target.schema.json",
+    "$schema": "https://json-schema.org/draft-07/schema",
+    "description": "Schema to define a target for a particular season",
+    "type": "object",
+    "required": [ "module" ],
+    "additionalProperties": false,
+    "properties": {
+        "module": {
+            "type": "string",
+            "description": "The module associated with the target"
+        },
+        "group": {
+            "type": "string",
+            "description": "The pose group this target is associated with"
+        },
+        "location": {
+            "type": "string",
+            "description": "The pose location label this target is associated with"
+        },
+        "index": {
+            "type": "integer",
+            "description": "The pose index within the location group this target is associated with",
+            "minimum": 0
+        },
+        "position": {
+            "type": "string",
+            "description": "The pose position label this target is associated with"
+        },
+        "action": {
+            "type": "string",
+            "description": "The pose action this target is associated with"
+        },
+        "measurement": {
+            "type": "number",
+            "description": "The target measurement value for this target",
+            "nullable": true
+        },
+        "translation": {
+            "$ref": "translation.schema.json"
+        },
+        "fixture": {
+            "$ref": "fixtureref.schema.json"
+        }
+    },
+    "oneOf": [
+        {
+            "required": [ "measurement" ]
+        },
+        {
+            "required": [ "translation" ]
+        },
+        {
+            "required": [ "fixture" ]
+        }
+    ]
+}

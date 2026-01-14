@@ -1,0 +1,50 @@
+{
+    "$id": "sequence.schema.json",
+    "$schema": "https://json-schema.org/draft-07/schema",
+    "description": "Schema to define a sequence of auto events for a particular season",
+    "type": "object",
+    "required": [ "name", "events" ],
+    "additionalProperties": false,
+    "properties": {
+        "name": {
+            "type": "string",
+            "description": "The name of this sequence"
+        },
+        "start1": {
+            "type": "array",
+            "description": "Initial sequence of events to run from start position 1",
+            "items": {
+                "type": "string",
+                "description": "The name of an event to be executed"
+            },
+            "minItems": 1
+        },
+        "start2": {
+            "type": "array",
+            "description": "Initial sequence of events to run from start position 2",
+            "items": {
+                "type": "string",
+                "description": "The name of an event to be executed"
+            },
+            "minItems": 1
+        },
+        "start3": {
+            "type": "array",
+            "description": "Initial sequence of events to run from start position 3",
+            "items": {
+                "type": "string",
+                "description": "The name of an event to be executed"
+            },
+            "minItems": 1
+        },
+        "events": {
+            "type": "array",
+            "description": "Common sequence of events to run after start sequence",
+            "items": {
+                "type": "string",
+                "description": "The name of an event to be executed"
+            },
+            "minItems": 1
+        }
+    }
+}

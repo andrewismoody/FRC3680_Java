@@ -1,0 +1,35 @@
+{
+    "$id": "pose.schema.json",
+    "$schema": "https://json-schema.org/draft-07/schema",
+    "description": "Schema to define a pose for a particular season",
+    "type": "object",
+    "required": [ "group", "location", "index", "position", "action" ],
+    "additionalProperties": false,
+    "properties": {
+        "name": {
+            "type": "string",
+            "description": "The name of this pose"
+        },
+        "group": {
+            "type": "string",
+            "description": "The group this pose belongs to"
+        },
+        "location": {
+            "type": "string",
+            "description": "The location label this pose is associated with"
+        },
+        "index": {
+            "type": "integer",
+            "description": "The index of this pose within its location group",
+            "minimum": 0
+        },
+        "position": {
+            "type": "string",
+            "description": "The position label this pose is associated with"
+        },
+        "action": {
+            "type": "string",
+            "description": "The action to be performed at this pose"
+        }
+    }
+}
