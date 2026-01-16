@@ -28,6 +28,7 @@ public class Joystick {
     m_controller.RegisterBinaryButtonConsumer(ButtonName.RightShoulderButton, pickup::ApplyInverse);
 
     // m_controller.RegisterBinaryButtonConsumer(ButtonName.BottomButton, shoot::SetNoPose);
+    // COPILOT: get poses from autocontroller here
     m_controller.RegisterBinaryButtonConsumer(ButtonName.RightButton, shoot.AddButtonMappedPose(new ActionPose(Group.Any, Location.Any.getValue(), -1, Position.Upper.getValue(), Action.Any, null)));
     m_controller.RegisterBinaryButtonConsumer(ButtonName.LeftButton, shoot.AddButtonMappedPose(new ActionPose(Group.Any, Location.Any.getValue(), -1, Position.Lower.getValue(), Action.Any, null)));
     // m_controller.RegisterBinaryButtonConsumer(ButtonName.TopButton, shoot.AddButtonMappedPose(new ActionPose(Group.Score, Location.Any.getValue(), -1, Position.Middle.getValue(), Action.Any, null)));

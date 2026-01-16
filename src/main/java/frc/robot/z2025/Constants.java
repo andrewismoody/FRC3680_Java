@@ -8,9 +8,7 @@ import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Rotation3d;
 import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.geometry.Translation3d;
-import frc.robot.action.Group;
 import frc.robot.misc.Utility;
-import frc.robot.z2025.action.Location;
 
 public class Constants {
     public static final double floatTolerance = 0.04; // 0.2;

@@ -3,10 +3,7 @@ package frc.robot.modules;
 import edu.wpi.first.wpilibj.RobotBase;
 import edu.wpi.first.wpilibj.motorcontrol.MotorController;
 
-import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Translation2d;
-import edu.wpi.first.math.kinematics.SwerveModulePosition;
-import edu.wpi.first.math.kinematics.SwerveModuleState;
 import edu.wpi.first.networktables.NetworkTable;
 import edu.wpi.first.networktables.NetworkTableInstance;
 import edu.wpi.first.networktables.NetworkTableEntry; // added
@@ -47,7 +44,6 @@ public class MecanumMotorModule {
 
   NetworkTable myTable;
   // Cached NT entries
-  private NetworkTableEntry encoderOffsetEntry;
   private NetworkTableEntry floatToleranceEntry;
   private NetworkTableEntry invertDriveEntry;
   private NetworkTableEntry encoderMultiplierEntry;
@@ -77,7 +73,6 @@ public class MecanumMotorModule {
       driveEncoder.setZeroPosition();
 
     // instantiate entries
-    encoderOffsetEntry = myTable.getEntry("encoderOffset");
     floatToleranceEntry = myTable.getEntry("floatTolerance");
     invertDriveEntry = myTable.getEntry("invertDrive");
     encoderMultiplierEntry = myTable.getEntry("encoderMultiplier");

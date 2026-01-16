@@ -7,9 +7,7 @@ import edu.wpi.first.math.geometry.Pose3d;
 import edu.wpi.first.networktables.NetworkTable;
 import edu.wpi.first.networktables.NetworkTableInstance;
 import edu.wpi.first.networktables.NetworkTableEntry;
-import frc.robot.action.Group;
 import frc.robot.auto.AutoTarget;
-import frc.robot.action.Action;
 import frc.robot.action.ActionPose;
 
 public class DualMotorModule implements RobotModule {
@@ -73,14 +71,14 @@ public class DualMotorModule implements RobotModule {
         return GetActionPose(newAction.group, newAction.location, newAction.locationIndex, newAction.position, newAction.action);
     }
 
-    public ActionPose GetActionPose(Group group, int location, int locationIndex, int position, Action action) {
+    public ActionPose GetActionPose(String group, String location, int locationIndex, String position, String action) {
         for (ActionPose pose : actionPoses) {
             if (
-                (pose.group == group || pose.group == Group.Any)
+                (pose.group == group || "any".equalsIgnoreCase(pose.group))
                 && (pose.locationIndex == locationIndex || pose.locationIndex == -1)
-                && (pose.location == location || pose.location == -1)
-                && (pose.position == position || pose.position == -1)
-                && (pose.action == action || pose.action == Action.Any)
+                && (pose.location == location || "any".equalsIgnoreCase(pose.location))
+                && (pose.position == position || "any".equalsIgnoreCase(pose.position))
+                && (pose.action == action || "any".equalsIgnoreCase(pose.action))
             ) {
                 return pose;
             }
@@ -124,7 +122,7 @@ public class DualMotorModule implements RobotModule {
         return moduleID;
     }
 
-    public void SetTargetActionPose(Group group, int location, int locationIndex, int position, Action action) {
+    public void SetTargetActionPose(String group, String location, int locationIndex, String position, String action) {
         var targetPose = GetActionPose(group, location, locationIndex, position, action);
         if (targetPose != null) {
             ntTargetPose.setString(String.format("%s %s %d %s %s", group, location, locationIndex, position, action));
@@ -205,7 +203,7 @@ public class DualMotorModule implements RobotModule {
             public void accept(Boolean pressed) {
                 // multiple mapped consumers defeat this logic as one is pressed and one is not.
                 if (pressed && !this.wasPressed) {
-                    OverrideTargetActionPose(new ActionPose(Group.Any, -1, -1, -1, Action.Any, new AutoTarget(position)));
+                    OverrideTargetActionPose(new ActionPose("any", "any", -1, "any", "any", new AutoTarget(position)));
                 }
                 this.wasPressed = pressed;
             }

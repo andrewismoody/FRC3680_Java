@@ -128,7 +128,8 @@ public class Utility {
         return new Pose2d(new Translation2d(mx, my), new Rotation2d(theta).plus(Rotation2d.k180deg));
     }
 
-    public static boolean isTravelGroup(Group group) {
+    // COPILOT: move this to autocontroller
+    public static boolean isTravelGroup(String group) {
         return group != Group.Score && group != Group.ApproachLeft && group != Group.ApproachRight && group != Group.Pickup;
     }
 

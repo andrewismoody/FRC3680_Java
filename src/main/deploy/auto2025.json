@@ -1,13 +1,10 @@
 {
     "$schema": "../../../schema/auto.schema.json",
     "season": "2025",
-    "version": "1.0.0",
-    "description": "Autonomous routine for 2025 season",
+    "version": "1.1.2",
+    "description": "2025 autos converted from Java-coded ActionPoses + Score3and4 sequence",
     "groups": [
         "any",
-        "stage",
-        "score",
-        "pickup",
         "start",
         "travel",
         "alignLeft",
@@ -15,8 +12,8 @@
         "align",
         "approachLeft",
         "approachRight",
-        "approach",
-        "idle",
+        "score",
+        "pickup",
         "none"
     ],
     "locations": [
@@ -41,114 +38,315 @@
         "processor",
         "none"
     ],
-    "actions": [
-        "any",
-        "drop",
-        "pop",
-        "pickup",
-        "raise"
-    ],
+    "actions": ["any", "drop", "pop", "pickup", "raise", "none"],
+
     "fixtures": [
+        { "type": "tag", "index": 12, "translation": { "position": [33.51, 25.8, 0], "rotation": 54 } },
+        { "type": "tag", "index": 13, "translation": { "position": [33.51, 291.2, 0], "rotation": 306 } },
+        { "type": "tag", "index": 17, "translation": { "position": [160.39, 130.17, 0], "rotation": 240 } },
+        { "type": "tag", "index": 18, "translation": { "position": [144.0, 158.5, 0], "rotation": 180 } },
+        { "type": "tag", "index": 19, "translation": { "position": [160.39, 186.83, 0], "rotation": 120 } },
+        { "type": "tag", "index": 20, "translation": { "position": [193.1, 186.83, 0], "rotation": 60 } },
+        { "type": "tag", "index": 21, "translation": { "position": [209.49, 158.5, 0], "rotation": 0 } },
+        { "type": "tag", "index": 22, "translation": { "position": [193.1, 130.17, 0], "rotation": 300 } },
+        { "type": "interest", "index": 1, "translation": { "position": [176.75, 158.5, 0], "rotation": 0 } },
+
+        { "type": "start", "index": 1, "translation": { "position": [0, 0, 0], "rotation": 0 } },
+        { "type": "start", "index": 2, "translation": { "position": [0, 0, 0], "rotation": 0 } },
+        { "type": "start", "index": 3, "translation": { "position": [0, 0, 0], "rotation": 0 } },
+
+        { "type": "waypoint", "index": 1, "derivedFrom": { "function": "perpendicular", "fixture": { "type": "tag", "index": 19 }, "offset": 0 } },
         {
-            "type": "tag",
+            "type": "waypoint",
+            "index": 2,
+            "derivedFrom": {
+                "function": "parallel",
+                "offset": 0,
+                "derivedFrom": { "function": "bisector", "fixture": { "type": "tag", "index": 19 }, "fixture2": { "type": "tag", "index": 18 } }
+            }
+        },
+        { "type": "waypoint", "index": 3, "derivedFrom": { "function": "perpendicular", "fixture": { "type": "tag", "index": 18 }, "offset": 0 } },
+        {
+            "type": "waypoint",
+            "index": 4,
+            "derivedFrom": {
+                "function": "parallel",
+                "offset": 0,
+                "derivedFrom": { "function": "bisector", "fixture": { "type": "tag", "index": 18 }, "fixture2": { "type": "tag", "index": 17 } }
+            }
+        },
+        { "type": "waypoint", "index": 5, "derivedFrom": { "function": "perpendicular", "fixture": { "type": "tag", "index": 17 }, "offset": 0 } },
+        {
+            "type": "waypoint",
+            "index": 6,
+            "derivedFrom": {
+                "function": "parallel",
+                "offset": 0,
+                "derivedFrom": { "function": "bisector", "fixture": { "type": "tag", "index": 17 }, "fixture2": { "type": "tag", "index": 22 } }
+            }
+        },
+        { "type": "waypoint", "index": 7, "derivedFrom": { "function": "perpendicular", "fixture": { "type": "tag", "index": 22 }, "offset": 0 } },
+        {
+            "type": "waypoint",
+            "index": 8,
+            "derivedFrom": {
+                "function": "parallel",
+                "offset": 0,
+                "derivedFrom": { "function": "bisector", "fixture": { "type": "tag", "index": 22 }, "fixture2": { "type": "tag", "index": 21 } }
+            }
+        },
+        { "type": "waypoint", "index": 9, "derivedFrom": { "function": "perpendicular", "fixture": { "type": "tag", "index": 21 }, "offset": 0 } },
+        {
+            "type": "waypoint",
+            "index": 10,
+            "derivedFrom": {
+                "function": "parallel",
+                "offset": 0,
+                "derivedFrom": { "function": "bisector", "fixture": { "type": "tag", "index": 21 }, "fixture2": { "type": "tag", "index": 20 } }
+            }
+        },
+        { "type": "waypoint", "index": 11, "derivedFrom": { "function": "perpendicular", "fixture": { "type": "tag", "index": 20 }, "offset": 0 } },
+        {
+            "type": "waypoint",
             "index": 12,
-            "translation": {
-                "position": [33.51, 25.80, 0],
-                "rotation": 54
+            "derivedFrom": {
+                "function": "parallel",
+                "offset": 0,
+                "derivedFrom": { "function": "bisector", "fixture": { "type": "tag", "index": 20 }, "fixture2": { "type": "tag", "index": 19 } }
+            }
+        },
+
+        {
+            "type": "reefApproachLeft",
+            "index": 3,
+            "derivedFrom": {
+                "function": "parallel",
+                "offset": 0,
+                "derivedFrom": {
+                    "function": "perpendicular",
+                    "offset": 0,
+                    "fixture": { "type": "tag", "index": 18 }
+                }
             }
         },
         {
-            "type": "tag",
-            "index": 13,
-            "translation": {
-                "position": [33.51, 291.20, 0],
-                "rotation": 306
+            "type": "reefAlignLeft",
+            "index": 3,
+            "derivedFrom": {
+                "function": "perpendicular",
+                "offset": 0,
+                "fixture": { "type": "reefApproachLeft", "index": 3 }
             }
         },
         {
-            "type": "tag",
-            "index": 17,
-            "translation": {
-                "position": [160.39, 130.17, 0],
-                "rotation": 240
+            "type": "reefScore",
+            "index": 3,
+            "derivedFrom": {
+                "function": "parallel",
+                "offset": 0,
+                "derivedFrom": {
+                    "function": "perpendicular",
+                    "offset": 0,
+                    "fixture": { "type": "tag", "index": 18 }
+                }
+            }
+        },
+
+        {
+            "type": "reefApproachLeft",
+            "index": 4,
+            "derivedFrom": {
+                "function": "parallel",
+                "offset": 0,
+                "derivedFrom": {
+                    "function": "perpendicular",
+                    "offset": 0,
+                    "fixture": { "type": "tag", "index": 18 }
+                }
             }
         },
         {
-            "type": "tag",
-            "index": 18,
-            "translation": {
-                "position": [144, 158.50, 0],
-                "rotation": 180
+            "type": "reefAlignLeft",
+            "index": 4,
+            "derivedFrom": {
+                "function": "perpendicular",
+                "offset": 0,
+                "fixture": { "type": "reefApproachLeft", "index": 4 }
             }
         },
         {
-            "type": "tag",
-            "index": 19,
-            "translation": {
-                "position": [160.39, 186.83, 0],
-                "rotation": 120
+            "type": "reefScore",
+            "index": 4,
+            "derivedFrom": {
+                "function": "parallel",
+                "offset": 0,
+                "derivedFrom": {
+                    "function": "perpendicular",
+                    "offset": 0,
+                    "fixture": { "type": "tag", "index": 18 }
+                }
             }
         },
+
         {
-            "type": "tag",
-            "index": 20,
-            "translation": {
-                "position": [193.10, 186.83, 0],
-                "rotation": 60
-            }
-        },
-        {
-            "type": "tag",
-            "index": 21,
-            "translation": {
-                "position": [209.49, 158.50, 0],
-                "rotation": 0
-            }
-        },
-        {
-            "type": "tag",
-            "index": 22,
-            "translation": {
-                "position": [193.10, 130.17, 0],
-                "rotation": 300
-            }
-        }
-    ],
-    "poses": [
-        {
-            "name": "start_1",
-            "group": "start",
-            "location": "tag",
-            "index": 12,
-            "position": "ground",
-            "action": "none"
-        }
-    ],
-    "events": [
-        {
-            "name": "Await Pose Start 1",
-            "type": "await",
-            "pose": "start_1",
-            "parallel": false
-        }
-    ],
-    "targets": [
-        {
-            "module": "drive",
-            "group": "start",
-            "location": "start",
+            "type": "coralPickup",
             "index": 1,
-            "fixture": {
-                "type": "start",
-                "index": 1
-            }
+            "derivedFrom": { "function": "perpendicular", "offset": 0, "fixture": { "type": "tag", "index": 13 } }
+        },
+        {
+            "type": "coralAlign",
+            "index": 1,
+            "derivedFrom": { "function": "perpendicular", "offset": 0, "fixture": { "type": "coralPickup", "index": 1 } }
         }
     ],
+
+    "targets": [
+        { "module": "drive", "group": "start", "location": "barge", "index": 1, "fixture": { "type": "start", "index": 1 } },
+
+        { "module": "drive", "group": "travel", "location": "waypoint", "index": 1, "fixture": { "type": "waypoint", "index": 1 } },
+        { "module": "drive", "group": "travel", "location": "waypoint", "index": 2, "fixture": { "type": "waypoint", "index": 2 } },
+        { "module": "drive", "group": "travel", "location": "waypoint", "index": 3, "fixture": { "type": "waypoint", "index": 3 } },
+        { "module": "drive", "group": "travel", "location": "waypoint", "index": 4, "fixture": { "type": "waypoint", "index": 4 } },
+        { "module": "drive", "group": "travel", "location": "waypoint", "index": 5, "fixture": { "type": "waypoint", "index": 5 } },
+        { "module": "drive", "group": "travel", "location": "waypoint", "index": 6, "fixture": { "type": "waypoint", "index": 6 } },
+        { "module": "drive", "group": "travel", "location": "waypoint", "index": 7, "fixture": { "type": "waypoint", "index": 7 } },
+        { "module": "drive", "group": "travel", "location": "waypoint", "index": 8, "fixture": { "type": "waypoint", "index": 8 } },
+        { "module": "drive", "group": "travel", "location": "waypoint", "index": 9, "fixture": { "type": "waypoint", "index": 9 } },
+        { "module": "drive", "group": "travel", "location": "waypoint", "index": 10, "fixture": { "type": "waypoint", "index": 10 } },
+        { "module": "drive", "group": "travel", "location": "waypoint", "index": 11, "fixture": { "type": "waypoint", "index": 11 } },
+        { "module": "drive", "group": "travel", "location": "waypoint", "index": 12, "fixture": { "type": "waypoint", "index": 12 } },
+
+        { "module": "drive", "group": "alignLeft", "location": "reef", "index": 3, "fixture": { "type": "reefAlignLeft", "index": 3 } },
+        { "module": "drive", "group": "approachLeft", "location": "reef", "index": 3, "fixture": { "type": "reefApproachLeft", "index": 3 } },
+        { "module": "drive", "group": "score", "location": "reef", "index": 3, "fixture": { "type": "reefScore", "index": 3 } },
+
+        { "module": "drive", "group": "alignLeft", "location": "reef", "index": 4, "fixture": { "type": "reefAlignLeft", "index": 4 } },
+        { "module": "drive", "group": "approachLeft", "location": "reef", "index": 4, "fixture": { "type": "reefApproachLeft", "index": 4 } },
+        { "module": "drive", "group": "score", "location": "reef", "index": 4, "fixture": { "type": "reefScore", "index": 4 } },
+
+        { "module": "drive", "group": "align", "location": "coral", "index": 1, "fixture": { "type": "coralAlign", "index": 1 } },
+        { "module": "drive", "group": "pickup", "location": "coral", "index": 1, "fixture": { "type": "coralPickup", "index": 1 } }
+    ],
+
+    "poses": [
+        { "name": "pose_start_1", "group": "start", "location": "barge", "index": 1, "position": "trough", "action": "pickup" },
+        { "name": "pose_wp_11", "group": "travel", "location": "waypoint", "index": 11, "position": "trough", "action": "pickup" },
+        { "name": "pose_wp_12", "group": "travel", "location": "waypoint", "index": 12, "position": "trough", "action": "pickup" },
+        { "name": "pose_wp_2", "group": "travel", "location": "waypoint", "index": 2, "position": "trough", "action": "pickup" },
+        { "name": "pose_wp_1", "group": "travel", "location": "waypoint", "index": 1, "position": "trough", "action": "pickup" },
+        { "name": "pose_align_reef_3", "group": "alignLeft", "location": "reef", "index": 3, "position": "trough", "action": "pickup" },
+        { "name": "pose_approach_reef_3", "group": "approachLeft", "location": "reef", "index": 3, "position": "trough", "action": "pickup" },
+        { "name": "pose_score_reef_3_lower", "group": "score", "location": "reef", "index": 3, "position": "lower", "action": "pickup" },
+        { "name": "pose_score_reef_3_trough", "group": "score", "location": "any", "index": 3, "position": "trough", "action": "pickup" },
+        { "name": "pose_align_reef_4", "group": "alignLeft", "location": "reef", "index": 4, "position": "trough", "action": "pickup" },
+        { "name": "pose_approach_reef_4", "group": "approachLeft", "location": "reef", "index": 4, "position": "trough", "action": "pickup" },
+        { "name": "pose_score_reef_4_lower", "group": "score", "location": "reef", "index": 4, "position": "lower", "action": "pickup" },
+        { "name": "pose_score_reef_4_trough", "group": "score", "location": "any", "index": 4, "position": "trough", "action": "pickup" },
+        { "name": "pose_align_coral_1", "group": "align", "location": "coral", "index": 1, "position": "trough", "action": "pickup" },
+        { "name": "pose_pickup_coral_1", "group": "pickup", "location": "coral", "index": 1, "position": "trough", "action": "pickup" }
+    ],
+
+    "events": [
+        { "name": "Await Pose Start 1", "type": "await", "pose": "pose_start_1", "parallel": false },
+        { "name": "Await Pose Waypoint 11 Reef", "type": "await", "pose": "pose_wp_11", "parallel": false },
+        { "name": "Await Pose Waypoint 12 Reef", "type": "await", "pose": "pose_wp_12", "parallel": false },
+        { "name": "Await Pose Waypoint 2 Reef", "type": "await", "pose": "pose_wp_2", "parallel": false },
+        { "name": "Await Pose Waypoint 1 Reef", "type": "await", "pose": "pose_wp_1", "parallel": false },
+        { "name": "Await Pose Align 3 Reef", "type": "await", "pose": "pose_align_reef_3", "parallel": false },
+        { "name": "Await Pose Approach 3 Reef", "type": "await", "pose": "pose_approach_reef_3", "parallel": false },
+        { "name": "Await Pose Score 3 Lower", "type": "await", "pose": "pose_score_reef_3_lower", "parallel": false },
+        { "name": "Await Pose Score 3 Trough", "type": "await", "pose": "pose_score_reef_3_trough", "parallel": false },
+        { "name": "Await Pose Align 4 Reef", "type": "await", "pose": "pose_align_reef_4", "parallel": false },
+        { "name": "Await Pose Approach 4 Reef", "type": "await", "pose": "pose_approach_reef_4", "parallel": false },
+        { "name": "Await Pose Score 4 Lower", "type": "await", "pose": "pose_score_reef_4_lower", "parallel": false },
+        { "name": "Await Pose Score 4 Trough", "type": "await", "pose": "pose_score_reef_4_trough", "parallel": false },
+        { "name": "Await Pose Align 1 Coral", "type": "await", "pose": "pose_align_coral_1", "parallel": false },
+        { "name": "Await Pose Pickup 1 Coral", "type": "await", "pose": "pose_pickup_coral_1", "parallel": false },
+        {
+            "name": "Open Latch",
+            "type": "time",
+            "parallel": false,
+            "milliseconds": 2000,
+            "triggerType": "boolean",
+            "triggerModule": "slide",
+            "triggerValue": true,
+            "triggerInvert": false
+        },
+        {
+            "name": "Close Latch (after 2s)",
+            "type": "time",
+            "parallel": false,
+            "milliseconds": 60,
+            "triggerType": "boolean",
+            "triggerModule": "slide",
+            "triggerValue": true,
+            "triggerInvert": true
+        },
+        {
+            "name": "Wait For Loading",
+            "type": "time",
+            "parallel": false,
+            "milliseconds": 5000,
+            "triggerType": "none"
+        }
+    ],
+
     "sequences": [
         {
-            "name": "Auto Routine 1",
+            "name": "Score3and4 (Start 1/2)",
             "events": [
-                "Await Pose Start 1"
+                "Await Pose Start 1",
+                "Await Pose Waypoint 12 Reef",
+                "Await Pose Waypoint 1 Reef",
+                "Await Pose Waypoint 2 Reef",
+                "Await Pose Align 3 Reef",
+                "Await Pose Approach 3 Reef",
+                "Await Pose Score 3 Lower",
+                "Open Latch",
+                "Close Latch (after 2s)",
+                "Await Pose Score 3 Trough",
+                "Await Pose Waypoint 2 Reef",
+                "Await Pose Waypoint 1 Reef",
+                "Await Pose Align 1 Coral",
+                "Await Pose Pickup 1 Coral",
+                "Wait For Loading",
+                "Await Pose Waypoint 2 Reef",
+                "Await Pose Align 4 Reef",
+                "Await Pose Approach 4 Reef",
+                "Await Pose Score 4 Lower",
+                "Open Latch",
+                "Close Latch (after 2s)",
+                "Await Pose Score 4 Trough",
+                "Await Pose Waypoint 2 Reef"
+            ]
+        },
+        {
+            "name": "Score3and4 (Start 3)",
+            "events": [
+                "Await Pose Start 1",
+                "Await Pose Waypoint 11 Reef",
+                "Await Pose Waypoint 12 Reef",
+                "Await Pose Waypoint 1 Reef",
+                "Await Pose Waypoint 2 Reef",
+                "Await Pose Align 3 Reef",
+                "Await Pose Approach 3 Reef",
+                "Await Pose Score 3 Lower",
+                "Open Latch",
+                "Close Latch (after 2s)",
+                "Await Pose Score 3 Trough",
+                "Await Pose Waypoint 2 Reef",
+                "Await Pose Waypoint 1 Reef",
+                "Await Pose Align 1 Coral",
+                "Await Pose Pickup 1 Coral",
+                "Wait For Loading",
+                "Await Pose Waypoint 2 Reef",
+                "Await Pose Align 4 Reef",
+                "Await Pose Approach 4 Reef",
+                "Await Pose Score 4 Lower",
+                "Open Latch",
+                "Close Latch (after 2s)",
+                "Await Pose Score 4 Trough",
+                "Await Pose Waypoint 2 Reef"
             ]
         }
     ]

@@ -33,15 +33,10 @@
         "triggerType": {
             "type": "string",
             "description": "The type of trigger for this event",
-            "enum": [ "boolean", "double" ],
+            "enum": [ "boolean", "none" ],
             "nullable": true
         },
-        "triggerValueDouble": {
-            "type": "number",
-            "description": "The floating point value associated with the trigger for this event",
-            "nullable": true
-        },
-        "triggerValueBool": {
+        "triggerValue": {
             "type": "boolean",
             "description": "The boolean value associated with the trigger for this event",
             "nullable": true
@@ -69,10 +64,7 @@
             "required": [ "triggerType" ]
         },
         "then": {
-            "required": [ "milliseconds", "triggerModule", "triggerValueBool" ]
-        },
-        "else": {
-            "required": [ "milliseconds", "triggerModule", "triggerValueDouble" ]
+            "required": [ "milliseconds", "triggerModule", "triggerValue" ]
         }
     }
 }

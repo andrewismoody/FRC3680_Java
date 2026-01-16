@@ -10,9 +10,7 @@ import edu.wpi.first.networktables.NetworkTableInstance;
 import edu.wpi.first.networktables.NetworkTableEntry; // added
 import edu.wpi.first.wpilibj.Relay;
 import edu.wpi.first.wpilibj.Relay.Value;
-import frc.robot.action.Action;
 import frc.robot.action.ActionPose;
-import frc.robot.action.Group;
 
 
 public class SingleActuatorModule implements RobotModule {
@@ -139,8 +137,8 @@ public class SingleActuatorModule implements RobotModule {
     }
 
     @Override
-    public void SetTargetActionPose(Group Group, int Location, int LocationIndex, int Position,
-            Action Action) {
+    public void SetTargetActionPose(String Group, String Location, int LocationIndex, String Position,
+        String Action) {
         var targetPose = GetActionPose(Group, Location, LocationIndex, Position, Action);
         if (targetPose != null) {
             // myTable.getEntry("targetPose").setString(String.format(...));
@@ -183,15 +181,15 @@ public class SingleActuatorModule implements RobotModule {
     }
 
     @Override
-    public ActionPose GetActionPose(Group group, int location, int locationIndex, int position,
-            Action action) {
+    public ActionPose GetActionPose(String group, String location, int locationIndex, String position,
+        String action) {
         for (ActionPose pose : actionPoses) {
             if (
-                (pose.group == group || pose.group == Group.Any)
+                (pose.group == group || "any".equalsIgnoreCase(pose.group))
                 && (pose.locationIndex == locationIndex || pose.locationIndex == -1)
-                && (pose.location == location || pose.location == -1)
-                && (pose.position == position || pose.position == -1)
-                && (pose.action == action || pose.action == Action.Any)
+                && (pose.location == location || "any".equalsIgnoreCase(pose.location))
+                && (pose.position == position || "any".equalsIgnoreCase(pose.position))
+                && (pose.action == action || "any".equalsIgnoreCase(pose.action))
             ) {
                 return pose;
             }

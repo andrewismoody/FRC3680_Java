@@ -27,14 +27,12 @@ import edu.wpi.first.wpilibj.drive.DifferentialDrive.WheelSpeeds;
 import edu.wpi.first.wpilibj.motorcontrol.MotorController;
 import edu.wpi.first.wpilibj.smartdashboard.Field2d;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
-import frc.robot.action.Group;
 import frc.robot.encoder.Encoder;
 import frc.robot.gyro.Gyro;
 import frc.robot.misc.Utility;
 import frc.robot.positioner.LimelightHelpers.PoseEstimate;
 import frc.robot.positioner.Positioner;
 import frc.robot.z2024.Constants;
-import frc.robot.action.Action;
 import frc.robot.action.ActionPose;
 
 public class DifferentialDriveModule implements DriveModule {
@@ -540,14 +538,14 @@ public class DifferentialDriveModule implements DriveModule {
         return GetActionPose(newAction.group, newAction.location, newAction.locationIndex, newAction.position, newAction.action);
     }
 
-    public ActionPose GetActionPose(Group group, int location, int locationIndex, int position, Action action) {
+    public ActionPose GetActionPose(String group, String location, int locationIndex, String position, String action) {
         for (ActionPose pose : actionPoses) {
             if (
-                (pose.group == group || pose.group == Group.Any)
+                (pose.group == group || "any".equalsIgnoreCase(pose.group))
                 && (pose.locationIndex == locationIndex || pose.locationIndex == -1)
-                && (pose.location == location || pose.location == -1)
-                && (pose.position == position || pose.position == -1)
-                && (pose.action == action || pose.action == Action.Any)
+                && (pose.location == location || "any".equalsIgnoreCase(pose.location))
+                && (pose.position == position || "any".equalsIgnoreCase(pose.position))
+                && (pose.action == action || "any".equalsIgnoreCase(pose.action))
             ) {
                 System.out.printf("%s GetActionPose: Matched %s %d %d %d %s\n", moduleID, group, location, locationIndex, position, action);
                 return pose;
@@ -565,7 +563,7 @@ public class DifferentialDriveModule implements DriveModule {
         SetTargetActionPose(actionPose.group, actionPose.location, actionPose.locationIndex, actionPose.position, actionPose.action);
     }    
 
-    public void SetTargetActionPose(Group group, int location, int locationIndex, int position, Action action) {
+    public void SetTargetActionPose(String group, String location, int locationIndex, String position, String action) {
         ActionPose actionPose = GetActionPose(group, location, locationIndex, position, action);
 
         if (actionPose != null) {

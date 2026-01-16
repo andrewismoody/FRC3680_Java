@@ -4,8 +4,6 @@
 
 package frc.robot.z2025;
 
-import java.util.Hashtable;
-
 import edu.wpi.first.math.geometry.Pose3d;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Rotation3d;
@@ -14,16 +12,19 @@ import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.geometry.Translation3d;
 import edu.wpi.first.networktables.DoubleSubscriber;
 import edu.wpi.first.networktables.NetworkTableInstance;
+import edu.wpi.first.wpilibj.Filesystem;
 import edu.wpi.first.wpilibj.Relay;
 import edu.wpi.first.wpilibj.RobotBase;
 import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
+import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 
 import com.revrobotics.spark.SparkLowLevel.MotorType;
 import com.revrobotics.spark.SparkMax;
 
 import frc.robot.auto.AutoController;
+import frc.robot.auto.AutoParser;
 import frc.robot.gyro.AHRSGyro;
 import frc.robot.gyro.Gyro;
 import frc.robot.misc.GameController;
@@ -114,10 +115,10 @@ public class Robot extends TimedRobot {
 
   ModuleController modules;
 
-  Hashtable<String, AutoController> autoModes = new Hashtable<String, AutoController>();
   AutoController currentAutoMode;
 
   private DoubleSubscriber slider0Sub;
+  private SendableChooser<String> autoChooser;
 
   public Robot() {
     gc_timer.start();
@@ -158,17 +159,36 @@ public class Robot extends TimedRobot {
     // modules.SetEnableSteer(true);
     // modules.SetEnableDriveTrain(false);
 
-    Dashboard.InitializeChoosers();
-    autoModes = AutoModes.Initialize(autoModes, modules);
-    currentAutoMode = AutoModes.GetDefault(autoModes);
+    // NEW: publish chooser once; options populated after JSON load
+    autoChooser = new SendableChooser<>();
+
+    // NEW: JSON-driven auto controller (supersedes AutoModes)
+    currentAutoMode = new AutoController("json-auto", modules);
+    try {
+      String autoPath = Filesystem.getDeployDirectory().toPath().resolve("auto2025.json").toString();
+      AutoParser.LoadIntoController(autoPath, currentAutoMode, modules, Utility::getDriverLocation);
+
+      // Populate chooser from loaded sequences
+      String defaultSeq = currentAutoMode.GetDefaultSequenceLabel();
+      if (defaultSeq != null) autoChooser.setDefaultOption(defaultSeq, defaultSeq);
+      for (String seq : currentAutoMode.GetSequenceLabels()) {
+        if (defaultSeq != null && defaultSeq.equals(seq)) continue;
+        autoChooser.addOption(seq, seq);
+      }
+
+      System.out.printf("Loaded auto JSON from '%s'\n", autoPath);
+    } catch (Exception ex) {
+      System.out.printf("Failed to load auto JSON: %s\n", ex.getMessage());
+      // Leave currentAutoMode empty; robot will simply do nothing in auto.
+    }
+    SmartDashboard.putData("Auto Selector", autoChooser);
   }
 
   void commonInit() {
     // initialize game controller first because other classes need it.
     // This needs to be here in mode init because we may not have a driver station connection during robotinit.
     m_controller = GameController.Initialize();
-    // Add action poses before button mappings so buttons can drive action poses
-    ActionPoses.Initialize(swerveDriveModule, elevator, slide);
+
     // even tho this runs on every init, we clear it out before every run so we don't mess up
     Joystick.InitializeButtonMappings(m_controller, modules, swerveDriveModule, slide, elevator);
 
@@ -196,18 +216,23 @@ public class Robot extends TimedRobot {
   @Override
   public void autonomousInit() {
     commonInit();
-    // swerveDriveModule.ResetGyro();
-    // swerveDriveModule.ResetEncoders();
 
-    var selectedMode = currentAutoMode;
-    var selectedValue = SmartDashboard.getString("Auto Selector", currentAutoMode.GetLabel());
-    System.out.printf("selected auto value '%s'\n", selectedValue);
-    if (selectedValue != null) {
-      selectedMode = autoModes.get(selectedValue);
-      System.out.printf("selected auto mode '%s'\n", selectedMode.GetLabel());
+    // Use chooser selection (fallback to deterministic default)
+    String selectedSeq = autoChooser.getSelected();
+    if (selectedSeq == null || selectedSeq.isBlank()) {
+      selectedSeq = currentAutoMode.GetDefaultSequenceLabel();
+      System.out.printf("Auto chooser empty; defaulting to '%s'\n", selectedSeq);
     }
-    currentAutoMode = selectedMode;
-    selectedMode.Initialize(m_controller);
+
+    if (selectedSeq != null && !currentAutoMode.SelectSequence(selectedSeq)) {
+      String fallback = currentAutoMode.GetDefaultSequenceLabel();
+      System.out.printf("Unknown auto sequence '%s'; falling back to '%s'\n", selectedSeq, fallback);
+      if (fallback != null) currentAutoMode.SelectSequence(fallback);
+    } else {
+      System.out.printf("Selected auto sequence '%s'\n", selectedSeq);
+    }
+
+    currentAutoMode.Initialize(m_controller);
 
     // default to field oriented for Auto
     modules.GetDriveModule().SetFieldOriented(true);

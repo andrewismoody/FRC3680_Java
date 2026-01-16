@@ -38,6 +38,14 @@
         },
         "minItems": 1
       },
+      "travelGroups": {
+        "type": "array",
+        "description": "Group labels that are specifically used for travelling, not positioning (like waypoints)",
+        "items": {
+          "type": "string"
+        },
+        "minItems": 1
+      },
       "locations": {
         "type": "array",
         "description": "Location labels that will be referenced by poses",

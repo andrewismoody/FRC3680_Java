@@ -20,8 +20,8 @@
         },
         "index": {
             "type": "integer",
-            "description": "The pose index within the location group this target is associated with",
-            "minimum": 0
+            "description": "The pose index within the location group this target is associated with (-1 allowed as wildcard)",
+            "minimum": -1
         },
         "position": {
             "type": "string",
@@ -36,6 +36,12 @@
             "description": "The target measurement value for this target",
             "nullable": true
         },
+        "state": {
+            "type": "string",
+            "description": "The target ModuleState value for this target",
+            "enum": [ "Off", "Forward", "Reverse" ],
+            "nullable": true
+        },
         "translation": {
             "$ref": "translation.schema.json"
         },
@@ -46,6 +52,9 @@
     "oneOf": [
         {
             "required": [ "measurement" ]
+        },
+        {
+            "required": [ "state" ]
         },
         {
             "required": [ "translation" ]
