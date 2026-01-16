@@ -59,4 +59,33 @@ public class AutoTarget {
         Orientation = orientation;
         HasOrientation = true;
     }
+
+    // toString override
+    // prints out the contents of the AutoTarget as a string
+    @Override
+    public String toString() {
+        String output = "";
+
+        if (HasPosition) {
+            output += "Position: " + Position.toString() + "; ";
+        }
+        if (HasOrientation) {
+            output += "Orientation: " + Orientation.toString() + "; ";
+        }
+        if (HasMeasurement) {
+            output += "Measurement: " + Measurement + "; ";
+        }
+        if (HasState) {
+            output += "State: " + State.toString() + "; ";
+        }
+        if (HasLookAt) {
+            output += "LookAt: " + LookAt.toString() + "; ";
+        }
+
+        if (output.equals("")) {
+            output = "Empty AutoTarget";
+        }
+
+        return output;
+    }
 }

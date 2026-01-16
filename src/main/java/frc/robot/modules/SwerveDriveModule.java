@@ -405,20 +405,7 @@ public class SwerveDriveModule implements DriveModule {
     }
 
     public ActionPose GetActionPose(String group, String location, int locationIndex, String position, String action) {
-        for (ActionPose pose : actionPoses) {
-            if (
-                (pose.group == group || "any".equalsIgnoreCase(pose.group))
-                && (pose.locationIndex == locationIndex || pose.locationIndex == -1)
-                && (pose.location == location || "any".equalsIgnoreCase(pose.location))
-                && (pose.position == position || "any".equalsIgnoreCase(pose.position))
-                && (pose.action == action || "any".equalsIgnoreCase(pose.action))
-            ) {
-                System.out.printf("%s GetActionPose: Matched %s %s %d %s %s\n", moduleID, pose.group, pose.location, pose.locationIndex, pose.position, pose.action);
-                return pose;
-            }
-        }
-
-        return null;      
+        return Utility.GetActionPose(group, location, locationIndex, position, action, action, actionPoses);     
     }
 
     public ActionPose GetTarget() {
@@ -430,9 +417,11 @@ public class SwerveDriveModule implements DriveModule {
     }      
     
     public void SetTargetActionPose(String group, String location, int locationIndex, String position, String action) {
+        System.out.printf("%s SetTargetActionPose: Requested %s %s %d %s %s\n", moduleID, group, location, locationIndex, position, action);
         ActionPose actionPose = GetActionPose(group, location, locationIndex, position, action);
 
         if (actionPose != null) {
+            System.out.printf("%s SetTargetActionPose: Found %s %s %d %s %s %s\n", moduleID, actionPose.group, actionPose.location, actionPose.locationIndex, actionPose.position, actionPose.action, actionPose.target.toString());
             targetPose = actionPose;
             targetActionPoseEntry.setString(String.format("%s %s %d %s %s", group, location, locationIndex, position, action));
             if (debug) {

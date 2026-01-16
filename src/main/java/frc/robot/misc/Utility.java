@@ -11,6 +11,7 @@ import edu.wpi.first.math.geometry.Translation3d;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.DriverStation.Alliance;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
+import frc.robot.action.ActionPose;
 
 public class Utility {
     static boolean initialized = false;
@@ -235,5 +236,22 @@ public class Utility {
             return rotateToRedStart(pose);
         else
             return pose;
+    }
+
+    public static ActionPose GetActionPose(String group, String location, int locationIndex, String position, String action, String moduleID, ArrayList<ActionPose> actionPoses) {
+        for (ActionPose pose : actionPoses) {
+            if (
+                (pose.group.equalsIgnoreCase(group) || "any".equalsIgnoreCase(pose.group))
+                && (pose.locationIndex == locationIndex || pose.locationIndex == -1)
+                && (pose.location.equalsIgnoreCase(location) || "any".equalsIgnoreCase(pose.location))
+                && (pose.position.equalsIgnoreCase(position) || "any".equalsIgnoreCase(pose.position))
+                && (pose.action.equalsIgnoreCase(action) || "any".equalsIgnoreCase(pose.action))
+            ) {
+                System.out.printf("%s GetActionPose: Matched %s %s %d %s %s\n", moduleID, pose.group, pose.location, pose.locationIndex, pose.position, pose.action);
+                return pose;
+            }
+        }
+
+        return null;
     }
 }

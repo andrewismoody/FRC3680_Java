@@ -8,6 +8,7 @@ import edu.wpi.first.networktables.NetworkTable;
 import edu.wpi.first.networktables.NetworkTableInstance;
 import edu.wpi.first.networktables.NetworkTableEntry;
 import frc.robot.auto.AutoTarget;
+import frc.robot.misc.Utility;
 import frc.robot.action.ActionPose;
 
 public class DualMotorModule implements RobotModule {
@@ -72,20 +73,7 @@ public class DualMotorModule implements RobotModule {
     }
 
     public ActionPose GetActionPose(String group, String location, int locationIndex, String position, String action) {
-        for (ActionPose pose : actionPoses) {
-            if (
-                (pose.group == group || "any".equalsIgnoreCase(pose.group))
-                && (pose.locationIndex == locationIndex || pose.locationIndex == -1)
-                && (pose.location == location || "any".equalsIgnoreCase(pose.location))
-                && (pose.position == position || "any".equalsIgnoreCase(pose.position))
-                && (pose.action == action || "any".equalsIgnoreCase(pose.action))
-            ) {
-                System.out.printf("%s GetActionPose: Matched %s %d %s %s %s\n", moduleID, pose.group, pose.location, pose.locationIndex, pose.position, pose.action);
-                return pose;
-            }
-        }
-
-        return null;      
+        return Utility.GetActionPose(group, location, locationIndex, position, action, action, actionPoses);     
     }
 
     public ActionPose GetTarget() {

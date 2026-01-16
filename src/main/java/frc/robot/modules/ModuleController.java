@@ -157,6 +157,7 @@ public class ModuleController {
   }    
 
   public void SetTargetActionPose(String group, String location, int locationIndex, String position, String action) {
+    System.out.printf("ModuleController SetTargetActionPose: %s %d %s %s %s\n", group, locationIndex, location, position, action);
     for (RobotModule module : modules.values()) {
       module.SetTargetActionPose(group, location, locationIndex, position, action);
     }

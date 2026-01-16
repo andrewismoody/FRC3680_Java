@@ -19,6 +19,7 @@ import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import frc.robot.auto.AutoTarget;
 import frc.robot.action.ActionPose;
 import frc.robot.encoder.Encoder;
+import frc.robot.misc.Utility;
 import frc.robot.switches.Switch;
 
 public class SingleMotorModule implements RobotModule,AutoCloseable {
@@ -165,20 +166,7 @@ public class SingleMotorModule implements RobotModule,AutoCloseable {
     }
 
     public ActionPose GetActionPose(String group, String location, int locationIndex, String position, String action) {
-        for (ActionPose pose : actionPoses) {
-            if (
-                (pose.group == group || "any".equalsIgnoreCase(pose.group))
-                && (pose.locationIndex == locationIndex || pose.locationIndex == -1)
-                && (pose.location == location || "any".equalsIgnoreCase(pose.location))
-                && (pose.position == position || "any".equalsIgnoreCase(pose.position))
-                && (pose.action == action || "any".equalsIgnoreCase(pose.action))
-            ) {
-                System.out.printf("%s GetActionPose: Matched %s %d %s %s %s\n", moduleID, pose.group, pose.location, pose.locationIndex, pose.position, pose.action);
-                return pose;
-            }
-        }
-
-        return null;      
+        return Utility.GetActionPose(group, location, locationIndex, position, action, action, actionPoses);     
     }
 
     public void SetTargetActionPose(ActionPose actionPose) {

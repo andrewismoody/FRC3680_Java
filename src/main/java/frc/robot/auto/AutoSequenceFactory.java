@@ -78,6 +78,7 @@ public final class AutoSequenceFactory {
 
         ArrayList<String> orderedEventNames = new ArrayList<>();
 
+        // TODO: this needs to be resolved at the right time, currently it evaluates before the driver station is even connected
         int resolvedStart = resolveStartPosition();
         if (resolvedStart == 1 && seqObj.has("start1")) orderedEventNames.addAll(toStringList(seqObj.get("start1")));
         if (resolvedStart == 2 && seqObj.has("start2")) orderedEventNames.addAll(toStringList(seqObj.get("start2")));

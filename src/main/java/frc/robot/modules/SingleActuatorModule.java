@@ -11,6 +11,7 @@ import edu.wpi.first.networktables.NetworkTableEntry; // added
 import edu.wpi.first.wpilibj.Relay;
 import edu.wpi.first.wpilibj.Relay.Value;
 import frc.robot.action.ActionPose;
+import frc.robot.misc.Utility;
 
 
 public class SingleActuatorModule implements RobotModule {
@@ -183,20 +184,7 @@ public class SingleActuatorModule implements RobotModule {
     @Override
     public ActionPose GetActionPose(String group, String location, int locationIndex, String position,
         String action) {
-        for (ActionPose pose : actionPoses) {
-            if (
-                (pose.group == group || "any".equalsIgnoreCase(pose.group))
-                && (pose.locationIndex == locationIndex || pose.locationIndex == -1)
-                && (pose.location == location || "any".equalsIgnoreCase(pose.location))
-                && (pose.position == position || "any".equalsIgnoreCase(pose.position))
-                && (pose.action == action || "any".equalsIgnoreCase(pose.action))
-            ) {
-                System.out.printf("%s GetActionPose: Matched %s %d %s %s %s\n", moduleID, pose.group, pose.location, pose.locationIndex, pose.position, pose.action);
-                return pose;
-            }
-        }
-
-        return null;      
+        return Utility.GetActionPose(group, location, locationIndex, position, action, action, actionPoses);     
     }
     
 }
