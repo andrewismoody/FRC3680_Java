@@ -1,5 +1,7 @@
 package frc.robot.misc;
 
+import java.util.ArrayList;
+
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Pose3d;
 import edu.wpi.first.math.geometry.Rotation2d;
@@ -18,7 +20,7 @@ public class Utility {
     static Transform3d redStartTransform = null;
 
     // NEW: runtime-provided auto season info (set once after JSON load)
-    private static java.util.Set<String> s_travelGroups = java.util.Set.of();
+    private static ArrayList<String> travelGroups = new ArrayList<String>();
 
     public static void setRedStartTransform(Transform3d transform) {
         redStartTransform = transform;
@@ -29,21 +31,13 @@ public class Utility {
         fieldCenter = new Translation2d(fieldSize.getX() / 2.0, fieldSize.getY() / 2.0);
     }
 
-    public static void SetTravelGroups(java.util.Collection<String> groups) {
-        if (groups == null) {
-            s_travelGroups = java.util.Set.of();
-            return;
-        }
-        java.util.HashSet<String> norm = new java.util.HashSet<>();
-        for (String g : groups) {
-            if (g != null && !g.isBlank()) norm.add(g.toLowerCase());
-        }
-        s_travelGroups = java.util.Collections.unmodifiableSet(norm);
+    public static void SetTravelGroups(ArrayList<String> groups) {
+        travelGroups = groups;
     }
 
     public static boolean isTravelGroup(String group) {
         if (group == null) return false;
-        return s_travelGroups.contains(group.toLowerCase());
+        return travelGroups.contains(group.toLowerCase());
     }
 
     static void Initialize() {

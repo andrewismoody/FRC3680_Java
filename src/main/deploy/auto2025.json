@@ -210,31 +210,31 @@
     ],
 
     "targets": [
-        { "module": "drive", "group": "start", "location": "barge", "index": 1, "fixture": { "type": "start", "index": 1 } },
+        { "module": "swerveDrive", "group": "start", "location": "barge", "index": 1, "fixture": { "type": "start", "index": 1 } },
 
-        { "module": "drive", "group": "travel", "location": "waypoint", "index": 1, "fixture": { "type": "waypoint", "index": 1 } },
-        { "module": "drive", "group": "travel", "location": "waypoint", "index": 2, "fixture": { "type": "waypoint", "index": 2 } },
-        { "module": "drive", "group": "travel", "location": "waypoint", "index": 3, "fixture": { "type": "waypoint", "index": 3 } },
-        { "module": "drive", "group": "travel", "location": "waypoint", "index": 4, "fixture": { "type": "waypoint", "index": 4 } },
-        { "module": "drive", "group": "travel", "location": "waypoint", "index": 5, "fixture": { "type": "waypoint", "index": 5 } },
-        { "module": "drive", "group": "travel", "location": "waypoint", "index": 6, "fixture": { "type": "waypoint", "index": 6 } },
-        { "module": "drive", "group": "travel", "location": "waypoint", "index": 7, "fixture": { "type": "waypoint", "index": 7 } },
-        { "module": "drive", "group": "travel", "location": "waypoint", "index": 8, "fixture": { "type": "waypoint", "index": 8 } },
-        { "module": "drive", "group": "travel", "location": "waypoint", "index": 9, "fixture": { "type": "waypoint", "index": 9 } },
-        { "module": "drive", "group": "travel", "location": "waypoint", "index": 10, "fixture": { "type": "waypoint", "index": 10 } },
-        { "module": "drive", "group": "travel", "location": "waypoint", "index": 11, "fixture": { "type": "waypoint", "index": 11 } },
-        { "module": "drive", "group": "travel", "location": "waypoint", "index": 12, "fixture": { "type": "waypoint", "index": 12 } },
+        { "module": "swerveDrive", "group": "travel", "location": "waypoint", "index": 1, "fixture": { "type": "waypoint", "index": 1 } },
+        { "module": "swerveDrive", "group": "travel", "location": "waypoint", "index": 2, "fixture": { "type": "waypoint", "index": 2 } },
+        { "module": "swerveDrive", "group": "travel", "location": "waypoint", "index": 3, "fixture": { "type": "waypoint", "index": 3 } },
+        { "module": "swerveDrive", "group": "travel", "location": "waypoint", "index": 4, "fixture": { "type": "waypoint", "index": 4 } },
+        { "module": "swerveDrive", "group": "travel", "location": "waypoint", "index": 5, "fixture": { "type": "waypoint", "index": 5 } },
+        { "module": "swerveDrive", "group": "travel", "location": "waypoint", "index": 6, "fixture": { "type": "waypoint", "index": 6 } },
+        { "module": "swerveDrive", "group": "travel", "location": "waypoint", "index": 7, "fixture": { "type": "waypoint", "index": 7 } },
+        { "module": "swerveDrive", "group": "travel", "location": "waypoint", "index": 8, "fixture": { "type": "waypoint", "index": 8 } },
+        { "module": "swerveDrive", "group": "travel", "location": "waypoint", "index": 9, "fixture": { "type": "waypoint", "index": 9 } },
+        { "module": "swerveDrive", "group": "travel", "location": "waypoint", "index": 10, "fixture": { "type": "waypoint", "index": 10 } },
+        { "module": "swerveDrive", "group": "travel", "location": "waypoint", "index": 11, "fixture": { "type": "waypoint", "index": 11 } },
+        { "module": "swerveDrive", "group": "travel", "location": "waypoint", "index": 12, "fixture": { "type": "waypoint", "index": 12 } },
 
-        { "module": "drive", "group": "alignLeft", "location": "reef", "index": 3, "fixture": { "type": "reefAlignLeft", "index": 3 } },
-        { "module": "drive", "group": "approachLeft", "location": "reef", "index": 3, "fixture": { "type": "reefApproachLeft", "index": 3 } },
-        { "module": "drive", "group": "score", "location": "reef", "index": 3, "fixture": { "type": "reefScore", "index": 3 } },
+        { "module": "swerveDrive", "group": "alignLeft", "location": "reef", "index": 3, "fixture": { "type": "reefAlignLeft", "index": 3 } },
+        { "module": "swerveDrive", "group": "approachLeft", "location": "reef", "index": 3, "fixture": { "type": "reefApproachLeft", "index": 3 } },
+        { "module": "swerveDrive", "group": "score", "location": "reef", "index": 3, "fixture": { "type": "reefScore", "index": 3 } },
 
-        { "module": "drive", "group": "alignLeft", "location": "reef", "index": 4, "fixture": { "type": "reefAlignLeft", "index": 4 } },
-        { "module": "drive", "group": "approachLeft", "location": "reef", "index": 4, "fixture": { "type": "reefApproachLeft", "index": 4 } },
-        { "module": "drive", "group": "score", "location": "reef", "index": 4, "fixture": { "type": "reefScore", "index": 4 } },
+        { "module": "swerveDrive", "group": "alignLeft", "location": "reef", "index": 4, "fixture": { "type": "reefAlignLeft", "index": 4 } },
+        { "module": "swerveDrive", "group": "approachLeft", "location": "reef", "index": 4, "fixture": { "type": "reefApproachLeft", "index": 4 } },
+        { "module": "swerveDrive", "group": "score", "location": "reef", "index": 4, "fixture": { "type": "reefScore", "index": 4 } },
 
-        { "module": "drive", "group": "align", "location": "coral", "index": 1, "fixture": { "type": "coralAlign", "index": 1 } },
-        { "module": "drive", "group": "pickup", "location": "coral", "index": 1, "fixture": { "type": "coralPickup", "index": 1 } }
+        { "module": "swerveDrive", "group": "align", "location": "coral", "index": 1, "fixture": { "type": "coralAlign", "index": 1 } },
+        { "module": "swerveDrive", "group": "pickup", "location": "coral", "index": 1, "fixture": { "type": "coralPickup", "index": 1 } }
     ],
 
     "poses": [

@@ -1,6 +1,7 @@
 package frc.robot.modules;
 
 import java.util.Hashtable;
+import java.util.ArrayList;
 
 import edu.wpi.first.math.geometry.Pose3d;
 import frc.robot.action.ActionPose;
@@ -198,5 +199,10 @@ public class ModuleController {
         } catch (Throwable t) {
             // ignore
         }
+    }
+
+    // NEW: allow auto system to broadcast ActionPoses to all modules (loose coupling)
+    public ArrayList<RobotModule> GetAllModules() {
+        return new ArrayList<>(modules.values());
     }
 }

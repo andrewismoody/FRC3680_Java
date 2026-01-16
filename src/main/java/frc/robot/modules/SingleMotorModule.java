@@ -173,7 +173,7 @@ public class SingleMotorModule implements RobotModule,AutoCloseable {
                 && (pose.position == position || "any".equalsIgnoreCase(pose.position))
                 && (pose.action == action || "any".equalsIgnoreCase(pose.action))
             ) {
-                System.out.printf("%s GetActionPose: Matched %s %d %d %d %s\n", moduleID, pose.group, pose.location, pose.locationIndex, pose.position, pose.action);
+                System.out.printf("%s GetActionPose: Matched %s %d %s %s %s\n", moduleID, pose.group, pose.location, pose.locationIndex, pose.position, pose.action);
                 return pose;
             }
         }

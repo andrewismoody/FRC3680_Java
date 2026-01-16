@@ -32,7 +32,6 @@ import frc.robot.gyro.Gyro;
 import frc.robot.misc.Utility;
 import frc.robot.positioner.LimelightHelpers.PoseEstimate;
 import frc.robot.positioner.Positioner;
-import frc.robot.z2024.Constants;
 import frc.robot.action.ActionPose;
 
 public class DifferentialDriveModule implements DriveModule {
@@ -111,7 +110,7 @@ public class DifferentialDriveModule implements DriveModule {
     StructPublisher<Pose3d> transTargetPosePublisher;
     StructPublisher<Pose3d> lookatPosePublisher;
 
-    public DifferentialDriveModule(String ModuleID, Gyro Gyro, Positioner Positioner, double DriveSpeed, MotorController LeftMotor, Encoder LeftDriveEncoder, MotorController RightMotor, Encoder RightDriveEncoder, double DriveRatio, double FloatTolerance, double FrameNorm) {
+    public DifferentialDriveModule(String ModuleID, Gyro Gyro, Positioner Positioner, double DriveSpeed, MotorController LeftMotor, Encoder LeftDriveEncoder, MotorController RightMotor, Encoder RightDriveEncoder, double DriveRatio, double FloatTolerance, double FrameNorm, double TrackWidth) {
         moduleID = ModuleID;
         leftMotor = LeftMotor;
         rightMotor = RightMotor;
@@ -139,7 +138,7 @@ public class DifferentialDriveModule implements DriveModule {
         driveController = new DifferentialDrive(leftMotor::set, rightMotor::set);
         driveController.setSafetyEnabled(false);
 
-        kinematics = new DifferentialDriveKinematics(Constants.robotSize.getY());
+        kinematics = new DifferentialDriveKinematics(TrackWidth);
         poseEstimator = new DifferentialDrivePoseEstimator(kinematics, new Rotation2d(getGyroRadians()), leftDistance, rightDistance, Pose2d.kZero);
         fieldPosition = new Field2d();
         
@@ -547,7 +546,7 @@ public class DifferentialDriveModule implements DriveModule {
                 && (pose.position == position || "any".equalsIgnoreCase(pose.position))
                 && (pose.action == action || "any".equalsIgnoreCase(pose.action))
             ) {
-                System.out.printf("%s GetActionPose: Matched %s %d %d %d %s\n", moduleID, group, location, locationIndex, position, action);
+                System.out.printf("%s GetActionPose: Matched %s %d %s %s %s\n", moduleID, pose.group, pose.location, pose.locationIndex, pose.position, pose.action);
                 return pose;
             }
         }

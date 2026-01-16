@@ -16,6 +16,7 @@
   "NTProvider": {
     "types": {
       "/FMSInfo": "FMSInfo",
+      "/SmartDashboard/Auto Selector": "String Chooser",
       "/SmartDashboard/Field": "Field2d",
       "/SmartDashboard/SendableChooser[0]": "String Chooser",
       "/SmartDashboard/SendableChooser[1]": "String Chooser",
@@ -53,9 +54,6 @@
       "open": false
     },
     "transitory": {
-      "GameController": {
-        "open": true
-      },
       "LiveWindow": {
         "open": true
       },

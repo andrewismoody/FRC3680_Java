@@ -1,6 +1,6 @@
 // Copyright (c) FIRST and other WPILib contributors.
-// Open Source Software; you can modify and/or share it under the terms of
-// the WPILib BSD license file in the root directory of this project.
+// Open Source Software; you can modify and/or share it under the terms of the
+// WPILib BSD license file in the root directory of this project.
 
 package frc.robot.z2025;
 
@@ -40,6 +40,7 @@ import frc.robot.positioner.LimeLightPositioner;
 import frc.robot.positioner.Positioner;
 import frc.robot.encoder.Encoder;
 import frc.robot.encoder.REVEncoder;
+import frc.robot.auto.AutoValidator;
 
 /**
  * The VM is configured to automatically run this class, and to call the
@@ -115,7 +116,7 @@ public class Robot extends TimedRobot {
 
   ModuleController modules;
 
-  AutoController currentAutoMode;
+  AutoController autoController;
 
   private DoubleSubscriber slider0Sub;
   private SendableChooser<String> autoChooser;
@@ -163,26 +164,39 @@ public class Robot extends TimedRobot {
     autoChooser = new SendableChooser<>();
 
     // NEW: JSON-driven auto controller (supersedes AutoModes)
-    currentAutoMode = new AutoController("json-auto", modules);
+    autoController = new AutoController("json-auto", modules);
     try {
       String autoPath = Filesystem.getDeployDirectory().toPath().resolve("auto2025.json").toString();
-      AutoParser.LoadIntoController(autoPath, currentAutoMode, modules, Utility::getDriverLocation);
+      AutoParser.LoadIntoController(autoPath, autoController, modules, Utility::getDriverLocation);
 
       // Populate chooser from loaded sequences
-      String defaultSeq = currentAutoMode.GetDefaultSequenceLabel();
+      String defaultSeq = autoController.GetDefaultSequenceLabel();
       if (defaultSeq != null) autoChooser.setDefaultOption(defaultSeq, defaultSeq);
-      for (String seq : currentAutoMode.GetSequenceLabels()) {
+      for (String seq : autoController.GetSequenceLabels()) {
         if (defaultSeq != null && defaultSeq.equals(seq)) continue;
         autoChooser.addOption(seq, seq);
       }
 
       // NEW: publish travelGroups for runtime lookup (no more hardcoded Utility list)
-      var def = currentAutoMode.GetSeasonDefinition(); // assumes getter exists
+      var def = autoController.GetSeasonDefinition(); // assumes getter exists
       if (def != null) Utility.SetTravelGroups(def.travelGroups);
+
+      if (Robot.isReal()) {
+        // keep lightweight validation on real robot
+        var result = AutoValidator.Validate(autoController, def, modules, Utility::getDriverLocation);
+        result.printToStdout();
+      } else {
+        var result = AutoValidator.ValidateFull(autoController, def, modules, Utility::getDriverLocation);
+        result.printToStdout();
+        if (!result.ok()) {
+          throw new RuntimeException("Auto JSON full validation failed; see console for details");
+        }
+      }
 
       System.out.printf("Loaded auto JSON from '%s'\n", autoPath);
     } catch (Exception ex) {
       System.out.printf("Failed to load auto JSON: %s\n", ex.getMessage());
+      ex.printStackTrace();
       // Leave currentAutoMode empty; robot will simply do nothing in auto.
     }
     SmartDashboard.putData("Auto Selector", autoChooser);
@@ -224,19 +238,19 @@ public class Robot extends TimedRobot {
     // Use chooser selection (fallback to deterministic default)
     String selectedSeq = autoChooser.getSelected();
     if (selectedSeq == null || selectedSeq.isBlank()) {
-      selectedSeq = currentAutoMode.GetDefaultSequenceLabel();
+      selectedSeq = autoController.GetDefaultSequenceLabel();
       System.out.printf("Auto chooser empty; defaulting to '%s'\n", selectedSeq);
     }
 
-    if (selectedSeq != null && !currentAutoMode.SelectSequence(selectedSeq)) {
-      String fallback = currentAutoMode.GetDefaultSequenceLabel();
+    if (selectedSeq != null && !autoController.SelectSequence(selectedSeq)) {
+      String fallback = autoController.GetDefaultSequenceLabel();
       System.out.printf("Unknown auto sequence '%s'; falling back to '%s'\n", selectedSeq, fallback);
-      if (fallback != null) currentAutoMode.SelectSequence(fallback);
+      if (fallback != null) autoController.SelectSequence(fallback);
     } else {
       System.out.printf("Selected auto sequence '%s'\n", selectedSeq);
     }
 
-    currentAutoMode.Initialize(m_controller);
+    autoController.Initialize(m_controller);
 
     // default to field oriented for Auto
     modules.GetDriveModule().SetFieldOriented(true);
@@ -249,7 +263,7 @@ public class Robot extends TimedRobot {
   public void autonomousPeriodic() {
     commonPeriodic();
 
-    currentAutoMode.Update();
+    autoController.Update();
     
     modules.ProcessState(true);
   }
@@ -282,7 +296,7 @@ public class Robot extends TimedRobot {
   @Override
   public void testInit() {
     commonInit();
-  }
+}
 
   /** This function is called periodically during test mode. */
   @Override

@@ -109,3 +109,13 @@ wpi.java.configureTestTasks(test)
 tasks.withType(JavaCompile) {
     options.compilerArgs.add '-XDstringConcat=inline'
 }
+
+sourceSets {
+    main {
+        java {
+            exclude 'frc/robot/z2024/**'
+            exclude 'frc/robot/zMechinarium/**'
+            // add more as needed
+        }
+    }
+}

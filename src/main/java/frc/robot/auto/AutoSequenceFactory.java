@@ -45,6 +45,25 @@ public final class AutoSequenceFactory {
         for (JsonNode p : def.poses) {
             poseByName.put(p.get("name").asText(), p);
         }
+
+        for (JsonNode t : def.targets) {
+            String moduleID = t.get("module").asText();
+            AutoTarget at = buildAutoTarget(t);
+            
+            if (at != null) {
+                ActionPose ap = buildActionPoseForTarget(t, at);
+                for (var module : controller.GetModuleController().GetAllModules()) {
+                    if (module.GetModuleID().equalsIgnoreCase(moduleID))
+                        module.AddActionPose(ap);
+                }
+
+                var driveModule = controller.GetModuleController().GetDriveModule();
+                if (driveModule.GetModuleID().equalsIgnoreCase(moduleID))
+                    driveModule.AddActionPose(ap);
+            } else {
+                System.out.printf("AutoSequenceFactory: failed to build target for module '%s'\n", moduleID);
+            }
+        }
     }
 
     /** 0 ignores startN arrays. 1..3 prepends startN, -1 attempts to derive from current pose. */
@@ -140,18 +159,26 @@ public final class AutoSequenceFactory {
         JsonNode p = poseByName.get(poseName);
         if (p == null) return null;
 
-        // pose.schema.json required fields
         String group = p.get("group").asText();
         String location = p.get("location").asText();
         int index = p.get("index").asInt();
         String position = p.get("position").asText();
         String action = p.get("action").asText();
 
-        AutoTarget target = buildAutoTarget(p);
+        // IMPORTANT: loose association model:
+        // - Do NOT bind a target here.
+        // - Each module resolves its own target when the ActionPose is dispatched.
+        return new ActionPose(group, location, index, position, action, null);
+    }
 
-        // ActionPose expects (group, location, locationIndex, position, action, target)
-        // The schema uses "index" as the index within the location group, which maps to locationIndex here.
-        return new ActionPose(group, location, index, position, action, target);
+    private ActionPose buildActionPoseForTarget(JsonNode p, AutoTarget at) {
+        String group = p.hasNonNull("group") ? p.get("group").asText() : "any";
+        String location = p.hasNonNull("location") ? p.get("location").asText() : "any";
+        int index = p.hasNonNull("index") ? p.get("index").asInt() : -1;
+        String position = p.hasNonNull("position") ? p.get("position").asText() : "any";
+        String action = p.hasNonNull("action") ? p.get("action").asText() : "any";
+
+        return new ActionPose(group, location, index, position, action, at);
     }
 
     private AutoTarget buildAutoTarget(JsonNode t) {

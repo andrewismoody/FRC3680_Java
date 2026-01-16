@@ -25,25 +25,23 @@ public final class FixtureResolver {
     public static void ResolveAll(AutoSeasonDefinition def) {
         HashMap<String, JsonNode> byKey = new HashMap<>();
 
-        int idx = 0;
         for (JsonNode f : def.fixtures) {
             String type = f.path("type").asText("");
-            byKey.put(key(type, idx), f);
-            idx++;
+            int index = f.path("index").asInt(-1);
+            byKey.put(key(type, index), f);
         }
 
         def.resolvedFixtures.clear();
 
-        idx = 0;
         for (JsonNode f : def.fixtures) {
             String type = f.path("type").asText("");
-            String k = key(type, idx);
+            int index = f.path("index").asInt(-1);
+            String k = key(type, index);
 
             JsonNode resolved = resolveFixture(byKey, k, new HashSet<>());
             resolved = materializeTranslation(byKey, resolved, new HashSet<>());
 
             def.resolvedFixtures.put(k, resolved);
-            idx++;
         }
     }
 
