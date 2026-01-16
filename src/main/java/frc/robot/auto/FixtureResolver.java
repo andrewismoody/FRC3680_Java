@@ -111,10 +111,10 @@ public final class FixtureResolver {
 
         ObjectNode obj = (ObjectNode) fixtureNode;
 
-        // FIX: if translation exists, normalize it to schema format in meters + radians
+        // If translation exists, normalize AND transform to alliance-start coordinates.
         if (obj.hasNonNull("translation")) {
             TranslationRotation tr = parseTranslationFromSchema(obj.get("translation"));
-            if (tr != null) obj.set("translation", toTranslationSchemaNode(obj, tr));
+            if (tr != null) obj.set("translation", toTranslationSchemaNode(obj, toAllianceStart(tr)));
             return obj;
         }
 
@@ -123,10 +123,23 @@ public final class FixtureResolver {
         Translation3d pos = evalDerivedFrom(byKey, obj.get("derivedFrom"), visiting);
         if (pos != null) {
             // derivedFrom only defines translation; rotation remains unset
-            obj.set("translation", toTranslationSchemaNode(obj, new TranslationRotation(pos, null)));
+            obj.set("translation", toTranslationSchemaNode(obj, toAllianceStart(new TranslationRotation(pos, null))));
         }
 
         return obj;
+    }
+
+    // NEW: apply already-available alliance transforms, without changing JSON/schema.
+    private static TranslationRotation toAllianceStart(TranslationRotation tr) {
+        if (tr == null) return null;
+
+        Translation3d pos = tr.position;
+        Rotation2d rot = tr.rotation;
+
+        if (pos != null) pos = Utility.transformToAllianceStart(pos);
+        if (rot != null) rot = Utility.rotateToAllianceStart(rot);
+
+        return new TranslationRotation(pos, rot);
     }
 
     // NEW: holder for position+rotation (rotation optional)

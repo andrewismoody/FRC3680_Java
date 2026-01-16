@@ -9,7 +9,6 @@ import edu.wpi.first.math.geometry.Translation3d;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.DriverStation.Alliance;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
-import frc.robot.action.Group;
 
 public class Utility {
     static boolean initialized = false;
@@ -18,6 +17,9 @@ public class Utility {
     static Translation2d fieldCenter = new Translation2d(fieldSize.getX() / 2.0, fieldSize.getY() / 2.0);
     static Transform3d redStartTransform = null;
 
+    // NEW: runtime-provided auto season info (set once after JSON load)
+    private static java.util.Set<String> s_travelGroups = java.util.Set.of();
+
     public static void setRedStartTransform(Transform3d transform) {
         redStartTransform = transform;
     }
@@ -25,6 +27,23 @@ public class Utility {
     public static void setFieldSize(Translation2d size) {
         fieldSize = size;
         fieldCenter = new Translation2d(fieldSize.getX() / 2.0, fieldSize.getY() / 2.0);
+    }
+
+    public static void SetTravelGroups(java.util.Collection<String> groups) {
+        if (groups == null) {
+            s_travelGroups = java.util.Set.of();
+            return;
+        }
+        java.util.HashSet<String> norm = new java.util.HashSet<>();
+        for (String g : groups) {
+            if (g != null && !g.isBlank()) norm.add(g.toLowerCase());
+        }
+        s_travelGroups = java.util.Collections.unmodifiableSet(norm);
+    }
+
+    public static boolean isTravelGroup(String group) {
+        if (group == null) return false;
+        return s_travelGroups.contains(group.toLowerCase());
     }
 
     static void Initialize() {
@@ -126,11 +145,6 @@ public class Utility {
     
         double theta = Math.atan2(dy, dx) + Math.PI / 2.0; // perpendicular to segment
         return new Pose2d(new Translation2d(mx, my), new Rotation2d(theta).plus(Rotation2d.k180deg));
-    }
-
-    // COPILOT: move this to autocontroller
-    public static boolean isTravelGroup(String group) {
-        return group != Group.Score && group != Group.ApproachLeft && group != Group.ApproachRight && group != Group.Pickup;
     }
 
     // Project perpendicular to angle (left = +90°, right = -90°) in 2D

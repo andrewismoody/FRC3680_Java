@@ -16,6 +16,15 @@
         "pickup",
         "none"
     ],
+    "travelGroups": [
+        "any",
+        "start",
+        "travel",
+        "alignLeft",
+        "alignRight",
+        "align",
+        "none"
+    ],
     "locations": [
         "any",
         "reef",

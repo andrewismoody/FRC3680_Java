@@ -29,6 +29,9 @@ public final class AutoSeasonDefinition {
     // resolved fixture graph (key: "type:index")
     public final HashMap<String, JsonNode> resolvedFixtures = new HashMap<>();
 
+    // NEW: season-configured travel group labels (from auto JSON)
+    public java.util.ArrayList<String> travelGroups = new java.util.ArrayList<>();
+
     public final JsonNode root;
 
     public AutoSeasonDefinition(

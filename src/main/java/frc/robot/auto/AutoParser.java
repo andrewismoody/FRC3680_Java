@@ -43,6 +43,11 @@ public final class AutoParser {
         ArrayList<String> positions = toStringList(reqArray(root, "positions"));
         ArrayList<String> actions = toStringList(reqArray(root, "actions"));
 
+        // NEW: optional travelGroups
+        ArrayList<String> travelGroups = root.has("travelGroups") && root.get("travelGroups").isArray()
+                ? toStringList(root.get("travelGroups"))
+                : new ArrayList<>();
+
         controller.SetDefinitions(groups, locations, positions, actions);
 
         JsonNode poses = reqArray(root, "poses");
@@ -55,6 +60,9 @@ public final class AutoParser {
                 root, season, version, description,
                 groups, locations, positions, actions,
                 poses, fixtures, events, targets, sequences);
+
+        // NEW: stash travelGroups on the definition (add field to AutoSeasonDefinition)
+        def.travelGroups = travelGroups;
 
         FixtureResolver.ResolveAll(def);
 

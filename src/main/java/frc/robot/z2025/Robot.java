@@ -176,6 +176,10 @@ public class Robot extends TimedRobot {
         autoChooser.addOption(seq, seq);
       }
 
+      // NEW: publish travelGroups for runtime lookup (no more hardcoded Utility list)
+      var def = currentAutoMode.GetSeasonDefinition(); // assumes getter exists
+      if (def != null) Utility.SetTravelGroups(def.travelGroups);
+
       System.out.printf("Loaded auto JSON from '%s'\n", autoPath);
     } catch (Exception ex) {
       System.out.printf("Failed to load auto JSON: %s\n", ex.getMessage());
