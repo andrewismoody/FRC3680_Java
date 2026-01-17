@@ -4,7 +4,8 @@ Plot resolved fixture positions from a season auto JSON.
 Usage:
   python tools/plot_fixtures.py
   python tools/plot_fixtures.py --file src/main/deploy/auto2025.json
-  python tools/plot_fixtures.py --file ... --out fixtures.png --no-labels --units meters
+  python tools/plot_fixtures.py --file ... --out plots/fixtures.png --no-labels --units meters
+  python tools/plot_fixtures.py --file src/main/deploy/auto2025.json --out plots/fixtures.png --debug-resolve
 
 Notes:
 - This intentionally mirrors the current Java FixtureResolver semantics:
@@ -106,9 +107,10 @@ def parse_translation_xy(t: Dict[str, Any], plot_units: str) -> Optional[XY]:
         return None
 
     x, y = float(pos[0]), float(pos[1])
+    raw_units = (t.get("positionUnits") or "inches")
+    units = raw_units.lower()
 
     # Per schema: default is inches if omitted
-    units = (t.get("positionUnits") or "inches").lower()
     if units == "inches":
         x = to_plot_units_in(x, plot_units)
         y = to_plot_units_in(y, plot_units)
@@ -131,7 +133,8 @@ def parse_rotation_rad(t: Dict[str, Any]) -> Optional[float]:
     if "rotation" not in t:
         return None
     r = float(t.get("rotation") or 0.0)
-    units = (t.get("rotationUnits") or "degrees").lower()  # schema default
+    # FIX: schema default is degrees when rotationUnits is omitted
+    units = (t.get("rotationUnits") or "degrees").lower()
     return r if units == "radians" else math.radians(r)
 
 @dataclass(frozen=True)
@@ -151,7 +154,7 @@ def fixture_key(ftype: str, index: int) -> str:
 
 
 class Resolver:
-    def __init__(self, fixtures: List[Dict[str, Any]], plot_units: str, params: Optional[Dict[str, float]] = None):
+    def __init__(self, fixtures: List[Dict[str, Any]], plot_units: str, params: Optional[Dict[str, float]] = None, debug: bool = False):
         self.by_key: Dict[str, Dict[str, Any]] = {}
         for f in fixtures:
             t = f.get("type")
@@ -162,6 +165,11 @@ class Resolver:
         self.cache: Dict[str, Optional[XY]] = {}
         self.plot_units = plot_units
         self.params: Dict[str, float] = params or {}
+        self.debug = debug
+
+    def _dbg(self, msg: str) -> None:
+        if self.debug:
+            print(msg)
 
     def _resolve_offset(self, raw: Any) -> float:
         # supports numbers or "$paramName"
@@ -188,9 +196,11 @@ class Resolver:
         if visiting is None:
             visiting = set()
         if k in visiting:
+            self._dbg(f"[cycle] {k}")
             return None
         f = self.by_key.get(k)
         if not isinstance(f, dict):
+            self._dbg(f"[missing] {k}")
             return None
 
         visiting.add(k)
@@ -199,11 +209,20 @@ class Resolver:
             if tr is not None:
                 xyr = parse_translation_xyr(tr, self.plot_units)
                 if xyr is not None:
+                    if self.debug and isinstance(tr, dict):
+                        pos = tr.get("position")
+                        self._dbg(
+                            f"[direct] {k} pos={pos} posUnits={(tr.get('positionUnits') or 'inches')} "
+                            f"rot={tr.get('rotation', None)} rotUnits={(tr.get('rotationUnits') or 'degrees')} "
+                            f"-> p=({xyr.p.x:.3f},{xyr.p.y:.3f}) {self.plot_units} r={xyr.r}"
+                        )
                     return xyr
 
             d = f.get("derivedFrom")
-            p = self.eval_derived_from(d, visiting)
-            return XYR(p=p, r=None) if p is not None else None
+            xyr = self.eval_derived_from_xyr(d, visiting, owner=k)
+            if self.debug:
+                self._dbg(f"[resolved] {k} -> {None if xyr is None else f'p=({xyr.p.x:.3f},{xyr.p.y:.3f}) r={xyr.r}'}")
+            return xyr
         finally:
             visiting.remove(k)
 
@@ -214,23 +233,93 @@ class Resolver:
             if isinstance(t, str) and isinstance(idx, int):
                 return self.resolve_fixture_xyr(t, idx, visiting)
         if derived_from is not None:
-            p = self.eval_derived_from(derived_from, visiting)
-            return XYR(p=p, r=None) if p is not None else None
+            return self.eval_derived_from_xyr(derived_from, visiting)
         return None
+
+    # NEW: XYR-aware derivedFrom evaluation (propagates rotation through the chain)
+    def eval_derived_from_xyr(self, d: Any, visiting: Set[str], owner: str = "") -> Optional[XYR]:
+        if not isinstance(d, dict):
+            if self.debug and d is not None:
+                self._dbg(f"[derived] {owner} invalid derivedFrom={d}")
+            return None
+
+        fn = (d.get("function") or "none").lower()
+        offset = self._resolve_offset(d.get("offset"))
+
+        if self.debug:
+            self._dbg(f"[derived] {owner} fn={fn} offset={d.get('offset')} -> {offset}")
+
+        a = self.resolve_arg_xyr(d.get("fixture"), d.get("derivedFrom"), visiting)
+        b = self.resolve_arg_xyr(d.get("fixture2"), d.get("derivedFrom2"), visiting)
+
+        if self.debug:
+            self._dbg(f"[derived] {owner}   A={None if a is None else f'({a.p.x:.3f},{a.p.y:.3f}) r={a.r}'}")
+            self._dbg(f"[derived] {owner}   B={None if b is None else f'({b.p.x:.3f},{b.p.y:.3f}) r={b.r}'}")
+
+        if fn == "none":
+            return a
+
+        if fn == "parallel":
+            if a is None:
+                return None
+            base = a.r if a.r is not None else 0.0
+            ref = base - math.pi / 2.0  # NEW: 90deg reference from fixed fixture angle
+            out = XYR(p=project_parallel(a.p, ref, offset), r=ref)
+            if self.debug:
+                self._dbg(f"[derived] {owner}   => parallel(ref) p=({out.p.x:.3f},{out.p.y:.3f}) r={out.r}")
+            return out
+
+        if fn == "perpendicular":
+            if a is None:
+                return None
+            base = a.r if a.r is not None else 0.0
+            ref = base - math.pi / 2.0  # NEW: 90deg reference from fixed fixture angle
+            ang = ref + math.pi / 2.0   # NEW: perpendicular from reference
+            out = XYR(p=project_parallel(a.p, ang, offset), r=ref)
+            if self.debug:
+                self._dbg(f"[derived] {owner}   => perpendicular(ref) p=({out.p.x:.3f},{out.p.y:.3f}) r={out.r}")
+            return out
+
+        if fn == "bisector":
+            if a is None or b is None:
+                return None
+            mid, bis_ang = perpendicular_bisector_midpoint_and_angle(a.p, b.p)
+            along = get_lookat(a.p, b.p)
+            out = XYR(p=project_parallel(mid, along, offset), r=bis_ang)
+            if self.debug:
+                self._dbg(
+                    f"[derived] {owner}   mid=({mid.x:.3f},{mid.y:.3f}) bis_r={bis_ang} along_r={along} "
+                    f"=> p=({out.p.x:.3f},{out.p.y:.3f}) r={out.r}"
+                )
+            return out
+
+        return a
 
     def resolve_fixture_xy(self, ftype: str, index: int, visiting: Optional[Set[str]] = None) -> Optional[XY]:
         k = fixture_key(ftype, index)
+
+        if self.debug:
+            self._dbg(f"[fixture] {k}")
+
         if k in self.cache:
+            if self.debug:
+                v = self.cache[k]
+                self._dbg(f"[cache] {k} -> {None if v is None else f'({v.x:.3f},{v.y:.3f})'}")
             return self.cache[k]
+
         if visiting is None:
             visiting = set()
         if k in visiting:
             self.cache[k] = None
+            if self.debug:
+                self._dbg(f"[cycle-xy] {k}")
             return None
 
         f = self.by_key.get(k)
         if not isinstance(f, dict):
             self.cache[k] = None
+            if self.debug:
+                self._dbg(f"[missing-xy] {k}")
             return None
 
         visiting.add(k)
@@ -240,50 +329,22 @@ class Resolver:
             xy = parse_translation_xy(tr, self.plot_units) if tr is not None else None
             if xy is not None:
                 self.cache[k] = xy
+                if self.debug:
+                    self._dbg(f"[direct-xy] {k} -> ({xy.x:.3f},{xy.y:.3f}) {self.plot_units}")
                 return xy
 
             d = f.get("derivedFrom")
-            xy = self.eval_derived_from(d, visiting)
+            xy = self.eval_derived_from(d, visiting, owner=k)
             self.cache[k] = xy
+            if self.debug:
+                self._dbg(f"[derived-xy] {k} -> {None if xy is None else f'({xy.x:.3f},{xy.y:.3f})'} {self.plot_units}")
             return xy
         finally:
             visiting.remove(k)
 
-    # FIX: this method must operate on XYR (because parallel/perpendicular need angle)
-    def eval_derived_from(self, d: Any, visiting: Set[str]) -> Optional[XY]:
-        if not isinstance(d, dict):
-            return None
-
-        fn = (d.get("function") or "none").lower()
-        offset = self._resolve_offset(d.get("offset"))
-
-        a = self.resolve_arg_xyr(d.get("fixture"), d.get("derivedFrom"), visiting)
-        b = self.resolve_arg_xyr(d.get("fixture2"), d.get("derivedFrom2"), visiting)
-
-        if fn == "none":
-            return a.p if a is not None else None
-
-        if fn == "parallel":
-            if a is None:
-                return None
-            ang = a.r if a.r is not None else 0.0
-            return project_parallel(a.p, ang, offset)
-
-        if fn == "perpendicular":
-            if a is None:
-                return None
-            ang = a.r if a.r is not None else 0.0
-            return project_perpendicular(a.p, ang, offset)
-
-        if fn == "bisector":
-            if a is None or b is None:
-                return None
-            mid, _bis_ang = perpendicular_bisector_midpoint_and_angle(a.p, b.p)
-            along = get_lookat(a.p, b.p)
-            return project_parallel(mid, along, offset)
-
-        # fallback matches earlier behavior
-        return a.p if a is not None else None
+    def eval_derived_from(self, d: Any, visiting: Set[str], owner: str = "") -> Optional[XY]:
+        xyr = self.eval_derived_from_xyr(d, visiting, owner=owner)
+        return xyr.p if xyr is not None else None
 
     def resolve_arg(self, fixture_ref: Any, derived_from: Any, visiting: Set[str]) -> Optional[XY]:
         if isinstance(fixture_ref, dict):
@@ -305,6 +366,7 @@ def main() -> None:
     ap.add_argument("--no-labels", action="store_true", help="Disable fixture text labels")
     # NEW: choose plot units
     ap.add_argument("--units", choices=["inches", "meters"], default="inches", help="Axes units for plotting")
+    ap.add_argument("--debug-resolve", action="store_true", help="Print resolver parse/derived steps to stdout")
     args = ap.parse_args()
 
     path = Path(args.file)
@@ -321,7 +383,7 @@ def main() -> None:
             if isinstance(k, str) and isinstance(v, (int, float)):
                 params[k] = float(v)
 
-    res = Resolver(fixtures, plot_units=args.units, params=params)
+    res = Resolver(fixtures, plot_units=args.units, params=params, debug=args.debug_resolve)
 
     # group fixtures by type
     points_by_type: Dict[str, List[Tuple[str, XY]]] = {}

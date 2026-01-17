@@ -118,10 +118,11 @@ public final class FixtureResolver {
 
         if (!obj.hasNonNull("derivedFrom")) return obj;
 
-        Translation3d pos = evalDerivedFrom(byKey, obj.get("derivedFrom"), visiting);
-        if (pos != null) {
-            // derivedFrom only defines translation; rotation remains unset
-            obj.set("translation", toTranslationSchemaNode(obj, toAllianceStart(new TranslationRotation(pos, null))));
+        // CHANGED: evalDerivedFrom now returns position+rotation for chaining, but we only materialize position
+        TranslationRotation derived = evalDerivedFrom(byKey, obj.get("derivedFrom"), visiting);
+        if (derived != null && derived.position != null) {
+            // derivedFrom only defines translation; rotation remains unset in JSON
+            obj.set("translation", toTranslationSchemaNode(obj, toAllianceStart(new TranslationRotation(derived.position, null))));
         }
 
         return obj;
@@ -203,52 +204,64 @@ public final class FixtureResolver {
         return t;
     }
 
-    private static Translation3d evalDerivedFrom(HashMap<String, JsonNode> byKey, JsonNode d, HashSet<String> visiting) {
+    // CHANGED: now returns TranslationRotation so nested derivedFrom can preserve angle
+    private static TranslationRotation evalDerivedFrom(HashMap<String, JsonNode> byKey, JsonNode d, HashSet<String> visiting) {
         if (d == null || d.isNull()) return null;
 
         String function = d.path("function").asText("none");
         double offset = d.path("offset").asDouble(0.0);
 
-        // CHANGE: we need rotation for parallel/perpendicular; only bisector needs a second arg
         TranslationRotation a = resolveDerivedArgTR(byKey, d.get("fixture"), d.get("derivedFrom"), visiting);
         TranslationRotation b = resolveDerivedArgTR(byKey, d.get("fixture2"), d.get("derivedFrom2"), visiting);
 
         switch (function) {
             case "none": {
-                return (a != null) ? a.position : null;
+                return a;
             }
 
             case "parallel": {
                 if (a == null || a.position == null) return null;
-                Rotation2d angle = (a.rotation != null) ? a.rotation : Rotation2d.kZero;
-                return Utility.projectParallel(a.position, angle, offset);
+
+                Rotation2d base = (a.rotation != null) ? a.rotation : Rotation2d.kZero;
+                Rotation2d ref = base.minus(Rotation2d.fromDegrees(90.0)); // NEW: 90deg reference from fixture angle
+
+                Translation3d pos = Utility.projectParallel(a.position, ref, offset);
+                return new TranslationRotation(pos, base);
             }
 
             case "perpendicular": {
                 if (a == null || a.position == null) return null;
-                Rotation2d angle = (a.rotation != null) ? a.rotation : Rotation2d.kZero;
-                return Utility.projectPerpendicular(a.position, angle, offset);
+
+                Rotation2d base = (a.rotation != null) ? a.rotation : Rotation2d.kZero;
+                Rotation2d ref = base.minus(Rotation2d.fromDegrees(90.0)); // NEW
+                Rotation2d ang = ref.plus(Rotation2d.fromDegrees(90.0));  // NEW: perpendicular from reference
+
+                Translation3d pos = Utility.projectParallel(a.position, ang, offset);
+                return new TranslationRotation(pos, ref);
             }
 
             case "bisector": {
                 if (a == null || b == null || a.position == null || b.position == null) return null;
 
                 Pose2d bis = Utility.perpendicularBisectorAngle(a.position.toTranslation2d(), b.position.toTranslation2d());
+                // intersection uses bisector rotation (matches your existing semantics)
                 Pose2d throughA = new Pose2d(a.position.toTranslation2d(), bis.getRotation());
 
                 Translation2d intersect = Utility.getIntersection(bis, throughA);
                 Translation3d base = new Translation3d(intersect);
 
                 Rotation2d along = Utility.getLookat(a.position.toTranslation2d(), b.position.toTranslation2d());
-                return Utility.projectParallel(base, along, offset);
+                Translation3d pos = Utility.projectParallel(base, along, offset);
+
+                // IMPORTANT: propagate bisector angle for subsequent parallel/perpendicular
+                return new TranslationRotation(pos, bis.getRotation());
             }
 
             default:
-                return (a != null) ? a.position : null;
+                return a;
         }
     }
 
-    // NEW: like resolveDerivedArg, but preserves rotation too
     private static TranslationRotation resolveDerivedArgTR(
             HashMap<String, JsonNode> byKey,
             JsonNode fixtureRef,
@@ -272,9 +285,9 @@ public final class FixtureResolver {
         }
 
         if (derivedFrom != null && !derivedFrom.isNull()) {
-            Translation3d pos = evalDerivedFrom(byKey, derivedFrom, visiting);
-            // derivedFrom currently only yields a position; rotation is not defined
-            return new TranslationRotation(pos, null);
+            TranslationRotation tr = evalDerivedFrom(byKey, derivedFrom, visiting);
+            // derivedFrom can now yield rotation too (used for chaining)
+            return tr;
         }
 
         return null;
