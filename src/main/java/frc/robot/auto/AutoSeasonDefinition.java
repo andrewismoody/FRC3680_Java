@@ -31,6 +31,8 @@ public final class AutoSeasonDefinition {
 
     // NEW: season-configured travel group labels (from auto JSON)
     public java.util.ArrayList<String> travelGroups = new java.util.ArrayList<>();
+    HashMap<String, Double> params = new HashMap<>();
+
 
     public final JsonNode root;
 

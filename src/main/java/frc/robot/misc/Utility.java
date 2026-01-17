@@ -23,6 +23,9 @@ public class Utility {
     // NEW: runtime-provided auto season info (set once after JSON load)
     private static ArrayList<String> travelGroups = new ArrayList<String>();
 
+    // NEW: season params (numeric) for "$var" usage
+    private static java.util.HashMap<String, Double> seasonParams = new java.util.HashMap<>();
+
     public static void setRedStartTransform(Transform3d transform) {
         redStartTransform = transform;
     }
@@ -39,6 +42,17 @@ public class Utility {
     public static boolean isTravelGroup(String group) {
         if (group == null) return false;
         return travelGroups.contains(group.toLowerCase());
+    }
+
+    public static void SetSeasonParams(java.util.Map<String, Double> params) {
+        seasonParams.clear();
+        if (params != null) seasonParams.putAll(params);
+    }
+
+    public static double GetSeasonNumber(String key, double fallback) {
+        if (key == null) return fallback;
+        Double v = seasonParams.get(key);
+        return (v != null) ? v.doubleValue() : fallback;
     }
 
     static void Initialize() {

@@ -26,8 +26,8 @@
             "enum": [ "parallel", "perpendicular", "bisector", "none" ]
         },
         "offset": {
-            "type": "number",
-            "description": "The offset distance to apply when deriving the translation - defaults to 0 if not provided",
+            "type": ["string", "number"],
+            "description": "The offset distance to apply when deriving the translation - defaults to 0 if not provided; or a parameter reference string",
             "default": 0
         }
     },

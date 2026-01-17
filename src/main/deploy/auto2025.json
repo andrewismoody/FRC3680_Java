@@ -3,6 +3,14 @@
     "season": "2025",
     "version": "1.1.2",
     "description": "2025 autos converted from Java-coded ActionPoses + Score3and4 sequence",
+    "params": {
+        "reefApproachOffset": 0,
+        "reefAlignOffset": 0,
+        "reefScoreOffset": 0,
+        "coralPickupOffset": 0,
+        "coralAlignOffset": 0,
+        "waypointOffset": 36
+    },
     "groups": [
         "any",
         "start",
@@ -64,63 +72,63 @@
         { "type": "start", "index": 2, "translation": { "position": [0, 0, 0], "rotation": 0 } },
         { "type": "start", "index": 3, "translation": { "position": [0, 0, 0], "rotation": 0 } },
 
-        { "type": "waypoint", "index": 1, "derivedFrom": { "function": "perpendicular", "fixture": { "type": "tag", "index": 19 }, "offset": 0 } },
+        { "type": "waypoint", "index": 1, "derivedFrom": { "function": "perpendicular", "fixture": { "type": "tag", "index": 19 }, "offset": "$waypointOffset" } },
         {
             "type": "waypoint",
             "index": 2,
             "derivedFrom": {
                 "function": "parallel",
-                "offset": 0,
+                "offset": "$waypointOffset",
                 "derivedFrom": { "function": "bisector", "fixture": { "type": "tag", "index": 19 }, "fixture2": { "type": "tag", "index": 18 } }
             }
         },
-        { "type": "waypoint", "index": 3, "derivedFrom": { "function": "perpendicular", "fixture": { "type": "tag", "index": 18 }, "offset": 0 } },
+        { "type": "waypoint", "index": 3, "derivedFrom": { "function": "perpendicular", "fixture": { "type": "tag", "index": 18 }, "offset": "$waypointOffset" } },
         {
             "type": "waypoint",
             "index": 4,
             "derivedFrom": {
                 "function": "parallel",
-                "offset": 0,
+                "offset": "$waypointOffset",
                 "derivedFrom": { "function": "bisector", "fixture": { "type": "tag", "index": 18 }, "fixture2": { "type": "tag", "index": 17 } }
             }
         },
-        { "type": "waypoint", "index": 5, "derivedFrom": { "function": "perpendicular", "fixture": { "type": "tag", "index": 17 }, "offset": 0 } },
+        { "type": "waypoint", "index": 5, "derivedFrom": { "function": "perpendicular", "fixture": { "type": "tag", "index": 17 }, "offset": "$waypointOffset" } },
         {
             "type": "waypoint",
             "index": 6,
             "derivedFrom": {
                 "function": "parallel",
-                "offset": 0,
+                "offset": "$waypointOffset",
                 "derivedFrom": { "function": "bisector", "fixture": { "type": "tag", "index": 17 }, "fixture2": { "type": "tag", "index": 22 } }
             }
         },
-        { "type": "waypoint", "index": 7, "derivedFrom": { "function": "perpendicular", "fixture": { "type": "tag", "index": 22 }, "offset": 0 } },
+        { "type": "waypoint", "index": 7, "derivedFrom": { "function": "perpendicular", "fixture": { "type": "tag", "index": 22 }, "offset": "$waypointOffset" } },
         {
             "type": "waypoint",
             "index": 8,
             "derivedFrom": {
                 "function": "parallel",
-                "offset": 0,
+                "offset": "$waypointOffset",
                 "derivedFrom": { "function": "bisector", "fixture": { "type": "tag", "index": 22 }, "fixture2": { "type": "tag", "index": 21 } }
             }
         },
-        { "type": "waypoint", "index": 9, "derivedFrom": { "function": "perpendicular", "fixture": { "type": "tag", "index": 21 }, "offset": 0 } },
+        { "type": "waypoint", "index": 9, "derivedFrom": { "function": "perpendicular", "fixture": { "type": "tag", "index": 21 }, "offset": "$waypointOffset" } },
         {
             "type": "waypoint",
             "index": 10,
             "derivedFrom": {
                 "function": "parallel",
-                "offset": 0,
+                "offset": "$waypointOffset",
                 "derivedFrom": { "function": "bisector", "fixture": { "type": "tag", "index": 21 }, "fixture2": { "type": "tag", "index": 20 } }
             }
         },
-        { "type": "waypoint", "index": 11, "derivedFrom": { "function": "perpendicular", "fixture": { "type": "tag", "index": 20 }, "offset": 0 } },
+        { "type": "waypoint", "index": 11, "derivedFrom": { "function": "perpendicular", "fixture": { "type": "tag", "index": 20 }, "offset": "$waypointOffset" } },
         {
             "type": "waypoint",
             "index": 12,
             "derivedFrom": {
                 "function": "parallel",
-                "offset": 0,
+                "offset": "$waypointOffset",
                 "derivedFrom": { "function": "bisector", "fixture": { "type": "tag", "index": 20 }, "fixture2": { "type": "tag", "index": 19 } }
             }
         },
