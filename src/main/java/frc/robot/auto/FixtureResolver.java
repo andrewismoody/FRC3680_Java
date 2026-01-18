@@ -130,11 +130,12 @@ public final class FixtureResolver {
 
         ObjectNode obj = (ObjectNode) fixtureNode;
 
-        // If translation exists, normalize AND (optionally) transform to alliance-start coordinates.
+        // If translation exists, normalize. Apply alliance transform ONLY at the end.
         if (obj.hasNonNull("translation")) {
             Pose3d tr = parsePoseFromSchema(obj.get("translation"));
             if (tr != null) {
-                Pose3d out = applyAllianceTransform ? toAllianceStart(tr) : tr;
+                Pose3d out = tr; // CHANGED: do not transform here yet
+                if (applyAllianceTransform) out = toAllianceStart(out); // FINAL-ONLY (top-level call path)
                 obj.set("translation", toTranslationSchemaNode(obj, out));
                 if (debug) System.err.println("[FixtureResolver] direct translation -> " + fmtPos(out.getTranslation()));
             }
@@ -143,9 +144,11 @@ public final class FixtureResolver {
 
         if (!obj.hasNonNull("derivedFrom")) return obj;
 
-        Pose3d derived = evalDerivedFrom(byKey, obj.get("derivedFrom"), visiting, applyAllianceTransform, debug);
-        if (derived != null) {
-            Pose3d out = applyAllianceTransform ? toAllianceStart(derived) : derived;
+        // CHANGED: compute derived pose in BLUE frame regardless of alliance
+        Pose3d derivedBlue = evalDerivedFrom(byKey, obj.get("derivedFrom"), visiting, /*applyAllianceTransform=*/false, debug);
+        if (derivedBlue != null) {
+            Pose3d out = derivedBlue;
+            if (applyAllianceTransform) out = toAllianceStart(out); // APPLY ONCE HERE
             obj.set("translation", toTranslationSchemaNode(obj, out));
             if (debug) System.err.println("[FixtureResolver] derived translation -> " + fmtPos(out.getTranslation()));
         }
@@ -220,6 +223,10 @@ public final class FixtureResolver {
             boolean applyAllianceTransform,
             boolean debug) {
 
+        // NOTE:
+        // applyAllianceTransform is intentionally ignored for derived computation now.
+        // Derived computation stays in BLUE frame; top-level materializeTranslation applies transform once.
+
         if (d == null || d.isNull()) return null;
 
         String function = d.path("function").asText("none");
@@ -234,8 +241,9 @@ public final class FixtureResolver {
                     + " offset(m)=" + String.format("%.4f", offset));
         }
 
-        Pose3d a = resolveDerivedArgPose(byKey, d.get("fixture"), d.get("derivedFrom"), visiting, applyAllianceTransform, debug);
-        Pose3d b = resolveDerivedArgPose(byKey, d.get("fixture2"), d.get("derivedFrom2"), visiting, applyAllianceTransform, debug);
+        // CHANGED: always resolve args in BLUE frame (no alliance transform during recursion)
+        Pose3d a = resolveDerivedArgPose(byKey, d.get("fixture"), d.get("derivedFrom"), visiting, /*applyAllianceTransform=*/false, debug);
+        Pose3d b = resolveDerivedArgPose(byKey, d.get("fixture2"), d.get("derivedFrom2"), visiting, /*applyAllianceTransform=*/false, debug);
 
         switch (function) {
             case "none":
@@ -294,6 +302,9 @@ public final class FixtureResolver {
             boolean applyAllianceTransform,
             boolean debug) {
 
+        // CHANGED: during derived evaluation, we never alliance-transform inputs
+        final boolean recurseAllianceTransform = false;
+
         if (fixtureRef != null && fixtureRef.isObject()) {
             String type = fixtureRef.path("type").asText("");
             int index = fixtureRef.path("index").asInt(-1);
@@ -302,7 +313,7 @@ public final class FixtureResolver {
                 if (f != null) {
                     JsonNode copy = f.deepCopy();
                     resolveNodeInPlace(byKey, copy, visiting, debug);
-                    materializeTranslation(byKey, copy, visiting, applyAllianceTransform, debug);
+                    materializeTranslation(byKey, copy, visiting, recurseAllianceTransform, debug); // CHANGED
                     if (copy.hasNonNull("translation")) {
                         return parsePoseFromSchema(copy.get("translation"));
                     }
@@ -311,7 +322,7 @@ public final class FixtureResolver {
         }
 
         if (derivedFrom != null && !derivedFrom.isNull()) {
-            return evalDerivedFrom(byKey, derivedFrom, visiting, applyAllianceTransform, debug);
+            return evalDerivedFrom(byKey, derivedFrom, visiting, recurseAllianceTransform, debug); // CHANGED
         }
 
         return null;

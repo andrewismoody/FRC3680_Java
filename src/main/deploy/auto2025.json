@@ -11,7 +11,33 @@
         "coralAlignOffset": 36,
         "waypointOffset": 36,
         "robotCenterY": 10,
-        "robotCenterX": 18
+        "robotCenterX": 18,
+
+        "fieldSize": [690.0, 317.0],
+        "fieldCenter": ["$fieldSize.X / 2", "$fieldSize.Y / 2"],
+        "startArea": ["($fieldSize.X / 2) - 297.64", 146.46],
+
+        "redStartYawDeg": 180,
+
+        "frameSize": [27.5, 32.375],
+        "frameCenter": ["$frameSize.X / 2", "$frameSize.Y / 2"],
+        "bumperWidth": 4.0,
+        "motorOffset": [4.0, 4.5],
+        "motorPosition": ["$frameCenter.X - $motorOffset.X", "$frameCenter.Y - $motorOffset.Y"],
+
+        "robotSize": ["$frameSize.X + $bumperWidth", "$frameSize.Y + $bumperWidth"],
+        "robotCenter": ["$robotSize.X / 2", "$robotSize.Y / 2"],
+
+        "startPadding": "($startArea.X / 2 - $robotCenter.X)",
+        "robotOffset": ["$robotCenter.X + $startPadding", "$robotCenter.Y + $startPadding * 2"],
+
+        "blueStartY1": 127.38,
+        "blueStartY2": 84.03,
+        "blueStartY3": 36.458,
+        "blueStartPosition": [
+            "$fieldCenter.X - $startArea.X + ($frameSize.X/2 + $bumperWidth/2 + (($startArea.X/2 - ($frameSize.X/2 + $bumperWidth/2)) ) )",
+            "$fieldCenter.Y"
+        ]
     },
     "groups": [
         "any",
@@ -70,9 +96,9 @@
         { "type": "tag", "index": 22, "translation": { "position": [193.1, 130.17, 0], "rotation": 300 } },
         { "type": "interest", "index": 1, "translation": { "position": [176.75, 158.5, 0], "rotation": 0 } },
 
-        { "type": "start", "index": 1, "translation": { "position": [0, 0, 0], "rotation": 0 } },
-        { "type": "start", "index": 2, "translation": { "position": [0, 0, 0], "rotation": 0 } },
-        { "type": "start", "index": 3, "translation": { "position": [0, 0, 0], "rotation": 0 } },
+        { "type": "start", "index": 1, "translation": { "position": ["$blueStartPosition.X", "$blueStartPosition.Y + $blueStartY1", 0], "rotation": 0 } },
+        { "type": "start", "index": 2, "translation": { "position": ["$blueStartPosition.X", "$blueStartPosition.Y + $blueStartY2", 0], "rotation": 0 } },
+        { "type": "start", "index": 3, "translation": { "position": ["$blueStartPosition.X", "$blueStartPosition.Y + $blueStartY3", 0], "rotation": 0 } },
 
         { "type": "waypoint", "index": 1, "derivedFrom": { "function": "perpendicular", "fixture": { "type": "tag", "index": 19 }, "offset": "$waypointOffset" } },
         {

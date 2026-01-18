@@ -10,6 +10,7 @@ import java.util.function.Supplier;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import edu.wpi.first.math.geometry.Translation2d;
 import frc.robot.misc.Utility;
 
 import frc.robot.modules.ModuleController;
@@ -28,12 +29,10 @@ public final class AutoParser {
 
     private AutoParser() {}
 
-    // CHANGED: definitions-only result now includes a ready-to-use AutoSeasonDefinition
     public static final class ParsedDefinitions {
         public final AutoSeasonDefinition def;
 
-        // optional extras that are not part of AutoSeasonDefinition ctor wiring
-        public final JsonNode root; // keep if callers still want raw access
+        public final JsonNode root;
 
         private ParsedDefinitions(AutoSeasonDefinition def, JsonNode root) {
             this.def = def;
@@ -41,7 +40,6 @@ public final class AutoParser {
         }
     }
 
-    // CHANGED: now returns ParsedDefinitions(def=AutoSeasonDefinition(...)) with params/travelGroups applied to def
     public static ParsedDefinitions LoadDefinitions(String filePath) throws IOException {
         JsonNode root = MAPPER.readTree(Files.readString(Path.of(filePath)));
 
@@ -58,18 +56,23 @@ public final class AutoParser {
                 ? toStringList(root.get("travelGroups"))
                 : new ArrayList<>();
 
-        HashMap<String, Double> params = new HashMap<>();
+        java.util.Map<String, JsonNode> rawParams = new java.util.HashMap<>();
         if (root.hasNonNull("params") && root.get("params").isObject()) {
             var it = root.get("params").fields();
             while (it.hasNext()) {
                 var e = it.next();
-                if (e.getValue().isNumber()) params.put(e.getKey(), e.getValue().asDouble());
+                rawParams.put(e.getKey(), e.getValue());
             }
         }
 
-        // keep behavior consistent with LoadIntoController
+        HashMap<String, Double> params = resolveParams(rawParams);
+
+        HashMap<String, Translation2d> vec2Params = resolveVec2Params(rawParams, params);
+
+        Utility.SetSeasonVec2Params(vec2Params);
+
         if (root.isObject()) {
-            expandOffsetVars((ObjectNode) root, params);
+            expandOffsetVars((ObjectNode) root, params, vec2Params);
         }
 
         JsonNode poses = reqArray(root, "poses");
@@ -89,12 +92,204 @@ public final class AutoParser {
         return new ParsedDefinitions(def, root);
     }
 
+    public static Translation2d GetFieldSizeInchesFromDefinitions(AutoSeasonDefinition def) {
+        if (def == null || def.root == null) return null;
+
+        JsonNode paramsNode = def.root.get("params");
+        if (paramsNode == null || !paramsNode.isObject()) return null;
+
+        JsonNode fieldSize = paramsNode.get("fieldSize");
+        if (fieldSize == null || !fieldSize.isArray() || fieldSize.size() < 2) return null;
+
+        Double x = AutoExpr.evalNode(fieldSize.get(0), def.params::get,
+                (name, comp) -> {
+                    Translation2d v = Utility.GetSeasonVec2Inches(name, null);
+                    return (v == null) ? null : ((comp == 'X') ? v.getX() : v.getY());
+                });
+        Double y = AutoExpr.evalNode(fieldSize.get(1), def.params::get,
+                (name, comp) -> {
+                    Translation2d v = Utility.GetSeasonVec2Inches(name, null);
+                    return (v == null) ? null : ((comp == 'X') ? v.getX() : v.getY());
+                });
+
+        if (x == null || y == null) return null;
+        return new Translation2d(x.doubleValue(), y.doubleValue());
+    }
+
+    private static HashMap<String, Double> resolveParams(java.util.Map<String, JsonNode> rawParams) {
+        HashMap<String, Double> out = new HashMap<>();
+        if (rawParams == null || rawParams.isEmpty()) return out;
+
+        java.util.HashMap<String, Double> memo = new java.util.HashMap<>();
+        java.util.HashSet<String> visiting = new java.util.HashSet<>();
+
+        for (String k : rawParams.keySet()) {
+            Double v = resolveParamValue(k, rawParams, memo, visiting);
+            if (v != null) out.put(k, v.doubleValue());
+        }
+        return out;
+    }
+
+    private static Double resolveParamValue(
+            String key,
+            java.util.Map<String, JsonNode> rawParams,
+            java.util.HashMap<String, Double> memo,
+            java.util.HashSet<String> visiting) {
+
+        if (memo.containsKey(key)) return memo.get(key);
+        if (visiting.contains(key)) {
+            throw new IllegalArgumentException("Param recursion cycle detected at: " + key);
+        }
+
+        JsonNode node = rawParams.get(key);
+        if (node == null || node.isNull()) return null;
+
+        visiting.add(key);
+
+        Double v = null;
+
+        if (node.isNumber()) {
+            v = node.asDouble();
+        } else if (node.isTextual()) {
+            String expr = node.asText();
+            if (expr != null) expr = expr.trim();
+            if (expr != null && !expr.isEmpty()) {
+                v = AutoExpr.eval(expr, (name) -> resolveParamValue(name, rawParams, memo, visiting), null);
+            }
+        }
+
+        visiting.remove(key);
+
+        if (v != null) memo.put(key, v);
+        return v;
+    }
+
+    private static HashMap<String, Translation2d> resolveVec2Params(
+            java.util.Map<String, JsonNode> rawParams,
+            java.util.Map<String, Double> resolvedScalarParams) {
+
+        HashMap<String, Translation2d> out = new HashMap<>();
+        if (rawParams == null || rawParams.isEmpty()) return out;
+
+        java.util.HashMap<String, Translation2d> partial = new java.util.HashMap<>();
+
+        int passes = 3;
+        for (int pass = 0; pass < passes; pass++) {
+            boolean changed = false;
+
+            for (var e : rawParams.entrySet()) {
+                String key = e.getKey();
+                JsonNode n = e.getValue();
+                if (n == null || !n.isArray() || n.size() < 2) continue;
+
+                Double x = evalNodeToDouble(n.get(0), resolvedScalarParams, partial);
+                Double y = evalNodeToDouble(n.get(1), resolvedScalarParams, partial);
+                if (x == null || y == null) continue;
+
+                Translation2d v = new Translation2d(x.doubleValue(), y.doubleValue());
+                Translation2d prev = partial.get(key);
+                if (prev == null || prev.getX() != v.getX() || prev.getY() != v.getY()) {
+                    partial.put(key, v);
+                    changed = true;
+                }
+            }
+
+            if (!changed) break;
+        }
+
+        out.putAll(partial);
+        return out;
+    }
+
+    private static Double evalNodeToDouble(
+            JsonNode node,
+            java.util.Map<String, Double> scalarParams,
+            java.util.Map<String, Translation2d> vec2Params) {
+
+        return AutoExpr.evalNode(
+            node,
+            scalarParams::get,
+            (name, comp) -> {
+                Translation2d v2 = (vec2Params != null) ? vec2Params.get(name) : null;
+                if (v2 == null) return null;
+                return (comp == 'X') ? v2.getX() : v2.getY();
+            }
+        );
+    }
+
+    private static double evalExpr(
+            String expr,
+            java.util.Map<String, Double> scalarParams,
+            java.util.Map<String, Translation2d> vec2Params) {
+
+        return AutoExpr.eval(
+            expr,
+            scalarParams::get,
+            (name, comp) -> {
+                Translation2d v2 = (vec2Params != null) ? vec2Params.get(name) : null;
+                if (v2 == null) return null;
+                return (comp == 'X') ? v2.getX() : v2.getY();
+            }
+        );
+    }
+
+    private static void expandOffsetVars(
+            ObjectNode root,
+            java.util.Map<String, Double> params,
+            java.util.Map<String, Translation2d> vec2Params) {
+
+        if ((params == null || params.isEmpty()) && (vec2Params == null || vec2Params.isEmpty())) return;
+
+        JsonNode fixtures = root.get("fixtures");
+        if (fixtures == null || !fixtures.isArray()) return;
+
+        for (JsonNode f : fixtures) {
+            if (f != null && f.isObject()) {
+                expandDerivedFromOffset((ObjectNode) f, params, vec2Params);
+            }
+        }
+    }
+
+    private static void expandDerivedFromOffset(
+            ObjectNode fixtureOrDerivedFromOwner,
+            java.util.Map<String, Double> params,
+            java.util.Map<String, Translation2d> vec2Params) {
+
+        JsonNode d = fixtureOrDerivedFromOwner.get("derivedFrom");
+        if (d != null && d.isObject()) {
+            ObjectNode dobj = (ObjectNode) d;
+
+            JsonNode off = dobj.get("offset");
+            if (off != null) {
+                Double v = null;
+
+                if (off.isNumber()) {
+                    v = off.asDouble();
+                } else if (off.isTextual()) {
+                    String expr = off.asText();
+                    if (expr != null) expr = expr.trim();
+                    if (expr != null && !expr.isEmpty()) {
+                        try {
+                            v = evalExpr(expr, params, vec2Params);
+                        } catch (RuntimeException ex) {
+                            v = null;
+                        }
+                    }
+                }
+
+                if (v != null) dobj.put("offset", v.doubleValue());
+            }
+
+            expandDerivedFromOffset(dobj, params, vec2Params);
+        }
+    }
+
     public static void LoadIntoController(
             String filePath,
             AutoController controller,
             ModuleController moduleController,
             Supplier<Integer> startLocationProvider,
-            boolean applyAllianceTransform) // NEW
+            boolean applyAllianceTransform)
             throws IOException {
 
         ParsedDefinitions defs = LoadDefinitions(filePath);
@@ -104,7 +299,7 @@ public final class AutoParser {
 
         Utility.SetSeasonParams(def.params);
 
-        FixtureResolver.ResolveAll(def, applyAllianceTransform); // CHANGED
+        FixtureResolver.ResolveAll(def, applyAllianceTransform);
 
         controller.SetSeasonDefinition(def);
 
@@ -115,7 +310,6 @@ public final class AutoParser {
         }
     }
 
-    // Keep old signature for existing callers (defaults to prior behavior = true)
     public static void LoadIntoController(
             String filePath,
             AutoController controller,
@@ -141,48 +335,5 @@ public final class AutoParser {
         ArrayList<String> out = new ArrayList<>();
         for (JsonNode n : arr) out.add(n.asText());
         return out;
-    }
-
-    // NEW: expand derivedFrom.offset = "$name" into numeric value from params
-    private static void expandOffsetVars(ObjectNode root, java.util.Map<String, Double> params) {
-        if (params == null || params.isEmpty()) return;
-
-        // Only touch fixtures[].derivedFrom recursively (keeps this minimal/safe)
-        JsonNode fixtures = root.get("fixtures");
-        if (fixtures == null || !fixtures.isArray()) return;
-
-        for (JsonNode f : fixtures) {
-            if (f != null && f.isObject()) {
-                expandDerivedFromOffset((ObjectNode) f, params);
-            }
-        }
-    }
-
-    private static void expandDerivedFromOffset(ObjectNode fixtureOrDerivedFromOwner, java.util.Map<String, Double> params) {
-        JsonNode d = fixtureOrDerivedFromOwner.get("derivedFrom");
-        if (d != null && d.isObject()) {
-            ObjectNode dobj = (ObjectNode) d;
-
-            JsonNode off = dobj.get("offset");
-            if (off != null && off.isTextual()) {
-                String s = off.asText();
-                if (s != null) s = s.trim();
-
-                double sign = 1.0;
-                if (s != null && s.startsWith("-")) {
-                    sign = -1.0;
-                    s = s.substring(1).trim();
-                }
-
-                if (s != null && s.startsWith("$")) {
-                    String key = s.substring(1);
-                    Double v = params.get(key);
-                    if (v != null) dobj.put("offset", sign * v.doubleValue());
-                }
-            }
-
-            // recurse for nested derivedFrom chains
-            expandDerivedFromOffset(dobj, params);
-        }
     }
 }

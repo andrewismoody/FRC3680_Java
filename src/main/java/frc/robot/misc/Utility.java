@@ -1,10 +1,12 @@
 package frc.robot.misc;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Pose3d;
 import edu.wpi.first.math.geometry.Rotation2d;
+import edu.wpi.first.math.geometry.Rotation3d;
 import edu.wpi.first.math.geometry.Transform3d;
 import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.geometry.Translation3d;
@@ -26,9 +28,35 @@ public class Utility {
     // NEW: season params (numeric) for "$var" usage
     private static java.util.HashMap<String, Double> seasonParams = new java.util.HashMap<>();
 
+    // CHANGED (semantic): vec2 params are stored in INCHES (to match scalar policy)
+    private static HashMap<String, Translation2d> seasonVec2Params = new HashMap<>();
+
     // NEW: tool overrides (null = use DriverStation)
     static Alliance allianceOverride = null;
     static Integer driverLocationOverride = null;
+
+    // --- NEW: computed field geometry cache (meters unless noted) ---
+    private static boolean fieldConfigured = false;
+
+    private static Translation2d fieldSizeM = Translation2d.kZero;
+    private static Translation2d fieldCenterM = Translation2d.kZero;
+
+    private static Translation2d startAreaM = Translation2d.kZero;
+
+    private static Translation2d frameSizeM = Translation2d.kZero;
+    private static Translation2d frameCenterM = Translation2d.kZero;
+    private static Translation2d motorOffsetM = Translation2d.kZero;
+    private static Translation2d motorPositionM = Translation2d.kZero;
+
+    private static Translation2d robotSizeM = Translation2d.kZero;
+    private static Translation2d robotCenterM = Translation2d.kZero;
+
+    private static Translation2d blueStartPositionM = Translation2d.kZero;
+    private static double[] blueStartYM = new double[] { 0.0, 0.0, 0.0 };
+
+    private static double waypointOffsetM = 0.0;
+    private static double alignOffsetM = 0.0;
+    private static double scoreOffsetM = 0.0;
 
     public static void setRedStartTransform(Transform3d transform) {
         redStartTransform = transform;
@@ -57,6 +85,27 @@ public class Utility {
         if (key == null) return fallback;
         Double v = seasonParams.get(key);
         return (v != null) ? v.doubleValue() : fallback;
+    }
+
+    public static void SetSeasonVec2Params(java.util.Map<String, Translation2d> params) {
+        seasonVec2Params.clear();
+        if (params != null) seasonVec2Params.putAll(params);
+    }
+
+    public static Translation2d GetSeasonVec2(String key, Translation2d fallback) {
+        if (key == null) return fallback;
+        Translation2d v = seasonVec2Params.get(key);
+        return (v != null) ? v : fallback;
+    }
+
+    public static Translation2d GetSeasonVec2Inches(String key, Translation2d fallbackInches) {
+        return GetSeasonVec2(key, fallbackInches);
+    }
+
+    public static Translation2d GetSeasonVec2Meters(String key, Translation2d fallbackMeters) {
+        Translation2d vIn = GetSeasonVec2(key, null);
+        if (vIn == null) return fallbackMeters;
+        return new Translation2d(inchesToMeters(vIn.getX()), inchesToMeters(vIn.getY()));
     }
 
     public static void setAllianceOverride(Alliance alliance) {
@@ -291,4 +340,101 @@ public class Utility {
 
         return null;
     }
+
+    public static void ConfigureFieldFromSeasonParams() {
+        // Idempotent; safe to call every mode init after JSON load
+        // (but will re-evaluate if season params change at runtime)
+        // If you truly want "only once", gate on fieldConfigured.
+        // We'll allow recompute to avoid "stale params" bugs.
+        fieldConfigured = true;
+
+        // Field dimensions are in METERS in FRC docs typically; keep as meters here.
+        // JSON numeric params policy: scalars/vec2 are stored in INCHES elsewhere,
+        // but fieldSize is better as a vec2 meters OR explicit meters scalars.
+        // Support both: vec2 in inches ("fieldSize") OR meters scalars ("fieldSizeXM", "fieldSizeYM").
+        Translation2d fieldSizeIn = GetSeasonVec2Inches("fieldSize", null);
+        if (fieldSizeIn != null) {
+            fieldSizeM = new Translation2d(inchesToMeters(fieldSizeIn.getX()), inchesToMeters(fieldSizeIn.getY()));
+        } else {
+            double xM = GetSeasonNumber("fieldSizeXM", 17.55);
+            double yM = GetSeasonNumber("fieldSizeYM", 8.05);
+            fieldSizeM = new Translation2d(xM, yM);
+        }
+        fieldCenterM = new Translation2d(fieldSizeM.getX() / 2.0, fieldSizeM.getY() / 2.0);
+
+        // startArea: fallback matches your old comments
+        double startAreaXM = GetSeasonNumber("startAreaXM", (fieldSizeM.getX() / 2.0) - 7.56);
+        double startAreaYM = GetSeasonNumber("startAreaYM", 3.72);
+        startAreaM = new Translation2d(startAreaXM, startAreaYM);
+
+        // Robot frame (inches in JSON)
+        Translation2d frameSizeIn = GetSeasonVec2Inches("frameSize", new Translation2d(27.5, 32.375));
+        frameSizeM = new Translation2d(inchesToMeters(frameSizeIn.getX()), inchesToMeters(frameSizeIn.getY()));
+        frameCenterM = new Translation2d(frameSizeM.getX() / 2.0, frameSizeM.getY() / 2.0);
+
+        Translation2d motorOffsetIn = GetSeasonVec2Inches("motorOffset", new Translation2d(4.0, 4.5));
+        motorOffsetM = new Translation2d(inchesToMeters(motorOffsetIn.getX()), inchesToMeters(motorOffsetIn.getY()));
+        motorPositionM = frameCenterM.minus(motorOffsetM);
+
+        double bumperWidthIn = GetSeasonNumber("bumperWidth", 4.0);
+        double bumperWidthM = inchesToMeters(bumperWidthIn);
+        robotSizeM = frameSizeM.plus(new Translation2d(bumperWidthM, bumperWidthM));
+        robotCenterM = new Translation2d(robotSizeM.getX() / 2.0, robotSizeM.getY() / 2.0);
+
+        double startPaddingM = (startAreaM.getX() / 2.0) - robotCenterM.getX();
+        Translation2d robotOffsetM = robotCenterM.plus(new Translation2d(startPaddingM, startPaddingM * 2.0));
+
+        blueStartPositionM = new Translation2d(fieldCenterM.getX() - startAreaM.getX() + robotOffsetM.getX(), fieldCenterM.getY());
+
+        // blueStartY (inches list) fallback from your comments
+        blueStartYM = new double[] {
+            inchesToMeters(GetSeasonNumber("blueStartY1", 127.38)),
+            inchesToMeters(GetSeasonNumber("blueStartY2", 84.03)),
+            inchesToMeters(GetSeasonNumber("blueStartY3", 36.458)),
+        };
+
+        // Misc pathing offsets
+        waypointOffsetM = GetSeasonNumber("waypointOffsetM", robotSizeM.getNorm() * 1.25);
+        alignOffsetM = GetSeasonNumber("alignOffsetM", robotSizeM.getNorm() * 0.75);
+        scoreOffsetM = inchesToMeters(GetSeasonNumber("scoreOffset", -3.0));
+    }
+
+    private static void ensureFieldConfigured() {
+        if (!fieldConfigured) {
+            // Allows simulation/unit tests not going through Robot.commonInit()
+            ConfigureFieldFromSeasonParams();
+        }
+    }
+
+    public static Pose3d getMyStartPose() {
+        var myLocation = getDriverLocation();
+        return getStartPose(myLocation);
+    }
+    
+    public static Pose3d getStartPose(int index) {
+        if (index < 1) index = 1;
+
+        // NEW: pull computed geometry from Utility (JSON-backed)
+        Translation2d blueStartPosition = GetBlueStartPositionMeters();
+        double[] blueStartY = GetBlueStartYMeters();
+
+        // Clamp index to available entries to avoid OOB
+        if (index > blueStartY.length) index = blueStartY.length;
+
+        var thisStartPosition = blueStartPosition.plus(new Translation2d(0.0, blueStartY[index - 1]));
+        var transformedPosition = transformToAllianceStart(new Translation3d(thisStartPosition));
+        return new Pose3d(transformedPosition, Rotation3d.kZero);
+    }
+
+    // --- NEW: getters used by other code (meters) ---
+    public static Translation2d GetMotorPositionMeters() { ensureFieldConfigured(); return motorPositionM; }
+    public static Translation2d GetBlueStartPositionMeters() { ensureFieldConfigured(); return blueStartPositionM; }
+    public static double[] GetBlueStartYMeters() { ensureFieldConfigured(); return blueStartYM; }
+
+    // Optional (in case other code needs them later)
+    public static Translation2d GetFieldSizeMeters() { ensureFieldConfigured(); return fieldSizeM; }
+    public static Translation2d GetFieldCenterMeters() { ensureFieldConfigured(); return fieldCenterM; }
+    public static double GetWaypointOffsetMeters() { ensureFieldConfigured(); return waypointOffsetM; }
+    public static double GetAlignOffsetMeters() { ensureFieldConfigured(); return alignOffsetM; }
+    public static double GetScoreOffsetMeters() { ensureFieldConfigured(); return scoreOffsetM; }
 }

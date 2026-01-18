@@ -5,11 +5,7 @@
 package frc.robot.z2025;
 
 import edu.wpi.first.math.geometry.Pose3d;
-import edu.wpi.first.math.geometry.Rotation2d;
-import edu.wpi.first.math.geometry.Rotation3d;
-import edu.wpi.first.math.geometry.Transform3d;
 import edu.wpi.first.math.geometry.Translation2d;
-import edu.wpi.first.math.geometry.Translation3d;
 import edu.wpi.first.networktables.DoubleSubscriber;
 import edu.wpi.first.networktables.NetworkTableInstance;
 import edu.wpi.first.wpilibj.Filesystem;
@@ -108,10 +104,10 @@ public class Robot extends TimedRobot {
   // total length of robot is 32.375", width is 27.5", centerline is 16.1875" from edge.  Drive axle center is 4" from edge - 12.1875" from center which is 309.56mm or 0.30956 meters
   // motor positions are rotated to make the limelight 'forward', this is just labeling.
   SwerveDriveModule swerveDriveModule = new SwerveDriveModule("swerveDrive", m_gyro, m_positioner, Constants.driveSpeed, Constants.driveRatio, Constants.steerMotorSpeed, Constants.floatTolerance
-    , new SwerveMotorModule(SwervePosition.LeftFront, new Translation2d(Constants.motorPosition.getX(), Constants.motorPosition.getY()), rightFrontDef, Constants.steeringEncoderMultiplier, Constants.floatTolerance, true, false, 0.0)
-    , new SwerveMotorModule(SwervePosition.RightFront, new Translation2d(Constants.motorPosition.getX(), -Constants.motorPosition.getY()), rightRearDef, Constants.steeringEncoderMultiplier, Constants.floatTolerance, true, false, 0.0)
-    , new SwerveMotorModule(SwervePosition.LeftRear, new Translation2d(-Constants.motorPosition.getX(), Constants.motorPosition.getY()), leftFrontDef, Constants.steeringEncoderMultiplier, Constants.floatTolerance, true, false, 0.0)
-    , new SwerveMotorModule(SwervePosition.RightRear, new Translation2d(-Constants.motorPosition.getX(), -Constants.motorPosition.getY()), leftRearDef, Constants.steeringEncoderMultiplier, Constants.floatTolerance, true, false, 0.0)
+    , new SwerveMotorModule(SwervePosition.LeftFront, rightFrontDef, Constants.steeringEncoderMultiplier, Constants.floatTolerance, true, false, 0.0)
+    , new SwerveMotorModule(SwervePosition.RightFront, rightRearDef, Constants.steeringEncoderMultiplier, Constants.floatTolerance, true, false, 0.0)
+    , new SwerveMotorModule(SwervePosition.LeftRear, leftFrontDef, Constants.steeringEncoderMultiplier, Constants.floatTolerance, true, false, 0.0)
+    , new SwerveMotorModule(SwervePosition.RightRear, leftRearDef, Constants.steeringEncoderMultiplier, Constants.floatTolerance, true, false, 0.0)
   );
 
   ModuleController modules;
@@ -120,6 +116,9 @@ public class Robot extends TimedRobot {
 
   private DoubleSubscriber slider0Sub;
   private SendableChooser<String> autoChooser;
+
+  // NEW: ensure JSON load happens once, but later than robotInit (after DS is available)
+  boolean autoJsonLoaded = false;
 
   public Robot() {
     gc_timer.start();
@@ -132,9 +131,6 @@ public class Robot extends TimedRobot {
    */
   @Override
   public void robotInit() {
-    Utility.setFieldSize(Constants.fieldSize);
-    Utility.setRedStartTransform(new Transform3d(new Translation3d(Constants.fieldCenter), new Rotation3d(new Rotation2d(Math.PI))));
-
     SmartDashboard.putString("DB/String 0", "Code Build Version: ");
     SmartDashboard.putString("DB/String 5", codeBuildVersion);
     SmartDashboard.putString("DB/String 1", "Start Location: "); // this is actual start position; if zero, read from driver station
@@ -165,44 +161,52 @@ public class Robot extends TimedRobot {
 
     // NEW: JSON-driven auto controller (supersedes AutoModes)
     autoController = new AutoController("json-auto", modules);
-    try {
-      String autoPath = Filesystem.getDeployDirectory().toPath().resolve("auto2025.json").toString();
-      AutoParser.LoadIntoController(autoPath, autoController, modules, Utility::getDriverLocation);
 
-      // Populate chooser from loaded sequences
-      String defaultSeq = autoController.GetDefaultSequenceLabel();
-      if (defaultSeq != null) autoChooser.setDefaultOption(defaultSeq, defaultSeq);
-      for (String seq : autoController.GetSequenceLabels()) {
-        if (defaultSeq != null && defaultSeq.equals(seq)) continue;
-        autoChooser.addOption(seq, seq);
-      }
-
-      // NEW: publish travelGroups for runtime lookup (no more hardcoded Utility list)
-      var def = autoController.GetSeasonDefinition(); // assumes getter exists
-      if (def != null) Utility.SetTravelGroups(def.travelGroups);
-
-      if (Robot.isReal()) {
-        // keep lightweight validation on real robot
-        var result = AutoValidator.Validate(autoController, def, modules, Utility::getDriverLocation);
-        result.printToStdout();
-      } else {
-        var result = AutoValidator.ValidateFull(autoController, def, modules, Utility::getDriverLocation);
-        result.printToStdout();
-        if (!result.ok()) {
-          throw new RuntimeException("Auto JSON full validation failed; see console for details");
-        }
-      }
-
-      System.out.printf("Loaded auto JSON from '%s'\n", autoPath);
-    } catch (Exception ex) {
-      System.out.printf("Failed to load auto JSON: %s\n", ex.getMessage());
-      ex.printStackTrace();
-      // Leave currentAutoMode empty; robot will simply do nothing in auto.
-    }
     SmartDashboard.putData("Auto Selector", autoChooser);
   }
 
   void commonInit() {
+    // NEW: load JSON after DS is available; run once
+    if (!autoJsonLoaded) {
+      autoJsonLoaded = true;
+
+      try {
+        String autoPath = Filesystem.getDeployDirectory().toPath().resolve("auto2025.json").toString();
+        AutoParser.LoadIntoController(autoPath, autoController, modules, Utility::getDriverLocation);
+
+        // keep this: computes JSON-backed geometry used by getMyStartPose()
+        Utility.ConfigureFieldFromSeasonParams();
+
+        // Populate chooser from loaded sequences
+        String defaultSeq = autoController.GetDefaultSequenceLabel();
+        if (defaultSeq != null) autoChooser.setDefaultOption(defaultSeq, defaultSeq);
+        for (String seq : autoController.GetSequenceLabels()) {
+          if (defaultSeq != null && defaultSeq.equals(seq)) continue;
+          autoChooser.addOption(seq, seq);
+        }
+
+        // publish travelGroups for runtime lookup
+        var def = autoController.GetSeasonDefinition();
+        if (def != null) Utility.SetTravelGroups(def.travelGroups);
+
+        if (Robot.isReal()) {
+          var result = AutoValidator.Validate(autoController, def, modules, Utility::getDriverLocation);
+          result.printToStdout();
+        } else {
+          var result = AutoValidator.ValidateFull(autoController, def, modules, Utility::getDriverLocation);
+          result.printToStdout();
+          if (!result.ok()) {
+            throw new RuntimeException("Auto JSON full validation failed; see console for details");
+          }
+        }
+
+        System.out.printf("Loaded auto JSON from '%s'\n", autoPath);
+      } catch (Exception ex) {
+        System.out.printf("Failed to load auto JSON: %s\n", ex.getMessage());
+        ex.printStackTrace();
+      }
+    }
+
     // initialize game controller first because other classes need it.
     // This needs to be here in mode init because we may not have a driver station connection during robotinit.
     m_controller = GameController.Initialize();
@@ -210,15 +214,21 @@ public class Robot extends TimedRobot {
     // even tho this runs on every init, we clear it out before every run so we don't mess up
     Joystick.InitializeButtonMappings(m_controller, modules, swerveDriveModule, slide, elevator);
 
-    // only set start position once per match
-    if (!initialized) { 
+    // Initialize swervepositions after loading JSON parameters
+    Translation2d[] swerveMotorPositions = new Translation2d[swerveDriveModule.GetMotorModules().length];
+    Translation2d motorPosition = Utility.GetSeasonVec2("motorPosition", Translation2d.kZero);
+    swerveMotorPositions[SwervePosition.LeftFront.getValue()] = new Translation2d(motorPosition.getX(), motorPosition.getY());
+    swerveMotorPositions[SwervePosition.RightFront.getValue()] = new Translation2d(motorPosition.getX(), -motorPosition.getY());
+    swerveMotorPositions[SwervePosition.LeftRear.getValue()] = new Translation2d(-motorPosition.getX(), motorPosition.getY());
+    swerveMotorPositions[SwervePosition.RightRear.getValue()] = new Translation2d(-motorPosition.getX(), -motorPosition.getY());
+
+    // CHANGED: only set start pose once per match, but do it after JSON load so it uses JSON params.
+    if (!initialized) {
       initialized = true;
 
-      // real robot starts at (0,0) so that we know we don't have a vision estimate yet.
-      Pose3d startPose = Pose3d.kZero;
-
-      startPose = Constants.getMyStartPose();
-      System.out.printf("Robot Init: Driver Location %d, Red Alliance %b, Start Pos (%.2f, %.2f)\n", Utility.getDriverLocation(), Utility.IsRedAlliance(), startPose.getX(), startPose.getY());
+      Pose3d startPose = Utility.getMyStartPose();
+      System.out.printf("Robot Init: Driver Location %d, Red Alliance %b, Start Pos (%.2f, %.2f)\n",
+          Utility.getDriverLocation(), Utility.IsRedAlliance(), startPose.getX(), startPose.getY());
 
       modules.GetDriveModule().SetCurrentPose(startPose);
     }

@@ -93,6 +93,9 @@ public class SwerveDriveModule implements DriveModule {
 
     NetworkTable myTable;
 
+    Translation2d[] translations;
+    SwerveModulePosition[] positions;
+
     // Cached NT entries
     private NetworkTableEntry startupAngleEntry;
     private NetworkTableEntry rotationSpeedEntry;
@@ -130,9 +133,6 @@ public class SwerveDriveModule implements DriveModule {
             double FloatTolerance, SwerveMotorModule ... modules) {
         moduleID = ModuleID;
 
-        var translations = new Translation2d[modules.length];
-        var positions = new SwerveModulePosition[modules.length];
-
         myTable = NetworkTableInstance.getDefault().getTable(moduleID);
 
         driveSpeed = DriveSpeed;
@@ -141,20 +141,7 @@ public class SwerveDriveModule implements DriveModule {
         gyro = Gyro;
         positioner = Positioner;
         floatTolerance = FloatTolerance;
-
-        // initialize modules after setting values, as modules lookup values from controller
-        driveModules = new SwerveMotorModule[modules.length];
-        for (SwerveMotorModule module : modules) {
-            var i = module.GetSwervePosition().getValue();
-            driveModules[i] = module;
-            module.setDriveModule(this);
-            
-            translations[i] = module.modulePosition;
-            positions[i] = new SwerveModulePosition(0, new Rotation2d());
-        }
-
-        var frameNormStart = modules[SwervePosition.LeftFront.getValue()].modulePosition;
-        frameNorm = frameNormStart.getNorm();
+        driveModules = modules;
         
         var posKp = 2.0; 
         var posKi = 0; //posKp * 0.10;
@@ -169,12 +156,6 @@ public class SwerveDriveModule implements DriveModule {
         rotationPidController = new PIDController(rotKp, rotKi, rotKd);
         rotationPidController.enableContinuousInput(-Math.PI, Math.PI);
         rotationPidController.setTolerance(floatTolerance);
-
-        kinematics = new SwerveDriveKinematics(translations);
-        odometry = new SwerveDriveOdometry(kinematics, new Rotation2d(getGyroRadians()), positions);
-        fieldPosition = new Field2d();
-
-        poseEstimator = new SwerveDrivePoseEstimator(kinematics, new Rotation2d(getGyroRadians()), positions, Pose2d.kZero);
     }
 
     public void ResetGyro() {
@@ -233,8 +214,44 @@ public class SwerveDriveModule implements DriveModule {
         return returnStates;
     }
 
+    public void SetModulePositions(Translation2d[] modulePositions) {
+        for (SwerveMotorModule module : driveModules) {
+            var i = module.GetSwervePosition().getValue();
+            module.modulePosition = modulePositions[i];
+        }
+    }
+
+    public SwerveMotorModule[] GetMotorModules() {
+        return driveModules;
+    }
+
     public void Initialize() {
         var startupAngle = getGyroAngle();
+
+        // initialize modules after setting values, as modules lookup values from controller
+        var modules = driveModules;
+
+        driveModules = new SwerveMotorModule[modules.length];
+        translations = new Translation2d[modules.length];
+        positions = new SwerveModulePosition[modules.length];
+
+        for (SwerveMotorModule module : modules) {
+            var i = module.GetSwervePosition().getValue();
+            driveModules[i] = module;
+            module.setDriveModule(this);
+            
+            translations[i] = module.modulePosition;
+            positions[i] = new SwerveModulePosition(0, new Rotation2d());
+        }
+
+        kinematics = new SwerveDriveKinematics(translations);
+        odometry = new SwerveDriveOdometry(kinematics, new Rotation2d(getGyroRadians()), positions);
+        fieldPosition = new Field2d();
+
+        poseEstimator = new SwerveDrivePoseEstimator(kinematics, new Rotation2d(getGyroRadians()), positions, Pose2d.kZero);
+
+        var frameNormStart = modules[SwervePosition.LeftFront.getValue()].modulePosition;
+        frameNorm = frameNormStart.getNorm();
         
         if (debug) {
             // instantiate entries

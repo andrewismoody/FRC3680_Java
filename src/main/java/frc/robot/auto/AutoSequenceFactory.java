@@ -9,6 +9,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import edu.wpi.first.math.geometry.Pose3d;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Rotation3d;
+import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.geometry.Translation3d;
 import frc.robot.action.ActionPose;
 import frc.robot.misc.Utility;
@@ -248,7 +249,6 @@ public final class AutoSequenceFactory {
         return null;
     }
 
-    // NEW: translation.schema.json parser (position + rotation with units)
     private static Pose3d parseTranslation(JsonNode t) {
         if (t == null || t.isNull()) return null;
 
@@ -257,9 +257,10 @@ public final class AutoSequenceFactory {
 
         if (t.hasNonNull("position") && t.get("position").isArray()) {
             JsonNode pos = t.get("position");
-            double x = pos.size() > 0 ? pos.get(0).asDouble(0.0) : 0.0;
-            double y = pos.size() > 1 ? pos.get(1).asDouble(0.0) : 0.0;
-            double z = pos.size() > 2 ? pos.get(2).asDouble(0.0) : 0.0;
+
+            double x = pos.size() > 0 ? evalNodeToDouble(pos.get(0)) : 0.0;
+            double y = pos.size() > 1 ? evalNodeToDouble(pos.get(1)) : 0.0;
+            double z = pos.size() > 2 ? evalNodeToDouble(pos.get(2)) : 0.0;
 
             String units = t.path("positionUnits").asText("inches");
             if ("inches".equalsIgnoreCase(units)) {
@@ -271,13 +272,26 @@ public final class AutoSequenceFactory {
         }
 
         if (t.hasNonNull("rotation")) {
-            double r = t.get("rotation").asDouble(0.0);
+            double r = evalNodeToDouble(t.get("rotation"));
             String units = t.path("rotationUnits").asText("degrees");
             if ("degrees".equalsIgnoreCase(units)) r = Utility.degreesToRadians(r);
             rotOut = new Rotation2d(r);
         }
 
         return new Pose3d(posOut, new Rotation3d(rotOut));
+    }
+
+    private static double evalNodeToDouble(JsonNode node) {
+        Double v = AutoExpr.evalNode(
+            node,
+            (name) -> Utility.GetSeasonNumber(name, 0.0),
+            (name, comp) -> {
+                var v2 = Utility.GetSeasonVec2Inches(name, Translation2d.kZero);
+                if (v2 == null) return null;
+                return (comp == 'X') ? v2.getX() : v2.getY();
+            }
+        );
+        return (v != null) ? v.doubleValue() : 0.0;
     }
 
     private int resolveStartPosition() {

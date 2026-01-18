@@ -101,11 +101,10 @@ public class SwerveMotorModule {
   boolean enableDecelComp = false;
   boolean enableGiveUp = false;
 
-  public SwerveMotorModule(Utility.SwervePosition SwervePosition, Translation2d Position, SwerveMotorDefinition MotorDefinition, double EncoderMultiplier, double FloatTolerance, boolean InvertRotation, boolean InvertDrive, double RotationOffset) {
+  public SwerveMotorModule(Utility.SwervePosition SwervePosition, SwerveMotorDefinition MotorDefinition, double EncoderMultiplier, double FloatTolerance, boolean InvertRotation, boolean InvertDrive, double RotationOffset) {
     moduleID = SwervePosition.toString();
     swervePosition = SwervePosition;
 
-    modulePosition = Position;
     driveMotor = MotorDefinition.driveMotor;
     driveEncoder = MotorDefinition.driveEncoder;
     rotatorMotor = MotorDefinition.rotatorMotor;
