@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.function.Supplier;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -27,13 +28,21 @@ public final class AutoParser {
 
     private AutoParser() {}
 
-    public static void LoadIntoController(
-            String filePath,
-            AutoController controller,
-            ModuleController moduleController,
-            Supplier<Integer> startLocationProvider)
-            throws IOException {
+    // CHANGED: definitions-only result now includes a ready-to-use AutoSeasonDefinition
+    public static final class ParsedDefinitions {
+        public final AutoSeasonDefinition def;
 
+        // optional extras that are not part of AutoSeasonDefinition ctor wiring
+        public final JsonNode root; // keep if callers still want raw access
+
+        private ParsedDefinitions(AutoSeasonDefinition def, JsonNode root) {
+            this.def = def;
+            this.root = root;
+        }
+    }
+
+    // CHANGED: now returns ParsedDefinitions(def=AutoSeasonDefinition(...)) with params/travelGroups applied to def
+    public static ParsedDefinitions LoadDefinitions(String filePath) throws IOException {
         JsonNode root = MAPPER.readTree(Files.readString(Path.of(filePath)));
 
         String season = reqText(root, "season");
@@ -45,12 +54,23 @@ public final class AutoParser {
         ArrayList<String> positions = toStringList(reqArray(root, "positions"));
         ArrayList<String> actions = toStringList(reqArray(root, "actions"));
 
-        // NEW: optional travelGroups
         ArrayList<String> travelGroups = root.has("travelGroups") && root.get("travelGroups").isArray()
                 ? toStringList(root.get("travelGroups"))
                 : new ArrayList<>();
 
-        controller.SetDefinitions(groups, locations, positions, actions);
+        HashMap<String, Double> params = new HashMap<>();
+        if (root.hasNonNull("params") && root.get("params").isObject()) {
+            var it = root.get("params").fields();
+            while (it.hasNext()) {
+                var e = it.next();
+                if (e.getValue().isNumber()) params.put(e.getKey(), e.getValue().asDouble());
+            }
+        }
+
+        // keep behavior consistent with LoadIntoController
+        if (root.isObject()) {
+            expandOffsetVars((ObjectNode) root, params);
+        }
 
         JsonNode poses = reqArray(root, "poses");
         JsonNode fixtures = reqArray(root, "fixtures");
@@ -63,24 +83,24 @@ public final class AutoParser {
                 groups, locations, positions, actions,
                 poses, fixtures, events, targets, sequences);
 
-        // NEW: stash travelGroups on the definition (add field to AutoSeasonDefinition)
         def.travelGroups = travelGroups;
+        def.params.putAll(params);
 
-        // NEW: parse optional params map
-        if (root.hasNonNull("params") && root.get("params").isObject()) {
-            var it = root.get("params").fields();
-            while (it.hasNext()) {
-                var e = it.next();
-                if (e.getValue().isNumber()) def.params.put(e.getKey(), e.getValue().asDouble());
-            }
-        }
+        return new ParsedDefinitions(def, root);
+    }
 
-        // NEW: expand "$var" references in-place (currently: derivedFrom.offset)
-        if (root.isObject()) {
-            expandOffsetVars((ObjectNode) root, def.params);
-        }
+    public static void LoadIntoController(
+            String filePath,
+            AutoController controller,
+            ModuleController moduleController,
+            Supplier<Integer> startLocationProvider)
+            throws IOException {
 
-        // NEW: publish params to Utility for runtime access (like travelGroups)
+        ParsedDefinitions defs = LoadDefinitions(filePath);
+        AutoSeasonDefinition def = defs.def;
+
+        controller.SetDefinitions(def.groups, def.locations, def.positions, def.actions);
+
         Utility.SetSeasonParams(def.params);
 
         FixtureResolver.ResolveAll(def);
@@ -88,7 +108,7 @@ public final class AutoParser {
         controller.SetSeasonDefinition(def);
 
         AutoSequenceFactory factory = new AutoSequenceFactory(controller, def, startLocationProvider);
-        for (JsonNode seqNode : sequences) {
+        for (JsonNode seqNode : def.sequences) {
             AutoSequence seq = factory.fromSequenceJson(seqNode);
             if (seq != null) controller.AddSequence(seq);
         }
@@ -135,10 +155,18 @@ public final class AutoParser {
             JsonNode off = dobj.get("offset");
             if (off != null && off.isTextual()) {
                 String s = off.asText();
-                if (s.startsWith("$")) {
+                if (s != null) s = s.trim();
+
+                double sign = 1.0;
+                if (s != null && s.startsWith("-")) {
+                    sign = -1.0;
+                    s = s.substring(1).trim();
+                }
+
+                if (s != null && s.startsWith("$")) {
                     String key = s.substring(1);
                     Double v = params.get(key);
-                    if (v != null) dobj.put("offset", v.doubleValue());
+                    if (v != null) dobj.put("offset", sign * v.doubleValue());
                 }
             }
 

@@ -8,8 +8,9 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import edu.wpi.first.math.geometry.Pose2d;
+import edu.wpi.first.math.geometry.Pose3d;
 import edu.wpi.first.math.geometry.Rotation2d;
-import edu.wpi.first.math.geometry.Translation2d;
+import edu.wpi.first.math.geometry.Rotation3d;
 import edu.wpi.first.math.geometry.Translation3d;
 import frc.robot.misc.Utility;
 
@@ -23,6 +24,15 @@ public final class FixtureResolver {
     private FixtureResolver() {}
 
     public static void ResolveAll(AutoSeasonDefinition def) {
+        ResolveAll(def, true, false);
+    }
+
+    public static void ResolveAll(AutoSeasonDefinition def, boolean applyAllianceTransform) {
+        ResolveAll(def, applyAllianceTransform, false);
+    }
+
+    // NEW: debug-enabled entrypoint
+    public static void ResolveAll(AutoSeasonDefinition def, boolean applyAllianceTransform, boolean debug) {
         HashMap<String, JsonNode> byKey = new HashMap<>();
 
         for (JsonNode f : def.fixtures) {
@@ -38,29 +48,34 @@ public final class FixtureResolver {
             int index = f.path("index").asInt(-1);
             String k = key(type, index);
 
-            JsonNode resolved = resolveFixture(byKey, k, new HashSet<>());
-            resolved = materializeTranslation(byKey, resolved, new HashSet<>());
+            if (debug) System.err.println("[FixtureResolver] resolving " + k);
+
+            JsonNode resolved = resolveFixture(byKey, k, new HashSet<>(), debug);
+            resolved = materializeTranslation(byKey, resolved, new HashSet<>(), applyAllianceTransform, debug);
 
             def.resolvedFixtures.put(k, resolved);
         }
     }
 
-    private static JsonNode resolveFixture(HashMap<String, JsonNode> byKey, String key, HashSet<String> visiting) {
+    private static JsonNode resolveFixture(HashMap<String, JsonNode> byKey, String key, HashSet<String> visiting, boolean debug) {
         JsonNode raw = byKey.get(key);
         if (raw == null) return null;
-        if (visiting.contains(key)) return raw; // cycle guard
+        if (visiting.contains(key)) {
+            if (debug) System.err.println("[FixtureResolver] cycle " + key);
+            return raw; // cycle guard
+        }
 
         visiting.add(key);
 
         // deep copy via tree copy
         JsonNode copy = raw.deepCopy();
-        resolveNodeInPlace(byKey, copy, visiting);
+        resolveNodeInPlace(byKey, copy, visiting, debug);
 
         visiting.remove(key);
         return copy;
     }
 
-    private static void resolveNodeInPlace(HashMap<String, JsonNode> byKey, JsonNode node, HashSet<String> visiting) {
+    private static void resolveNodeInPlace(HashMap<String, JsonNode> byKey, JsonNode node, HashSet<String> visiting, boolean debug) {
         if (node == null) return;
 
         if (node.isObject()) {
@@ -73,25 +88,25 @@ public final class FixtureResolver {
                 String k = entry.getKey();
                 JsonNode child = entry.getValue();
 
-                JsonNode replacement = resolveMaybeFixtureRef(byKey, child, visiting);
+                JsonNode replacement = resolveMaybeFixtureRef(byKey, child, visiting, debug);
                 if (replacement != child) obj.set(k, replacement);
 
-                resolveNodeInPlace(byKey, obj.get(k), visiting);
+                resolveNodeInPlace(byKey, obj.get(k), visiting, debug);
             }
         } else if (node.isArray()) {
             ArrayNode arr = (ArrayNode) node;
             for (int i = 0; i < arr.size(); i++) {
                 JsonNode child = arr.get(i);
 
-                JsonNode replacement = resolveMaybeFixtureRef(byKey, child, visiting);
+                JsonNode replacement = resolveMaybeFixtureRef(byKey, child, visiting, debug);
                 if (replacement != child) arr.set(i, replacement);
 
-                resolveNodeInPlace(byKey, arr.get(i), visiting);
+                resolveNodeInPlace(byKey, arr.get(i), visiting, debug);
             }
         }
     }
 
-    private static JsonNode resolveMaybeFixtureRef(HashMap<String, JsonNode> byKey, JsonNode node, HashSet<String> visiting) {
+    private static JsonNode resolveMaybeFixtureRef(HashMap<String, JsonNode> byKey, JsonNode node, HashSet<String> visiting, boolean debug) {
         if (node == null || !node.isObject()) return node;
 
         JsonNode typeNode = node.get("type");
@@ -100,63 +115,59 @@ public final class FixtureResolver {
         if (!typeNode.isTextual() || !indexNode.isInt()) return node;
 
         String k = key(typeNode.asText(), indexNode.asInt());
-        JsonNode resolved = resolveFixture(byKey, k, visiting);
+        JsonNode resolved = resolveFixture(byKey, k, visiting, debug);
         return (resolved != null) ? resolved : node;
     }
 
-    private static JsonNode materializeTranslation(HashMap<String, JsonNode> byKey, JsonNode fixtureNode, HashSet<String> visiting) {
+    private static JsonNode materializeTranslation(
+            HashMap<String, JsonNode> byKey,
+            JsonNode fixtureNode,
+            HashSet<String> visiting,
+            boolean applyAllianceTransform,
+            boolean debug) {
+
         if (fixtureNode == null || !fixtureNode.isObject()) return fixtureNode;
 
         ObjectNode obj = (ObjectNode) fixtureNode;
 
-        // If translation exists, normalize AND transform to alliance-start coordinates.
+        // If translation exists, normalize AND (optionally) transform to alliance-start coordinates.
         if (obj.hasNonNull("translation")) {
-            TranslationRotation tr = parseTranslationFromSchema(obj.get("translation"));
-            if (tr != null) obj.set("translation", toTranslationSchemaNode(obj, toAllianceStart(tr)));
+            Pose3d tr = parsePoseFromSchema(obj.get("translation"));
+            if (tr != null) {
+                Pose3d out = applyAllianceTransform ? toAllianceStart(tr) : tr;
+                obj.set("translation", toTranslationSchemaNode(obj, out));
+                if (debug) System.err.println("[FixtureResolver] direct translation -> " + out.getTranslation());
+            }
             return obj;
         }
 
         if (!obj.hasNonNull("derivedFrom")) return obj;
 
-        // CHANGED: evalDerivedFrom now returns position+rotation for chaining, but we only materialize position
-        TranslationRotation derived = evalDerivedFrom(byKey, obj.get("derivedFrom"), visiting);
-        if (derived != null && derived.position != null) {
-            // derivedFrom only defines translation; rotation remains unset in JSON
-            obj.set("translation", toTranslationSchemaNode(obj, toAllianceStart(new TranslationRotation(derived.position, null))));
+        Pose3d derived = evalDerivedFrom(byKey, obj.get("derivedFrom"), visiting, applyAllianceTransform, debug);
+        if (derived != null) {
+            Pose3d out = applyAllianceTransform ? toAllianceStart(derived) : derived;
+            obj.set("translation", toTranslationSchemaNode(obj, out));
+            if (debug) System.err.println("[FixtureResolver] derived translation -> " + out.getTranslation());
         }
 
         return obj;
     }
 
-    // NEW: apply already-available alliance transforms, without changing JSON/schema.
-    private static TranslationRotation toAllianceStart(TranslationRotation tr) {
-        if (tr == null) return null;
+    private static Pose3d toAllianceStart(Pose3d pose) {
+        if (pose == null) return null;
 
-        Translation3d pos = tr.position;
-        Rotation2d rot = tr.rotation;
+        Translation3d pos = Utility.transformToAllianceStart(pose.getTranslation());
+        // keep 2D rotation semantics; treat Pose3d rotation as yaw only
+        Rotation2d yaw = Utility.rotateToAllianceStart(pose.getRotation().toRotation2d());
 
-        if (pos != null) pos = Utility.transformToAllianceStart(pos);
-        if (rot != null) rot = Utility.rotateToAllianceStart(rot);
-
-        return new TranslationRotation(pos, rot);
+        return new Pose3d(pos, new Rotation3d(0.0, 0.0, yaw.getRadians()));
     }
 
-    // NEW: holder for position+rotation (rotation optional)
-    private static final class TranslationRotation {
-        final Translation3d position;
-        final Rotation2d rotation; // nullable
-        TranslationRotation(Translation3d position, Rotation2d rotation) {
-            this.position = position;
-            this.rotation = rotation;
-        }
-    }
-
-    // NEW: translation.schema.json parser (position + rotation, with units)
-    private static TranslationRotation parseTranslationFromSchema(JsonNode t) {
+    private static Pose3d parsePoseFromSchema(JsonNode t) {
         if (t == null || t.isNull()) return null;
 
         Translation3d posOut = null;
-        Rotation2d rotOut = null;
+        Rotation2d yawOut = Rotation2d.kZero;
 
         if (t.hasNonNull("position") && t.get("position").isArray()) {
             JsonNode pos = t.get("position");
@@ -177,84 +188,87 @@ public final class FixtureResolver {
             double r = t.get("rotation").asDouble(0.0);
             String units = t.path("rotationUnits").asText("degrees");
             if ("degrees".equalsIgnoreCase(units)) r = Utility.degreesToRadians(r);
-            rotOut = new Rotation2d(r);
+            yawOut = new Rotation2d(r);
         }
 
-        if (posOut == null && rotOut == null) return null;
-        return new TranslationRotation(posOut, rotOut);
+        if (posOut == null) return null;
+        return new Pose3d(posOut, new Rotation3d(0.0, 0.0, yawOut.getRadians()));
     }
 
-    private static ObjectNode toTranslationSchemaNode(ObjectNode owner, TranslationRotation tr) {
+    private static ObjectNode toTranslationSchemaNode(ObjectNode owner, Pose3d pose) {
         ObjectNode t = owner.objectNode();
 
-        if (tr.position != null) {
-            ArrayNode pos = owner.arrayNode();
-            pos.add(tr.position.getX());
-            pos.add(tr.position.getY());
-            pos.add(tr.position.getZ());
-            t.set("position", pos);
-            t.put("positionUnits", "meters");
-        }
+        Translation3d p = pose.getTranslation();
+        ArrayNode pos = owner.arrayNode();
+        pos.add(p.getX());
+        pos.add(p.getY());
+        pos.add(p.getZ());
+        t.set("position", pos);
+        t.put("positionUnits", "meters");
 
-        if (tr.rotation != null) {
-            t.put("rotation", tr.rotation.getRadians());
-            t.put("rotationUnits", "radians");
-        }
+        // always emit yaw rotation (radians)
+        t.put("rotation", pose.getRotation().toRotation2d().getRadians());
+        t.put("rotationUnits", "radians");
 
         return t;
     }
 
-    // CHANGED: now returns TranslationRotation so nested derivedFrom can preserve angle
-    private static TranslationRotation evalDerivedFrom(HashMap<String, JsonNode> byKey, JsonNode d, HashSet<String> visiting) {
+    private static Pose3d evalDerivedFrom(
+            HashMap<String, JsonNode> byKey,
+            JsonNode d,
+            HashSet<String> visiting,
+            boolean applyAllianceTransform,
+            boolean debug) {
+
         if (d == null || d.isNull()) return null;
 
         String function = d.path("function").asText("none");
-        double offset = d.path("offset").asDouble(0.0);
+        function = (function == null) ? "none" : function.trim().toLowerCase(); // CHANGED
 
-        TranslationRotation a = resolveDerivedArgTR(byKey, d.get("fixture"), d.get("derivedFrom"), visiting);
-        TranslationRotation b = resolveDerivedArgTR(byKey, d.get("fixture2"), d.get("derivedFrom2"), visiting);
+        double offsetInches = d.path("offset").asDouble(0.0);
+        double offset = Utility.inchesToMeters(offsetInches);
+
+        if (debug) System.err.println("[FixtureResolver]   fn=" + function + " offset(in)=" + offsetInches);
+
+        Pose3d a = resolveDerivedArgPose(byKey, d.get("fixture"), d.get("derivedFrom"), visiting, applyAllianceTransform, debug);
+        Pose3d b = resolveDerivedArgPose(byKey, d.get("fixture2"), d.get("derivedFrom2"), visiting, applyAllianceTransform, debug);
 
         switch (function) {
-            case "none": {
+            case "none":
                 return a;
-            }
 
             case "parallel": {
-                if (a == null || a.position == null) return null;
-
-                Rotation2d base = (a.rotation != null) ? a.rotation : Rotation2d.kZero;
-                Rotation2d ref = base.minus(Rotation2d.fromDegrees(90.0)); // NEW: 90deg reference from fixture angle
-
-                Translation3d pos = Utility.projectParallel(a.position, ref, offset);
-                return new TranslationRotation(pos, base);
+                if (a == null) return null;
+                Rotation2d base = a.getRotation().toRotation2d();
+                Rotation2d ref = base.minus(Rotation2d.fromDegrees(90.0));
+                Translation3d pos = Utility.projectParallel(a.getTranslation(), ref, offset);
+                Pose3d out = new Pose3d(pos, new Rotation3d(ref));
+                if (debug) System.err.println("[FixtureResolver]     parallel from=" + a.getTranslation() + " -> " + out.getTranslation());
+                return out;
             }
 
             case "perpendicular": {
-                if (a == null || a.position == null) return null;
-
-                Rotation2d base = (a.rotation != null) ? a.rotation : Rotation2d.kZero;
-                Rotation2d ref = base.minus(Rotation2d.fromDegrees(90.0)); // NEW
-                Rotation2d ang = ref.plus(Rotation2d.fromDegrees(90.0));  // NEW: perpendicular from reference
-
-                Translation3d pos = Utility.projectParallel(a.position, ang, offset);
-                return new TranslationRotation(pos, ref);
+                if (a == null) return null;
+                Rotation2d base = a.getRotation().toRotation2d();
+                Rotation2d ref = base.minus(Rotation2d.fromDegrees(90.0));
+                Rotation2d ang = ref.plus(Rotation2d.fromDegrees(90.0));
+                Translation3d pos = Utility.projectParallel(a.getTranslation(), ang, offset);
+                Pose3d out = new Pose3d(pos, new Rotation3d(ang));
+                if (debug) System.err.println("[FixtureResolver]     perpendicular from=" + a.getTranslation() + " -> " + out.getTranslation());
+                return out;
             }
 
             case "bisector": {
-                if (a == null || b == null || a.position == null || b.position == null) return null;
+                if (a == null || b == null) return null;
 
-                Pose2d bis = Utility.perpendicularBisectorAngle(a.position.toTranslation2d(), b.position.toTranslation2d());
-                // intersection uses bisector rotation (matches your existing semantics)
-                Pose2d throughA = new Pose2d(a.position.toTranslation2d(), bis.getRotation());
+                Pose2d bis = Utility.perpendicularBisectorAngle(
+                        a.getTranslation().toTranslation2d(),
+                        b.getTranslation().toTranslation2d());
 
-                Translation2d intersect = Utility.getIntersection(bis, throughA);
-                Translation3d base = new Translation3d(intersect);
-
-                Rotation2d along = Utility.getLookat(a.position.toTranslation2d(), b.position.toTranslation2d());
-                Translation3d pos = Utility.projectParallel(base, along, offset);
-
-                // IMPORTANT: propagate bisector angle for subsequent parallel/perpendicular
-                return new TranslationRotation(pos, bis.getRotation());
+                Translation3d base = new Translation3d(bis.getTranslation());
+                Pose3d out = new Pose3d(base, new Rotation3d(bis.getRotation()));
+                if (debug) System.err.println("[FixtureResolver]     bisector -> " + out.getTranslation());
+                return out;
             }
 
             default:
@@ -262,11 +276,13 @@ public final class FixtureResolver {
         }
     }
 
-    private static TranslationRotation resolveDerivedArgTR(
+    private static Pose3d resolveDerivedArgPose(
             HashMap<String, JsonNode> byKey,
             JsonNode fixtureRef,
             JsonNode derivedFrom,
-            HashSet<String> visiting) {
+            HashSet<String> visiting,
+            boolean applyAllianceTransform,
+            boolean debug) {
 
         if (fixtureRef != null && fixtureRef.isObject()) {
             String type = fixtureRef.path("type").asText("");
@@ -275,19 +291,17 @@ public final class FixtureResolver {
                 JsonNode f = byKey.get(key(type, index));
                 if (f != null) {
                     JsonNode copy = f.deepCopy();
-                    resolveNodeInPlace(byKey, copy, visiting);
-                    materializeTranslation(byKey, copy, visiting);
+                    resolveNodeInPlace(byKey, copy, visiting, debug);
+                    materializeTranslation(byKey, copy, visiting, applyAllianceTransform, debug);
                     if (copy.hasNonNull("translation")) {
-                        return parseTranslationFromSchema(copy.get("translation"));
+                        return parsePoseFromSchema(copy.get("translation"));
                     }
                 }
             }
         }
 
         if (derivedFrom != null && !derivedFrom.isNull()) {
-            TranslationRotation tr = evalDerivedFrom(byKey, derivedFrom, visiting);
-            // derivedFrom can now yield rotation too (used for chaining)
-            return tr;
+            return evalDerivedFrom(byKey, derivedFrom, visiting, applyAllianceTransform, debug);
         }
 
         return null;

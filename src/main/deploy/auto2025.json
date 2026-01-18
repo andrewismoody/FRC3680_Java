@@ -4,12 +4,14 @@
     "version": "1.1.2",
     "description": "2025 autos converted from Java-coded ActionPoses + Score3and4 sequence",
     "params": {
-        "reefApproachOffset": 0,
+        "reefApproachOffset": 36,
         "reefAlignOffset": 0,
-        "reefScoreOffset": 0,
-        "coralPickupOffset": 0,
-        "coralAlignOffset": 0,
-        "waypointOffset": 36
+        "reefScoreOffset": 9,
+        "coralPickupOffset": 36,
+        "coralAlignOffset": 36,
+        "waypointOffset": 36,
+        "robotCenterY": 10,
+        "robotCenterX": 18
     },
     "groups": [
         "any",
@@ -77,9 +79,9 @@
             "type": "waypoint",
             "index": 2,
             "derivedFrom": {
-                "function": "parallel",
+                "function": "perpendicular",
                 "offset": "$waypointOffset",
-                "derivedFrom": { "function": "bisector", "fixture": { "type": "tag", "index": 19 }, "fixture2": { "type": "tag", "index": 18 } }
+                "derivedFrom": { "function": "bisector", "fixture": { "type": "tag", "index": 19 }, "fixture2": { "type": "tag", "index": 18 }, "offset": "0" }
             }
         },
         { "type": "waypoint", "index": 3, "derivedFrom": { "function": "perpendicular", "fixture": { "type": "tag", "index": 18 }, "offset": "$waypointOffset" } },
@@ -87,7 +89,7 @@
             "type": "waypoint",
             "index": 4,
             "derivedFrom": {
-                "function": "parallel",
+                "function": "perpendicular",
                 "offset": "$waypointOffset",
                 "derivedFrom": { "function": "bisector", "fixture": { "type": "tag", "index": 18 }, "fixture2": { "type": "tag", "index": 17 } }
             }
@@ -97,7 +99,7 @@
             "type": "waypoint",
             "index": 6,
             "derivedFrom": {
-                "function": "parallel",
+                "function": "perpendicular",
                 "offset": "$waypointOffset",
                 "derivedFrom": { "function": "bisector", "fixture": { "type": "tag", "index": 17 }, "fixture2": { "type": "tag", "index": 22 } }
             }
@@ -107,7 +109,7 @@
             "type": "waypoint",
             "index": 8,
             "derivedFrom": {
-                "function": "parallel",
+                "function": "perpendicular",
                 "offset": "$waypointOffset",
                 "derivedFrom": { "function": "bisector", "fixture": { "type": "tag", "index": 22 }, "fixture2": { "type": "tag", "index": 21 } }
             }
@@ -117,7 +119,7 @@
             "type": "waypoint",
             "index": 10,
             "derivedFrom": {
-                "function": "parallel",
+                "function": "perpendicular",
                 "offset": "$waypointOffset",
                 "derivedFrom": { "function": "bisector", "fixture": { "type": "tag", "index": 21 }, "fixture2": { "type": "tag", "index": 20 } }
             }
@@ -127,7 +129,7 @@
             "type": "waypoint",
             "index": 12,
             "derivedFrom": {
-                "function": "parallel",
+                "function": "perpendicular",
                 "offset": "$waypointOffset",
                 "derivedFrom": { "function": "bisector", "fixture": { "type": "tag", "index": 20 }, "fixture2": { "type": "tag", "index": 19 } }
             }
@@ -138,11 +140,11 @@
             "index": 3,
             "derivedFrom": {
                 "function": "parallel",
-                "offset": 0,
+                "offset": "$reefApproachOffset",
                 "derivedFrom": {
                     "function": "perpendicular",
-                    "offset": 0,
-                    "fixture": { "type": "tag", "index": 18 }
+                    "offset": "$robotCenterY",
+                    "fixture": { "type": "tag", "index": 19 }
                 }
             }
         },
@@ -151,7 +153,7 @@
             "index": 3,
             "derivedFrom": {
                 "function": "perpendicular",
-                "offset": 0,
+                "offset": "$reefApproachOffset",
                 "fixture": { "type": "reefApproachLeft", "index": 3 }
             }
         },
@@ -160,11 +162,11 @@
             "index": 3,
             "derivedFrom": {
                 "function": "parallel",
-                "offset": 0,
+                "offset": "$reefScoreOffset",
                 "derivedFrom": {
                     "function": "perpendicular",
-                    "offset": 0,
-                    "fixture": { "type": "tag", "index": 18 }
+                    "offset": "$robotCenterX",
+                    "fixture": { "type": "tag", "index": 19 }
                 }
             }
         },
@@ -174,10 +176,10 @@
             "index": 4,
             "derivedFrom": {
                 "function": "parallel",
-                "offset": 0,
+                "offset": "$reefApproachOffset",
                 "derivedFrom": {
                     "function": "perpendicular",
-                    "offset": 0,
+                    "offset": "$robotCenterY",
                     "fixture": { "type": "tag", "index": 18 }
                 }
             }
@@ -187,7 +189,7 @@
             "index": 4,
             "derivedFrom": {
                 "function": "perpendicular",
-                "offset": 0,
+                "offset": "$reefApproachOffset",
                 "fixture": { "type": "reefApproachLeft", "index": 4 }
             }
         },
@@ -196,10 +198,10 @@
             "index": 4,
             "derivedFrom": {
                 "function": "parallel",
-                "offset": 0,
+                "offset": "$reefScoreOffset",
                 "derivedFrom": {
                     "function": "perpendicular",
-                    "offset": 0,
+                    "offset": "$robotCenterX",
                     "fixture": { "type": "tag", "index": 18 }
                 }
             }
@@ -208,12 +210,12 @@
         {
             "type": "coralPickup",
             "index": 1,
-            "derivedFrom": { "function": "perpendicular", "offset": 0, "fixture": { "type": "tag", "index": 13 } }
+            "derivedFrom": { "function": "perpendicular", "offset": "$coralPickupOffset", "fixture": { "type": "tag", "index": 13 } }
         },
         {
             "type": "coralAlign",
             "index": 1,
-            "derivedFrom": { "function": "perpendicular", "offset": 0, "fixture": { "type": "coralPickup", "index": 1 } }
+            "derivedFrom": { "function": "perpendicular", "offset": "$coralAlignOffset", "fixture": { "type": "coralPickup", "index": 1 } }
         }
     ],
 

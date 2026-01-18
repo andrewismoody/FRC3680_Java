@@ -2,5 +2,9 @@
     "$id": "params.schema.json",
     "$schema": "https://json-schema.org/draft-07/schema",
     "description": "Schema to define variables for expansion in fixture offsets. Units are always inches",
-    "type": "number"
+    "type": "object",
+    "items": {
+        "type": "number",
+        "description": "A floating point value representing a parameter value"
+    }
 }
