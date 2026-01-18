@@ -26,6 +26,10 @@ public class Utility {
     // NEW: season params (numeric) for "$var" usage
     private static java.util.HashMap<String, Double> seasonParams = new java.util.HashMap<>();
 
+    // NEW: tool overrides (null = use DriverStation)
+    static Alliance allianceOverride = null;
+    static Integer driverLocationOverride = null;
+
     public static void setRedStartTransform(Transform3d transform) {
         redStartTransform = transform;
     }
@@ -55,9 +59,25 @@ public class Utility {
         return (v != null) ? v.doubleValue() : fallback;
     }
 
+    public static void setAllianceOverride(Alliance alliance) {
+        allianceOverride = alliance;
+    }
+
+    public static void clearAllianceOverride() {
+        allianceOverride = null;
+    }
+
+    public static void setDriverLocationOverride(Integer location) {
+        driverLocationOverride = location;
+    }
+
+    public static void clearDriverLocationOverride() {
+        driverLocationOverride = null;
+    }
+
     static void Initialize() {
         if (!initialized) {
-            System.out.println("Initializing Utility");
+            System.err.println("Initializing Utility"); // CHANGED: was System.out.println
 
             if (fieldSize == Translation2d.kZero)
                 throw new RuntimeException("Utility.fieldSize not set - you must set this to your Constants.fieldSize in RobotInit");
@@ -86,15 +106,18 @@ public class Utility {
     }
 
     public static boolean IsRedAlliance() {
+        if (allianceOverride != null) return allianceOverride != Alliance.Blue;
         return DriverStation.getAlliance().isEmpty() || DriverStation.getAlliance().get() != Alliance.Blue;
     }
 
     public static int getDriverLocation() {
+        if (driverLocationOverride != null) return driverLocationOverride.intValue();
+
         var driverLocation = 1;
 
         if (DriverStation.getLocation().isPresent()) {
           driverLocation = DriverStation.getLocation().getAsInt();
-          System.out.printf("Found driver location %d from DS\n", driverLocation);
+          System.err.printf("Found driver location %d from DS\n", driverLocation); // CHANGED
         }
 
         var myLocation = 0;
@@ -103,10 +126,10 @@ public class Utility {
         } catch (Exception e) {
             
         }
-        System.out.printf("Found driver location %d from dashboard\n", myLocation);
+        System.err.printf("Found driver location %d from dashboard\n", myLocation); // CHANGED
 
         var returnLocation = myLocation == 0 ? driverLocation : myLocation;
-        System.out.printf("Returning driver location %d\n", returnLocation);
+        System.err.printf("Returning driver location %d\n", returnLocation); // CHANGED
 
         return returnLocation;
     }

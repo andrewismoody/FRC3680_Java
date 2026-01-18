@@ -88,6 +88,9 @@
             },
             "open": true
           },
+          "Translation3d##v_translation": {
+            "open": true
+          },
           "open": true
         },
         "leftFront": {

@@ -136,7 +136,7 @@ public final class FixtureResolver {
             if (tr != null) {
                 Pose3d out = applyAllianceTransform ? toAllianceStart(tr) : tr;
                 obj.set("translation", toTranslationSchemaNode(obj, out));
-                if (debug) System.err.println("[FixtureResolver] direct translation -> " + out.getTranslation());
+                if (debug) System.err.println("[FixtureResolver] direct translation -> " + fmtPos(out.getTranslation()));
             }
             return obj;
         }
@@ -147,7 +147,7 @@ public final class FixtureResolver {
         if (derived != null) {
             Pose3d out = applyAllianceTransform ? toAllianceStart(derived) : derived;
             obj.set("translation", toTranslationSchemaNode(obj, out));
-            if (debug) System.err.println("[FixtureResolver] derived translation -> " + out.getTranslation());
+            if (debug) System.err.println("[FixtureResolver] derived translation -> " + fmtPos(out.getTranslation()));
         }
 
         return obj;
@@ -192,7 +192,7 @@ public final class FixtureResolver {
         }
 
         if (posOut == null) return null;
-        return new Pose3d(posOut, new Rotation3d(0.0, 0.0, yawOut.getRadians()));
+        return new Pose3d(posOut, new Rotation3d(yawOut));
     }
 
     private static ObjectNode toTranslationSchemaNode(ObjectNode owner, Pose3d pose) {
@@ -228,7 +228,11 @@ public final class FixtureResolver {
         double offsetInches = d.path("offset").asDouble(0.0);
         double offset = Utility.inchesToMeters(offsetInches);
 
-        if (debug) System.err.println("[FixtureResolver]   fn=" + function + " offset(in)=" + offsetInches);
+        if (debug) {
+            System.err.println("[FixtureResolver]   fn=" + function
+                    + " offset(in)=" + offsetInches
+                    + " offset(m)=" + String.format("%.4f", offset));
+        }
 
         Pose3d a = resolveDerivedArgPose(byKey, d.get("fixture"), d.get("derivedFrom"), visiting, applyAllianceTransform, debug);
         Pose3d b = resolveDerivedArgPose(byKey, d.get("fixture2"), d.get("derivedFrom2"), visiting, applyAllianceTransform, debug);
@@ -240,34 +244,40 @@ public final class FixtureResolver {
             case "parallel": {
                 if (a == null) return null;
                 Rotation2d base = a.getRotation().toRotation2d();
+                // subtract 90 degrees from any direct values because the field is rotated by 90
                 Rotation2d ref = base.minus(Rotation2d.fromDegrees(90.0));
                 Translation3d pos = Utility.projectParallel(a.getTranslation(), ref, offset);
-                Pose3d out = new Pose3d(pos, new Rotation3d(ref));
-                if (debug) System.err.println("[FixtureResolver]     parallel from=" + a.getTranslation() + " -> " + out.getTranslation());
+                Pose3d out = new Pose3d(pos, new Rotation3d(base));
+                if (debug) System.err.println("[FixtureResolver]     parallel from=" + fmtPos(a.getTranslation()) + " -> " + fmtPos(out.getTranslation()));
                 return out;
             }
 
             case "perpendicular": {
                 if (a == null) return null;
                 Rotation2d base = a.getRotation().toRotation2d();
+                // subtract 90 degrees from any direct values because the field is rotated by 90
                 Rotation2d ref = base.minus(Rotation2d.fromDegrees(90.0));
-                Rotation2d ang = ref.plus(Rotation2d.fromDegrees(90.0));
-                Translation3d pos = Utility.projectParallel(a.getTranslation(), ang, offset);
-                Pose3d out = new Pose3d(pos, new Rotation3d(ang));
-                if (debug) System.err.println("[FixtureResolver]     perpendicular from=" + a.getTranslation() + " -> " + out.getTranslation());
+                Translation3d pos = Utility.projectPerpendicular(a.getTranslation(), ref, offset);
+                Pose3d out = new Pose3d(pos, new Rotation3d(base));
+                if (debug) System.err.println("[FixtureResolver]     perpendicular from=" + fmtPos(a.getTranslation()) + " -> " + fmtPos(out.getTranslation()));
                 return out;
             }
 
             case "bisector": {
                 if (a == null || b == null) return null;
 
-                Pose2d bis = Utility.perpendicularBisectorAngle(
-                        a.getTranslation().toTranslation2d(),
-                        b.getTranslation().toTranslation2d());
+                // subtract 90 degrees from any direct values because the field is rotated by 90
+                var a2 = new Pose3d(a.getTranslation(), new Rotation3d(a.getRotation().toRotation2d().minus(Rotation2d.fromDegrees(90.0))));
+                var b2 = new Pose3d(b.getTranslation(), new Rotation3d(b.getRotation().toRotation2d().minus(Rotation2d.fromDegrees(90.0))));
 
-                Translation3d base = new Translation3d(bis.getTranslation());
-                Pose3d out = new Pose3d(base, new Rotation3d(bis.getRotation()));
-                if (debug) System.err.println("[FixtureResolver]     bisector -> " + out.getTranslation());
+                Pose2d bis = Utility.perpendicularBisectorAngle(
+                        a2.getTranslation().toTranslation2d(),
+                        b2.getTranslation().toTranslation2d());
+
+                var inter = Utility.getIntersection(a2.toPose2d(), b2.toPose2d());
+                Translation3d base = new Translation3d(inter);
+                Pose3d out = new Pose3d(base, new Rotation3d(bis.getRotation().plus(Rotation2d.fromDegrees(90.0))));
+                if (debug) System.err.println("[FixtureResolver]     bisector a=" + fmtPos(a.getTranslation()) + " b=" + fmtPos(b.getTranslation()) + " -> " + fmtPos(out.getTranslation()));
                 return out;
             }
 
@@ -309,5 +319,15 @@ public final class FixtureResolver {
 
     private static String key(String type, int index) {
         return type + ":" + index;
+    }
+
+    private static String fmtPos(Translation3d t) {
+        if (t == null) return "null";
+        return String.format(
+                "m=(%.3f,%.3f,%.3f) in=(%.1f,%.1f,%.1f)",
+                t.getX(), t.getY(), t.getZ(),
+                Utility.metersToInches(t.getX()),
+                Utility.metersToInches(t.getY()),
+                Utility.metersToInches(t.getZ()));
     }
 }

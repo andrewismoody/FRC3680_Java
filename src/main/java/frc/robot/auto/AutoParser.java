@@ -93,7 +93,8 @@ public final class AutoParser {
             String filePath,
             AutoController controller,
             ModuleController moduleController,
-            Supplier<Integer> startLocationProvider)
+            Supplier<Integer> startLocationProvider,
+            boolean applyAllianceTransform) // NEW
             throws IOException {
 
         ParsedDefinitions defs = LoadDefinitions(filePath);
@@ -103,7 +104,7 @@ public final class AutoParser {
 
         Utility.SetSeasonParams(def.params);
 
-        FixtureResolver.ResolveAll(def);
+        FixtureResolver.ResolveAll(def, applyAllianceTransform); // CHANGED
 
         controller.SetSeasonDefinition(def);
 
@@ -112,6 +113,16 @@ public final class AutoParser {
             AutoSequence seq = factory.fromSequenceJson(seqNode);
             if (seq != null) controller.AddSequence(seq);
         }
+    }
+
+    // Keep old signature for existing callers (defaults to prior behavior = true)
+    public static void LoadIntoController(
+            String filePath,
+            AutoController controller,
+            ModuleController moduleController,
+            Supplier<Integer> startLocationProvider)
+            throws IOException {
+        LoadIntoController(filePath, controller, moduleController, startLocationProvider, true);
     }
 
     private static String reqText(JsonNode root, String key) {

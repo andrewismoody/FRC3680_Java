@@ -1,9 +1,12 @@
 """
 Plot resolved fixture positions from a season auto JSON.
 
-python tools/plot_fixtures.py --file src/main/deploy/auto2025.json --out plots/fixtures.png --debug-resolve
+Example (robot-frame / closest to real robot path) [INCHES by default]:
+  python tools/plot_fixtures.py --file src/main/deploy/auto2025.json --out plots/fixtures.png --debug-resolve --alliance-transform --field-size-x 651.25 --field-size-y 323.25 --red-start-x 0 --red-start-y 0 --red-start-yaw-deg 0 --alliance red --driver-location 1
 
-This tool uses the Java FixtureResolver as the single source of truth.
+Notes:
+- When --robot-frame is enabled this forwards field/alliance setup into the Java dump tool so Utility.Initialize()
+  and DS-dependent code paths match robot behavior as closely as possible.
 """
 
 from __future__ import annotations
@@ -36,25 +39,84 @@ def _default_java_classpath() -> str:
     ])
 
 
+def _to_m(v: float, units: str) -> float:
+    u = (units or "inches").lower()
+    return v if u == "meters" else (v * INCH_TO_M)
+
+
 def _run_java_resolved_dump(
     season_file: str,
     java_cmd: str,
     classpath: str,
     debug: bool,
+    alliance_transform: bool,
+    field_size_x: float | None,
+    field_size_y: float | None,
+    field_size_units: str,
+    red_start_x: float,
+    red_start_y: float,
+    red_start_units: str,
+    red_start_yaw_deg: float,
+    alliance: str | None,
+    driver_location: int | None,
 ) -> Dict[str, Any]:
     cmd = [java_cmd, "-cp", classpath, "frc.robot.auto.ResolvedFixtureDump", "--file", season_file]
+
+    if alliance_transform:
+        cmd.append("--alliance-transform")
+
+        if field_size_x is not None:
+            # CHANGED: Java expects inches; convert only if user specified meters
+            cmd += ["--field-size-x", str(field_size_x if field_size_units == "inches" else field_size_x / INCH_TO_M)]
+        if field_size_y is not None:
+            cmd += ["--field-size-y", str(field_size_y if field_size_units == "inches" else field_size_y / INCH_TO_M)]
+
+        cmd += ["--red-start-x", str(red_start_x if red_start_units == "inches" else red_start_x / INCH_TO_M)]
+        cmd += ["--red-start-y", str(red_start_y if red_start_units == "inches" else red_start_y / INCH_TO_M)]
+        cmd += ["--red-start-yaw-deg", str(red_start_yaw_deg)]
+
+    if alliance:
+        cmd += ["--alliance", alliance]
+    if driver_location is not None:
+        cmd += ["--driver-location", str(driver_location)]
+
     if debug:
         cmd.append("--debug")
-        print("[java]", " ".join(cmd))
+        print("[java]", " ".join(cmd), flush=True)  # CHANGED
 
     p = subprocess.run(cmd, capture_output=True, text=True)
-    if p.returncode != 0:
-        raise RuntimeError(f"Java dump failed ({p.returncode}):\n{p.stderr.strip()}")
 
+    # NEW: show stderr in debug mode (FixtureResolver logs live here)
     if debug and p.stderr.strip():
-        print("[java-stderr]", p.stderr.strip())
+        print(p.stderr.strip(), file=sys.stderr, flush=True)
 
-    return json.loads(p.stdout)
+    if p.returncode != 0:
+        raise RuntimeError(
+            "Java dump failed\n"
+            f"  cmd: {' '.join(cmd)}\n"
+            f"  code: {p.returncode}\n"
+            f"  stderr:\n{p.stderr.strip()}\n"
+            f"  stdout:\n{p.stdout.strip()}"
+        )
+
+    out = (p.stdout or "").strip()
+    if not out:
+        raise RuntimeError(
+            "Java dump produced no stdout JSON\n"
+            f"  cmd: {' '.join(cmd)}\n"
+            f"  stderr:\n{p.stderr.strip()}\n"
+        )
+
+    try:
+        return json.loads(out)
+    except json.JSONDecodeError as e:
+        raise RuntimeError(
+            "Java dump produced invalid JSON\n"
+            f"  cmd: {' '.join(cmd)}\n"
+            f"  stderr:\n{p.stderr.strip()}\n"
+            f"  stdout(first 500 chars):\n{out[:500]}\n"
+            f"  error: {e}"
+        ) from e
 
 
 def _normalize_xy_units(x: float, y: float, from_units: str, to_units: str) -> XY:
@@ -83,12 +145,43 @@ def main() -> None:
     ap.add_argument("--debug-resolve", action="store_true", help="Print Java invocation + stderr")
     ap.add_argument("--java", default="java", help="Java executable")
     ap.add_argument("--java-classpath", default="", help="Classpath for running the dump tool (default: Gradle build outputs)")
+    ap.add_argument("--alliance-transform", action="store_true", help="Match robot Resolver behavior (apply alliance transforms)")
+
+    # CHANGED: inputs default to inches; converted to meters when forwarded to Java
+    ap.add_argument("--field-size-x", type=float, default=None, help="Field size X (default units: inches)")
+    ap.add_argument("--field-size-y", type=float, default=None, help="Field size Y (default units: inches)")
+    ap.add_argument("--field-size-units", choices=["inches", "meters"], default="inches")
+
+    ap.add_argument("--red-start-x", type=float, default=0.0, help="Red start transform X (default units: inches)")
+    ap.add_argument("--red-start-y", type=float, default=0.0, help="Red start transform Y (default units: inches)")
+    ap.add_argument("--red-start-z", type=float, default=0.0, help="Red start transform Z (default units: inches)")
+    ap.add_argument("--red-start-units", choices=["inches", "meters"], default="inches")
+    ap.add_argument("--red-start-yaw-deg", type=float, default=0.0)
+
+    ap.add_argument("--alliance", choices=["red", "blue"], default=None)
+    ap.add_argument("--driver-location", type=int, default=None)
+
     args = ap.parse_args()
 
     path = Path(args.file)
     cp = args.java_classpath or _default_java_classpath()
 
-    dump = _run_java_resolved_dump(str(path), args.java, cp, args.debug_resolve)
+    dump = _run_java_resolved_dump(
+        str(path),
+        args.java,
+        cp,
+        args.debug_resolve,
+        alliance_transform=args.alliance_transform,
+        field_size_x=args.field_size_x,
+        field_size_y=args.field_size_y,
+        field_size_units=args.field_size_units,
+        red_start_x=args.red_start_x,
+        red_start_y=args.red_start_y,
+        red_start_units=args.red_start_units,
+        red_start_yaw_deg=args.red_start_yaw_deg,
+        alliance=args.alliance,
+        driver_location=args.driver_location,
+    )
     fixtures_dump = dump.get("fixtures") or {}
     if not isinstance(fixtures_dump, dict):
         raise SystemExit("Java dump JSON missing 'fixtures' object")
