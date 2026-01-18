@@ -148,9 +148,6 @@ public class Robot extends TimedRobot {
 
     modules.AddModule(elevator);
     modules.AddModule(slide);
-    
-    // initialize modules
-    modules.Initialize();
 
     // modules.SetEnableDrive(true);
     // modules.SetEnableSteer(true);
@@ -221,10 +218,14 @@ public class Robot extends TimedRobot {
     swerveMotorPositions[SwervePosition.RightFront.getValue()] = new Translation2d(motorPosition.getX(), -motorPosition.getY());
     swerveMotorPositions[SwervePosition.LeftRear.getValue()] = new Translation2d(-motorPosition.getX(), motorPosition.getY());
     swerveMotorPositions[SwervePosition.RightRear.getValue()] = new Translation2d(-motorPosition.getX(), -motorPosition.getY());
+    swerveDriveModule.SetModulePositions(swerveMotorPositions);
 
     // CHANGED: only set start pose once per match, but do it after JSON load so it uses JSON params.
     if (!initialized) {
       initialized = true;
+    
+      // initialize modules
+      modules.Initialize();
 
       Pose3d startPose = Utility.getMyStartPose();
       System.out.printf("Robot Init: Driver Location %d, Red Alliance %b, Start Pos (%.2f, %.2f)\n",

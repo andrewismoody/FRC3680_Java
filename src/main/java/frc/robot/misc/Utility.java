@@ -38,7 +38,6 @@ public class Utility {
     // --- NEW: computed field geometry cache (meters unless noted) ---
     private static boolean fieldConfigured = false;
 
-    private static Translation2d fieldSizeM = Translation2d.kZero;
     private static Translation2d fieldCenterM = Translation2d.kZero;
 
     private static Translation2d startAreaM = Translation2d.kZero;
@@ -354,16 +353,16 @@ public class Utility {
         // Support both: vec2 in inches ("fieldSize") OR meters scalars ("fieldSizeXM", "fieldSizeYM").
         Translation2d fieldSizeIn = GetSeasonVec2Inches("fieldSize", null);
         if (fieldSizeIn != null) {
-            fieldSizeM = new Translation2d(inchesToMeters(fieldSizeIn.getX()), inchesToMeters(fieldSizeIn.getY()));
+            fieldSize = new Translation2d(inchesToMeters(fieldSizeIn.getX()), inchesToMeters(fieldSizeIn.getY()));
         } else {
             double xM = GetSeasonNumber("fieldSizeXM", 17.55);
             double yM = GetSeasonNumber("fieldSizeYM", 8.05);
-            fieldSizeM = new Translation2d(xM, yM);
+            fieldSize = new Translation2d(xM, yM);
         }
-        fieldCenterM = new Translation2d(fieldSizeM.getX() / 2.0, fieldSizeM.getY() / 2.0);
+        fieldCenterM = new Translation2d(fieldSize.getX() / 2.0, fieldSize.getY() / 2.0);
 
         // startArea: fallback matches your old comments
-        double startAreaXM = GetSeasonNumber("startAreaXM", (fieldSizeM.getX() / 2.0) - 7.56);
+        double startAreaXM = GetSeasonNumber("startAreaXM", (fieldSize.getX() / 2.0) - 7.56);
         double startAreaYM = GetSeasonNumber("startAreaYM", 3.72);
         startAreaM = new Translation2d(startAreaXM, startAreaYM);
 
@@ -432,7 +431,7 @@ public class Utility {
     public static double[] GetBlueStartYMeters() { ensureFieldConfigured(); return blueStartYM; }
 
     // Optional (in case other code needs them later)
-    public static Translation2d GetFieldSizeMeters() { ensureFieldConfigured(); return fieldSizeM; }
+    public static Translation2d GetFieldSizeMeters() { ensureFieldConfigured(); return fieldSize; }
     public static Translation2d GetFieldCenterMeters() { ensureFieldConfigured(); return fieldCenterM; }
     public static double GetWaypointOffsetMeters() { ensureFieldConfigured(); return waypointOffsetM; }
     public static double GetAlignOffsetMeters() { ensureFieldConfigured(); return alignOffsetM; }

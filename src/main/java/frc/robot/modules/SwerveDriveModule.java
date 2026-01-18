@@ -218,6 +218,7 @@ public class SwerveDriveModule implements DriveModule {
         for (SwerveMotorModule module : driveModules) {
             var i = module.GetSwervePosition().getValue();
             module.modulePosition = modulePositions[i];
+            System.out.printf("Setting module position %d to %s\n", i, modulePositions[i].toString());
         }
     }
 
@@ -231,6 +232,7 @@ public class SwerveDriveModule implements DriveModule {
         // initialize modules after setting values, as modules lookup values from controller
         var modules = driveModules;
 
+        System.out.printf("modules.length %d\n", modules.length);
         driveModules = new SwerveMotorModule[modules.length];
         translations = new Translation2d[modules.length];
         positions = new SwerveModulePosition[modules.length];
@@ -241,6 +243,7 @@ public class SwerveDriveModule implements DriveModule {
             module.setDriveModule(this);
             
             translations[i] = module.modulePosition;
+            System.out.printf("Setting translation %d to %s\n", i, module.modulePosition.toString());
             positions[i] = new SwerveModulePosition(0, new Rotation2d());
         }
 
