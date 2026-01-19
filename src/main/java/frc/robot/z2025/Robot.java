@@ -213,7 +213,10 @@ public class Robot extends TimedRobot {
 
     // Initialize swervepositions after loading JSON parameters
     Translation2d[] swerveMotorPositions = new Translation2d[swerveDriveModule.GetMotorModules().length];
-    Translation2d motorPosition = Utility.GetSeasonVec2("motorPosition", Translation2d.kZero);
+
+    // CHANGED: motorPosition in season params is in INCHES; drive kinematics expects METERS.
+    Translation2d motorPosition = Utility.GetMotorPositionMeters();
+
     swerveMotorPositions[SwervePosition.LeftFront.getValue()] = new Translation2d(motorPosition.getX(), motorPosition.getY());
     swerveMotorPositions[SwervePosition.RightFront.getValue()] = new Translation2d(motorPosition.getX(), -motorPosition.getY());
     swerveMotorPositions[SwervePosition.LeftRear.getValue()] = new Translation2d(-motorPosition.getX(), motorPosition.getY());

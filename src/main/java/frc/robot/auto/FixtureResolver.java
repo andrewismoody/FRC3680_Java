@@ -11,6 +11,7 @@ import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Pose3d;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Rotation3d;
+import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.geometry.Translation3d;
 import frc.robot.misc.Utility;
 
@@ -174,9 +175,74 @@ public final class FixtureResolver {
 
         if (t.hasNonNull("position") && t.get("position").isArray()) {
             JsonNode pos = t.get("position");
-            double x = pos.size() > 0 ? pos.get(0).asDouble(0.0) : 0.0;
-            double y = pos.size() > 1 ? pos.get(1).asDouble(0.0) : 0.0;
-            double z = pos.size() > 2 ? pos.get(2).asDouble(0.0) : 0.0;
+
+            // CHANGED: allow numbers OR expression strings in position elements
+            Double x0 = (pos.size() > 0)
+                    ? AutoExpr.evalNode(pos.get(0),
+                        (name) -> {
+                            double v = Utility.GetSeasonNumber(name, Double.NaN);
+                            return Double.isNaN(v) ? null : v;
+                        },
+                        (name, comp) -> {
+                            Translation2d v2 = Utility.GetSeasonVec2Inches(name, null);
+                            if (v2 == null) return null;
+                            return (comp == 'X') ? v2.getX() : (comp == 'Y' ? v2.getY() : null);
+                        },
+                        (name, comp) -> {
+                            Translation3d v3 = Utility.GetSeasonVec3Inches(name, null);
+                            if (v3 == null) return null;
+                            if (comp == 'X') return v3.getX();
+                            if (comp == 'Y') return v3.getY();
+                            if (comp == 'Z') return v3.getZ();
+                            return null;
+                        })
+                    : null;
+
+            Double y0 = (pos.size() > 1)
+                    ? AutoExpr.evalNode(pos.get(1),
+                        (name) -> {
+                            double v = Utility.GetSeasonNumber(name, Double.NaN);
+                            return Double.isNaN(v) ? null : v;
+                        },
+                        (name, comp) -> {
+                            Translation2d v2 = Utility.GetSeasonVec2Inches(name, null);
+                            if (v2 == null) return null;
+                            return (comp == 'X') ? v2.getX() : (comp == 'Y' ? v2.getY() : null);
+                        },
+                        (name, comp) -> {
+                            Translation3d v3 = Utility.GetSeasonVec3Inches(name, null);
+                            if (v3 == null) return null;
+                            if (comp == 'X') return v3.getX();
+                            if (comp == 'Y') return v3.getY();
+                            if (comp == 'Z') return v3.getZ();
+                            return null;
+                        })
+                    : null;
+
+            Double z0 = (pos.size() > 2)
+                    ? AutoExpr.evalNode(pos.get(2),
+                        (name) -> {
+                            double v = Utility.GetSeasonNumber(name, Double.NaN);
+                            return Double.isNaN(v) ? null : v;
+                        },
+                        (name, comp) -> {
+                            Translation2d v2 = Utility.GetSeasonVec2Inches(name, null);
+                            if (v2 == null) return null;
+                            return (comp == 'X') ? v2.getX() : (comp == 'Y' ? v2.getY() : null);
+                        },
+                        (name, comp) -> {
+                            Translation3d v3 = Utility.GetSeasonVec3Inches(name, null);
+                            if (v3 == null) return null;
+                            if (comp == 'X') return v3.getX();
+                            if (comp == 'Y') return v3.getY();
+                            if (comp == 'Z') return v3.getZ();
+                            return null;
+                        })
+                    : 0.0;
+
+            double x = (x0 != null) ? x0.doubleValue() : 0.0;
+            double y = (y0 != null) ? y0.doubleValue() : 0.0;
+            double z = (z0 != null) ? z0.doubleValue() : 0.0;
 
             String units = t.path("positionUnits").asText("inches");
             if ("inches".equalsIgnoreCase(units)) {
