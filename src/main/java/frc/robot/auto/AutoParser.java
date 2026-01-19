@@ -375,34 +375,6 @@ public final class AutoParser {
         return v.doubleValue();
     }
 
-    private static double evalExpr(
-            String expr,
-            java.util.Map<String, Double> scalarParams,
-            java.util.Map<String, Translation2d> vec2Params,
-            java.util.Map<String, Translation3d> vec3Params) {
-
-        Double v = AutoExpr.eval(
-            expr,
-            scalarParams::get,
-            (name, comp) -> {
-                Translation2d v2 = (vec2Params != null) ? vec2Params.get(name) : null;
-                if (v2 == null) return null;
-                return (comp == 'X') ? v2.getX() : (comp == 'Y' ? v2.getY() : null);
-            },
-            (name, comp) -> {
-                Translation3d v3 = (vec3Params != null) ? vec3Params.get(name) : null;
-                if (v3 == null) return null;
-                if (comp == 'X') return v3.getX();
-                if (comp == 'Y') return v3.getY();
-                if (comp == 'Z') return v3.getZ();
-                return null;
-            }
-        );
-
-        if (v == null) throw new RuntimeException("Expr eval failed: " + expr);
-        return v.doubleValue();
-    }
-
     private static void expandOffsetVars(
             ObjectNode root,
             java.util.Map<String, Double> params,

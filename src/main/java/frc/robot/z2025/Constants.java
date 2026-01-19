@@ -1,6 +1,5 @@
 package frc.robot.z2025;
 
-import edu.wpi.first.math.geometry.Translation2d;
 import frc.robot.misc.Utility;
 
 public class Constants {
@@ -50,27 +49,4 @@ public class Constants {
   
     public static final double elevatorMaxDistance = 0.5;
     public static final double elevatorDistancePerRotation = 0.3;
-  
-    // NEW: JSON-backed helpers (params in inches; convert to meters at use sites)
-    public static double paramInches(String key, double fallbackInches) {
-        return Utility.GetSeasonNumber(key, fallbackInches);
-    }
-
-    public static double paramMeters(String key, double fallbackMeters) {
-        double fallbackIn = Utility.metersToInches(fallbackMeters);
-        return Utility.inchesToMeters(Utility.GetSeasonNumber(key, fallbackIn));
-    }
-
-    public static Translation2d paramVec2Inches(String key, Translation2d fallbackInches) {
-        return Utility.GetSeasonVec2Inches(key, fallbackInches);
-    }
-
-    public static Translation2d paramVec2Meters(String key, Translation2d fallbackMeters) {
-        Translation2d fbIn = (fallbackMeters == null)
-            ? null
-            : new Translation2d(Utility.metersToInches(fallbackMeters.getX()), Utility.metersToInches(fallbackMeters.getY()));
-        Translation2d vIn = Utility.GetSeasonVec2Inches(key, fbIn);
-        if (vIn == null) return fallbackMeters;
-        return new Translation2d(Utility.inchesToMeters(vIn.getX()), Utility.inchesToMeters(vIn.getY()));
-    }
 }

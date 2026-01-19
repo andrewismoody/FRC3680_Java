@@ -79,9 +79,6 @@ public final class ResolvedFixtureDump {
 
         if (allianceTransform && !redStartManuallySet) {
             try {
-                AutoParser.ParsedDefinitions defs = AutoParser.LoadDefinitions(file);
-                AutoSeasonDefinition def = defs.def;
-
                 Translation3d tIn = Utility.GetSeasonVec3Inches("redStartTranslation", null);
                 Translation3d rDeg = Utility.GetSeasonVec3Inches("redStartRotation", null);
 
