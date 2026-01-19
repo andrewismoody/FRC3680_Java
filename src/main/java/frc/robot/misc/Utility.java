@@ -56,12 +56,10 @@ public class Utility {
     private static Translation2d blueStartPositionM = Translation2d.kZero;
     private static double[] blueStartYM = new double[] { 0.0, 0.0, 0.0 };
 
-    private static double waypointOffsetM = 0.0;
-    private static double alignOffsetM = 0.0;
-    private static double scoreOffsetM = 0.0;
+    private static Alliance cachedAlliance = null;        // null = unknown/empty
+    private static Integer cachedDriverLocation = null;   // null = unknown/empty
 
     public static void setRedStartTransform(Transform3d transform) {
-        System.err.println("Setting redStartTransform");
         redStartTransform = transform;
     }
 
@@ -80,7 +78,6 @@ public class Utility {
     }
 
     public static void SetSeasonParams(java.util.Map<String, Double> params) {
-        System.out.println("SetSeasonParams called");
         seasonParams.clear();
         if (params != null) {
             seasonParams.putAll(params);
@@ -117,7 +114,6 @@ public class Utility {
     }
 
     public static void SetSeasonVec3Params(java.util.Map<String, Translation3d> params) {
-        System.out.println("SetSeasonVec3Params called");
         seasonVec3Params.clear();
         if (params != null) seasonVec3Params.putAll(params);
     }
@@ -194,33 +190,73 @@ public class Utility {
         new Translation2d(-0.381, -0.381)   // RightRear
     };
 
+    // NEW: centralize swerve geometry construction (ordering matches SwervePosition enum)
+    public static Translation2d[] BuildSwerveModulePositionsMeters() {
+        // Ensure field/robot geometry is computed from season params (idempotent)
+        ensureFieldConfigured();
+
+        Translation2d mp = GetMotorPositionMeters();
+        if (mp == null) {
+            // fallback (already meters)
+            return DefaultSwervePositions.clone();
+        }
+
+        Translation2d[] out = new Translation2d[SwervePosition.values().length];
+
+        // Convention: motorPosition is +X,+Y for LeftFront (robot-centric), mirrored for other corners.
+        out[SwervePosition.LeftFront.getValue()]  = new Translation2d( mp.getX(),  mp.getY());
+        out[SwervePosition.RightFront.getValue()] = new Translation2d( mp.getX(), -mp.getY());
+        out[SwervePosition.LeftRear.getValue()]   = new Translation2d(-mp.getX(),  mp.getY());
+        out[SwervePosition.RightRear.getValue()]  = new Translation2d(-mp.getX(), -mp.getY());
+
+        return out;
+    }
+
     public static boolean IsRedAlliance() {
         if (allianceOverride != null) return allianceOverride != Alliance.Blue;
-        return DriverStation.getAlliance().isEmpty() || DriverStation.getAlliance().get() != Alliance.Blue;
+
+        // Preserve existing behavior: "empty" treated as red.
+        if (cachedAlliance == null) return true;
+        return cachedAlliance != Alliance.Blue;
     }
 
     public static int getDriverLocation() {
         if (driverLocationOverride != null) return driverLocationOverride.intValue();
 
-        var driverLocation = 1;
+        int driverLocation = (cachedDriverLocation != null) ? cachedDriverLocation.intValue() : 1;
 
-        if (DriverStation.getLocation().isPresent()) {
-          driverLocation = DriverStation.getLocation().getAsInt();
-          System.err.printf("Found driver location %d from DS\n", driverLocation); // CHANGED
-        }
-
-        var myLocation = 0;
+        // Dashboard override remains supported (but avoid spamming prints)
+        int myLocation = 0;
         try {
             myLocation = Integer.parseInt(SmartDashboard.getString("DB/String 6", "0"));
         } catch (Exception e) {
-            
+            // ignore
         }
-        System.err.printf("Found driver location %d from dashboard\n", myLocation); // CHANGED
 
-        var returnLocation = myLocation == 0 ? driverLocation : myLocation;
-        System.err.printf("Returning driver location %d\n", returnLocation); // CHANGED
+        return (myLocation == 0) ? driverLocation : myLocation;
+    }
 
-        return returnLocation;
+    public static void RefreshDriverStationCache() {
+        // Always refresh (used at init-time to force a snapshot)
+        Alliance a = null;
+        Integer loc = null;
+
+        try {
+            var al = DriverStation.getAlliance();
+            if (al.isPresent()) a = al.get();
+        } catch (Throwable t) {
+            // ignore
+        }
+
+        try {
+            var dl = DriverStation.getLocation();
+            if (dl.isPresent()) loc = Integer.valueOf(dl.getAsInt());
+        } catch (Throwable t) {
+            // ignore
+        }
+
+        cachedAlliance = a;
+        cachedDriverLocation = loc;
     }
 
     public static double inchesToMeters(double inches) {
@@ -383,15 +419,13 @@ public class Utility {
 
     // NEW: install redStartTransform from season params (expects inches + degrees)
     private static void ConfigureRedStartTransformFromSeasonParams() {
-        System.out.println("ConfigureFieldFromSeasonParams called");
         // Translation stored in inches in JSON vec3 policy
         Translation3d tIn = GetSeasonVec3Inches("redStartTranslation", null);
         // Rotation stored in degrees in JSON vec3 policy
         Translation3d rDeg = GetSeasonVec3Inches("redStartRotation", null);
 
         if (tIn == null || rDeg == null) {
-            System.err.println("redStartTranslation or redStartRotation not defined in season params");
-            return;
+            throw new RuntimeException("redStartTranslation or redStartRotation not defined in season params");
         }
 
         double xM = inchesToMeters(tIn.getX());
@@ -409,7 +443,6 @@ public class Utility {
     }
 
     public static void ConfigureFieldFromSeasonParams() {
-        System.out.println("ConfigureFieldFromSeasonParams called");
         // Idempotent; safe to call every mode init after JSON load
         // (but will re-evaluate if season params change at runtime)
         // If you truly want "only once", gate on fieldConfigured.
@@ -424,27 +457,39 @@ public class Utility {
         if (fieldSizeIn != null) {
             fieldSize = new Translation2d(inchesToMeters(fieldSizeIn.getX()), inchesToMeters(fieldSizeIn.getY()));
         } else {
-            double xM = GetSeasonNumber("fieldSizeXM", 17.55);
-            double yM = GetSeasonNumber("fieldSizeYM", 8.05);
-            fieldSize = new Translation2d(xM, yM);
+            throw new RuntimeException("fieldSize not defined in season params");
         }
         fieldCenterM = new Translation2d(fieldSize.getX() / 2.0, fieldSize.getY() / 2.0);
 
-        // startArea: fallback matches your old comments
-        double startAreaXM = GetSeasonNumber("startAreaXM", (fieldSize.getX() / 2.0) - 7.56);
-        double startAreaYM = GetSeasonNumber("startAreaYM", 3.72);
-        startAreaM = new Translation2d(startAreaXM, startAreaYM);
+        Translation2d startAreaIn = GetSeasonVec2Inches("startArea", null);
+        if (startAreaIn != null) {
+            startAreaM = new Translation2d(inchesToMeters(startAreaIn.getX()), inchesToMeters(startAreaIn.getY()));
+        } else {
+            throw new RuntimeException("startArea not defined in season params");
+        }
 
         // Robot frame (inches in JSON)
-        Translation2d frameSizeIn = GetSeasonVec2Inches("frameSize", new Translation2d(27.5, 32.375));
-        frameSizeM = new Translation2d(inchesToMeters(frameSizeIn.getX()), inchesToMeters(frameSizeIn.getY()));
-        frameCenterM = new Translation2d(frameSizeM.getX() / 2.0, frameSizeM.getY() / 2.0);
+        Translation2d frameSizeIn = GetSeasonVec2Inches("frameSize", null);
+        if (frameSizeIn != null) {
+            frameSizeM = new Translation2d(inchesToMeters(frameSizeIn.getX()), inchesToMeters(frameSizeIn.getY()));
+            frameCenterM = new Translation2d(frameSizeM.getX() / 2.0, frameSizeM.getY() / 2.0);
+        } else {
+            throw new RuntimeException("frameSize not defined in season params");
+        }
 
-        Translation2d motorOffsetIn = GetSeasonVec2Inches("motorOffset", new Translation2d(4.0, 4.5));
-        motorOffsetM = new Translation2d(inchesToMeters(motorOffsetIn.getX()), inchesToMeters(motorOffsetIn.getY()));
-        motorPositionM = frameCenterM.minus(motorOffsetM);
+        Translation2d motorOffsetIn = GetSeasonVec2Inches("motorOffset", null);
+        if (motorOffsetIn != null) {
+            motorOffsetM = new Translation2d(inchesToMeters(motorOffsetIn.getX()), inchesToMeters(motorOffsetIn.getY()));
+            motorPositionM = frameCenterM.minus(motorOffsetM);
+        } else {
+            throw new RuntimeException("motorOffset not defined in season params");
+        }
 
-        double bumperWidthIn = GetSeasonNumber("bumperWidth", 4.0);
+        double bumperWidthIn = GetSeasonNumber("bumperWidth", 0.0);
+        if (bumperWidthIn == 0.0) {
+            System.err.printf("bumperWidth not defined in season params, using default %f inches\n", bumperWidthIn);
+            bumperWidthIn = 4.0;
+        }
         double bumperWidthM = inchesToMeters(bumperWidthIn);
         robotSizeM = frameSizeM.plus(new Translation2d(bumperWidthM, bumperWidthM));
         robotCenterM = new Translation2d(robotSizeM.getX() / 2.0, robotSizeM.getY() / 2.0);
@@ -460,11 +505,6 @@ public class Utility {
             inchesToMeters(GetSeasonNumber("blueStartY2", 84.03)),
             inchesToMeters(GetSeasonNumber("blueStartY3", 36.458)),
         };
-
-        // Misc pathing offsets
-        waypointOffsetM = GetSeasonNumber("waypointOffsetM", robotSizeM.getNorm() * 1.25);
-        alignOffsetM = GetSeasonNumber("alignOffsetM", robotSizeM.getNorm() * 0.75);
-        scoreOffsetM = inchesToMeters(GetSeasonNumber("scoreOffset", -3.0));
 
         // NEW: wire up red alliance transform from JSON (if present)
         ConfigureRedStartTransformFromSeasonParams();
@@ -505,7 +545,4 @@ public class Utility {
     // Optional (in case other code needs them later)
     public static Translation2d GetFieldSizeMeters() { ensureFieldConfigured(); return fieldSize; }
     public static Translation2d GetFieldCenterMeters() { ensureFieldConfigured(); return fieldCenterM; }
-    public static double GetWaypointOffsetMeters() { ensureFieldConfigured(); return waypointOffsetM; }
-    public static double GetAlignOffsetMeters() { ensureFieldConfigured(); return alignOffsetM; }
-    public static double GetScoreOffsetMeters() { ensureFieldConfigured(); return scoreOffsetM; }
 }

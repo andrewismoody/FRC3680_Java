@@ -5,7 +5,6 @@
 package frc.robot.z2025;
 
 import edu.wpi.first.math.geometry.Pose3d;
-import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.networktables.DoubleSubscriber;
 import edu.wpi.first.networktables.NetworkTableInstance;
 import edu.wpi.first.wpilibj.Filesystem;
@@ -36,7 +35,6 @@ import frc.robot.positioner.LimeLightPositioner;
 import frc.robot.positioner.Positioner;
 import frc.robot.encoder.Encoder;
 import frc.robot.encoder.REVEncoder;
-import frc.robot.auto.AutoValidator;
 
 /**
  * The VM is configured to automatically run this class, and to call the
@@ -167,41 +165,8 @@ public class Robot extends TimedRobot {
     if (!autoJsonLoaded) {
       autoJsonLoaded = true;
 
-      try {
-        String autoPath = Filesystem.getDeployDirectory().toPath().resolve("auto2025.json").toString();
-
-        AutoParser.LoadIntoController(autoPath, autoController, modules, Utility::getDriverLocation, true);
-
-        // Populate chooser from loaded sequences
-        String defaultSeq = autoController.GetDefaultSequenceLabel();
-        if (defaultSeq != null) autoChooser.setDefaultOption(defaultSeq, defaultSeq);
-        for (String seq : autoController.GetSequenceLabels()) {
-          if (defaultSeq != null && defaultSeq.equals(seq)) continue;
-          autoChooser.addOption(seq, seq);
-        }
-
-        // publish travelGroups for runtime lookup
-        var def = autoController.GetSeasonDefinition();
-        if (def != null) Utility.SetTravelGroups(def.travelGroups);
-
-        if (Robot.isReal()) {
-          var result = AutoValidator.Validate(autoController, def, modules, Utility::getDriverLocation);
-          result.printToStdout();
-        } else {
-          var result = AutoValidator.ValidateFull(autoController, def, modules, Utility::getDriverLocation);
-          result.printToStdout();
-          if (!result.ok()) {
-            throw new RuntimeException("Auto JSON full validation failed; see console for details");
-          }
-        }
-
-        System.out.printf("Loaded auto JSON from '%s'\n", autoPath);
-      } catch (Exception ex) {
-        System.out.printf("Failed to load auto JSON: %s\n", ex.getMessage());
-        ex.printStackTrace();
-      }
-    } else {
-      throw new RuntimeException("json load in commonInit called multiple times");
+      String autoPath = Filesystem.getDeployDirectory().toPath().resolve("auto2025.json").toString();
+      AutoParser.LoadAndInitialize(autoPath, autoController, modules, Utility::getDriverLocation, true, autoChooser);
     }
 
     // initialize game controller first because other classes need it.
@@ -211,23 +176,11 @@ public class Robot extends TimedRobot {
     // even tho this runs on every init, we clear it out before every run so we don't mess up
     Joystick.InitializeButtonMappings(m_controller, modules, swerveDriveModule, slide, elevator);
 
-    // Initialize swervepositions after loading JSON parameters
-    Translation2d[] swerveMotorPositions = new Translation2d[swerveDriveModule.GetMotorModules().length];
-
-    // CHANGED: motorPosition in season params is in INCHES; drive kinematics expects METERS.
-    Translation2d motorPosition = Utility.GetMotorPositionMeters();
-
-    swerveMotorPositions[SwervePosition.LeftFront.getValue()] = new Translation2d(motorPosition.getX(), motorPosition.getY());
-    swerveMotorPositions[SwervePosition.RightFront.getValue()] = new Translation2d(motorPosition.getX(), -motorPosition.getY());
-    swerveMotorPositions[SwervePosition.LeftRear.getValue()] = new Translation2d(-motorPosition.getX(), motorPosition.getY());
-    swerveMotorPositions[SwervePosition.RightRear.getValue()] = new Translation2d(-motorPosition.getX(), -motorPosition.getY());
-    swerveDriveModule.SetModulePositions(swerveMotorPositions);
-
     // CHANGED: only set start pose once per match, but do it after JSON load so it uses JSON params.
     if (!initialized) {
       initialized = true;
     
-      // initialize modules
+      // initialize modules - needs to be done after loading JSON - not before
       modules.Initialize();
 
       Pose3d startPose = Utility.getMyStartPose();

@@ -11,6 +11,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
+import frc.robot.action.ActionPose;
+import frc.robot.misc.Utility;
 import frc.robot.modules.ModuleController;
 import frc.robot.modules.RobotModule;
 import frc.robot.z2025.Robot;
@@ -109,20 +111,34 @@ public final class AutoValidator {
         try { driveId = modules.GetDriveModule().GetModuleID(); } catch (Throwable t) {}
         if (driveId == null) driveId = "swerveDrive";
 
-        for (JsonNode e : def.events) {
-            if (!"await".equals(e.path("type").asText(""))) continue;
+        // CHANGED: build "candidate list" from poses (this is the inversion)
+        ArrayList<ActionPose> targetsAsActionPoses = new ArrayList<>();
+        for (JsonNode t : def.targets) {
+            if (!driveId.equalsIgnoreCase(t.path("module").asText(""))) continue;
+            if (t == null || t.isNull()) continue;
 
-            String poseName = e.path("pose").asText("");
-            JsonNode pose = null;
-            for (JsonNode p : def.poses) {
-                if (poseName.equals(p.path("name").asText(""))) { pose = p; break; }
-            }
-            if (pose == null) continue;
+            targetsAsActionPoses.add(new ActionPose(
+                t.path("group").asText("any"),
+                t.path("location").asText("any"),
+                t.path("index").asInt(-1),
+                t.path("position").asText("any"),
+                t.path("action").asText("any"),
+                null));
+        }
 
-            // Loose association: pose doesn't embed target. Validate that a matching target exists in def.targets.
-            if (!hasTargetForPose(def, pose, driveId)) {
-                r.warnings.add("await event '" + e.path("name").asText("") + "' pose '" + poseName
-                        + "' has no matching target entry for drive module '" + driveId + "'; event may no-op");
+        // CHANGED: verify every drive-module target is matchable by at least one pose under runtime matching
+        for (JsonNode p : def.poses) {
+            if (p == null || p.isNull()) continue;
+
+            String group = p.path("group").asText("any");
+            String location = p.path("location").asText("any");
+            int idx = p.path("index").asInt(-1);
+            String position = p.path("position").asText("any");
+            String action = p.path("action").asText("any");
+
+            if (Utility.GetActionPose(group, location, idx, position, action, driveId, targetsAsActionPoses) == null) {
+                r.warnings.add("drive target (" + group + " " + location + " " + idx
+                        + ") has no matching pose entry; selection may be impossible");
             }
         }
 
@@ -165,25 +181,6 @@ public final class AutoValidator {
         }
 
         return r;
-    }
-
-    // NEW: tuple-match helper for the loose association model
-    private static boolean hasTargetForPose(AutoSeasonDefinition def, JsonNode pose, String moduleId) {
-        if (def == null || def.targets == null || pose == null) return false;
-
-        String g = pose.path("group").asText("");
-        String loc = pose.path("location").asText("");
-        int idx = pose.path("index").asInt(-999);
-
-        for (JsonNode t : def.targets) {
-            if (t == null || t.isNull()) continue;
-            if (!moduleId.equalsIgnoreCase(t.path("module").asText(""))) continue;
-            if (!g.equalsIgnoreCase(t.path("group").asText(""))) continue;
-            if (!loc.equalsIgnoreCase(t.path("location").asText(""))) continue;
-            if (idx != t.path("index").asInt(-999)) continue;
-            return true;
-        }
-        return false;
     }
 
     public static Result ValidateFull(

@@ -1,6 +1,5 @@
 package frc.robot.auto;
 
-import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -15,6 +14,8 @@ import edu.wpi.first.math.geometry.Translation3d;
 import frc.robot.misc.Utility;
 
 import frc.robot.modules.ModuleController;
+import edu.wpi.first.wpilibj.RobotBase;
+import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 
 /**
  * Minimal season-auto JSON parser.
@@ -41,8 +42,15 @@ public final class AutoParser {
         }
     }
 
-    public static ParsedDefinitions LoadDefinitions(String filePath) throws IOException {
-        JsonNode root = MAPPER.readTree(Files.readString(Path.of(filePath)));
+    public static ParsedDefinitions LoadDefinitions(String filePath) {
+        JsonNode root;
+
+        try {
+            root = MAPPER.readTree(Files.readString(Path.of(filePath)));
+        }
+        catch (Exception ex) {
+            throw new RuntimeException("Failed to read/parse auto JSON file: " + filePath, ex);
+        }
 
         String season = reqText(root, "season");
         String version = reqText(root, "version");
@@ -97,12 +105,13 @@ public final class AutoParser {
     }
 
     // NEW: preload only params/vec2/vec3 into Utility (no fixtures resolved, no controller wiring)
-    public static ParsedDefinitions PreloadSeasonParams(String filePath) throws IOException {
+    public static ParsedDefinitions PreloadSeasonParams(String filePath) {
         ParsedDefinitions defs = LoadDefinitions(filePath);
 
         // Push resolved params into Utility so Utility can self-configure without calling LoadIntoController.
         AutoSeasonDefinition def = defs.def;
         Utility.SetSeasonParams(def.params);
+        Utility.SetTravelGroups(def.travelGroups);
 
         return defs;
     }
@@ -431,8 +440,7 @@ public final class AutoParser {
             AutoController controller,
             ModuleController moduleController,
             Supplier<Integer> startLocationProvider,
-            boolean applyAllianceTransform)
-            throws IOException {
+            boolean applyAllianceTransform) {
 
         // CHANGED: split into preload + build to avoid Utility init cycles
         ParsedDefinitions defs = PreloadSeasonParams(filePath);
@@ -443,9 +451,48 @@ public final class AutoParser {
             String filePath,
             AutoController controller,
             ModuleController moduleController,
-            Supplier<Integer> startLocationProvider)
-            throws IOException {
+            Supplier<Integer> startLocationProvider) {
         LoadIntoController(filePath, controller, moduleController, startLocationProvider, true);
+    }
+
+    // NEW: one-shot consumer helper (Robot.java) to avoid duplicating load/chooser/validate wiring
+    public static void LoadAndInitialize(
+            String filePath,
+            AutoController autoController,
+            ModuleController modules,
+            Supplier<Integer> startLocationProvider,
+            boolean applyAllianceTransform,
+            SendableChooser<String> autoChooser) {
+
+        // NEW: ensure DS-derived Utility getters see a fresh snapshot during init
+        Utility.RefreshDriverStationCache();
+
+        LoadIntoController(filePath, autoController, modules, startLocationProvider, applyAllianceTransform);
+
+        // Populate chooser from loaded sequences
+        if (autoChooser != null) {
+            String defaultSeq = autoController.GetDefaultSequenceLabel();
+            if (defaultSeq != null) autoChooser.setDefaultOption(defaultSeq, defaultSeq);
+            for (String seq : autoController.GetSequenceLabels()) {
+                if (defaultSeq != null && defaultSeq.equals(seq)) continue;
+                autoChooser.addOption(seq, seq);
+            }
+        }
+
+        // Validation (light on real, full on sim)
+        var def = autoController.GetSeasonDefinition();
+        if (RobotBase.isReal()) {
+            var result = AutoValidator.Validate(autoController, def, modules, startLocationProvider);
+            result.printToStdout();
+        } else {
+            var result = AutoValidator.ValidateFull(autoController, def, modules, startLocationProvider);
+            result.printToStdout();
+            if (!result.ok()) {
+                throw new RuntimeException("Auto JSON full validation failed; see console for details");
+            }
+        }
+
+        System.out.printf("Loaded auto JSON from '%s'\n", filePath);
     }
 
     private static String reqText(JsonNode root, String key) {

@@ -218,7 +218,7 @@ public class SwerveDriveModule implements DriveModule {
         for (SwerveMotorModule module : driveModules) {
             var i = module.GetSwervePosition().getValue();
             module.modulePosition = modulePositions[i];
-            System.out.printf("Setting module position %d to %s\n", i, modulePositions[i].toString());
+            System.err.printf("Setting module position %d to %s\n", i, modulePositions[i].toString());
         }
     }
 
@@ -228,6 +228,8 @@ public class SwerveDriveModule implements DriveModule {
 
     public void Initialize() {
         var startupAngle = getGyroAngle();
+
+        SetModulePositions(Utility.BuildSwerveModulePositionsMeters());
 
         // initialize modules after setting values, as modules lookup values from controller
         var modules = driveModules;
