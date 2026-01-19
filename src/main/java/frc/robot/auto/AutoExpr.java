@@ -13,12 +13,21 @@ public final class AutoExpr {
             Function<String, Double> scalarResolver,
             BiFunction<String, Character, Double> vec2Resolver) {
 
+        return eval(expr, scalarResolver, vec2Resolver, null);
+    }
+
+    public static Double eval(
+            String expr,
+            Function<String, Double> scalarResolver,
+            BiFunction<String, Character, Double> vec2Resolver,
+            BiFunction<String, Character, Double> vec3Resolver) {
+
         if (expr == null) return null;
         expr = expr.trim();
         if (expr.isEmpty()) return null;
 
         try {
-            Parser p = new Parser(expr, scalarResolver, vec2Resolver);
+            Parser p = new Parser(expr, scalarResolver, vec2Resolver, vec3Resolver);
             Double v = p.parseExpression();
             p.skipWs();
             if (!p.eof()) return null; // trailing junk
@@ -33,9 +42,18 @@ public final class AutoExpr {
             Function<String, Double> scalarResolver,
             BiFunction<String, Character, Double> vec2Resolver) {
 
+        return evalNode(node, scalarResolver, vec2Resolver, null);
+    }
+
+    public static Double evalNode(
+            JsonNode node,
+            Function<String, Double> scalarResolver,
+            BiFunction<String, Character, Double> vec2Resolver,
+            BiFunction<String, Character, Double> vec3Resolver) {
+
         if (node == null || node.isNull()) return null;
         if (node.isNumber()) return node.doubleValue();
-        if (node.isTextual()) return eval(node.asText(), scalarResolver, vec2Resolver);
+        if (node.isTextual()) return eval(node.asText(), scalarResolver, vec2Resolver, vec3Resolver);
         return null;
     }
 
@@ -46,14 +64,17 @@ public final class AutoExpr {
 
         private final Function<String, Double> scalarResolver;
         private final BiFunction<String, Character, Double> vec2Resolver;
+        private final BiFunction<String, Character, Double> vec3Resolver;
 
         Parser(String s,
                Function<String, Double> scalarResolver,
-               BiFunction<String, Character, Double> vec2Resolver) {
+               BiFunction<String, Character, Double> vec2Resolver,
+               BiFunction<String, Character, Double> vec3Resolver) {
             this.s = s;
             this.n = s.length();
             this.scalarResolver = scalarResolver;
             this.vec2Resolver = vec2Resolver;
+            this.vec3Resolver = vec3Resolver;
         }
 
         boolean eof() { return i >= n; }
@@ -168,13 +189,20 @@ public final class AutoExpr {
 
             skipWs();
             if (eat('.')) {
-                if (vec2Resolver == null) return null;
                 skipWs();
                 if (i >= n) return null;
                 char comp = Character.toUpperCase(s.charAt(i));
-                if (comp != 'X' && comp != 'Y') return null;
+                if (comp != 'X' && comp != 'Y' && comp != 'Z') return null;
                 i++;
-                return vec2Resolver.apply(name, comp);
+
+                if (vec3Resolver != null) {
+                    Double v3 = vec3Resolver.apply(name, comp);
+                    if (v3 != null) return v3;
+                }
+                if (vec2Resolver != null) {
+                    return vec2Resolver.apply(name, comp);
+                }
+                return null;
             }
 
             return (scalarResolver != null) ? scalarResolver.apply(name) : null;

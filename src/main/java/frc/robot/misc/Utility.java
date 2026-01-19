@@ -20,7 +20,7 @@ public class Utility {
 
     static Translation2d fieldSize = Translation2d.kZero;
     static Translation2d fieldCenter = new Translation2d(fieldSize.getX() / 2.0, fieldSize.getY() / 2.0);
-    static Transform3d redStartTransform = null;
+    static Transform3d redStartTransform = Transform3d.kZero;
 
     // NEW: runtime-provided auto season info (set once after JSON load)
     private static ArrayList<String> travelGroups = new ArrayList<String>();
@@ -30,6 +30,9 @@ public class Utility {
 
     // CHANGED (semantic): vec2 params are stored in INCHES (to match scalar policy)
     private static HashMap<String, Translation2d> seasonVec2Params = new HashMap<>();
+
+    // NEW: vec3 params are stored in INCHES (to match scalar/vec2 policy)
+    private static HashMap<String, Translation3d> seasonVec3Params = new HashMap<>();
 
     // NEW: tool overrides (null = use DriverStation)
     static Alliance allianceOverride = null;
@@ -58,6 +61,7 @@ public class Utility {
     private static double scoreOffsetM = 0.0;
 
     public static void setRedStartTransform(Transform3d transform) {
+        System.err.println("Setting redStartTransform");
         redStartTransform = transform;
     }
 
@@ -76,8 +80,13 @@ public class Utility {
     }
 
     public static void SetSeasonParams(java.util.Map<String, Double> params) {
+        System.out.println("SetSeasonParams called");
         seasonParams.clear();
-        if (params != null) seasonParams.putAll(params);
+        if (params != null) {
+            seasonParams.putAll(params);
+
+            Utility.ConfigureFieldFromSeasonParams();
+        }
     }
 
     public static double GetSeasonNumber(String key, double fallback) {
@@ -107,6 +116,28 @@ public class Utility {
         return new Translation2d(inchesToMeters(vIn.getX()), inchesToMeters(vIn.getY()));
     }
 
+    public static void SetSeasonVec3Params(java.util.Map<String, Translation3d> params) {
+        System.out.println("SetSeasonVec3Params called");
+        seasonVec3Params.clear();
+        if (params != null) seasonVec3Params.putAll(params);
+    }
+
+    public static Translation3d GetSeasonVec3(String key, Translation3d fallback) {
+        if (key == null) return fallback;
+        Translation3d v = seasonVec3Params.get(key);
+        return (v != null) ? v : fallback;
+    }
+
+    public static Translation3d GetSeasonVec3Inches(String key, Translation3d fallbackInches) {
+        return GetSeasonVec3(key, fallbackInches);
+    }
+
+    public static Translation3d GetSeasonVec3Meters(String key, Translation3d fallbackMeters) {
+        Translation3d vIn = GetSeasonVec3(key, null);
+        if (vIn == null) return fallbackMeters;
+        return new Translation3d(inchesToMeters(vIn.getX()), inchesToMeters(vIn.getY()), inchesToMeters(vIn.getZ()));
+    }
+
     public static void setAllianceOverride(Alliance alliance) {
         allianceOverride = alliance;
     }
@@ -128,7 +159,10 @@ public class Utility {
             System.err.println("Initializing Utility"); // CHANGED: was System.out.println
 
             if (fieldSize == Translation2d.kZero)
-                throw new RuntimeException("Utility.fieldSize not set - you must set this to your Constants.fieldSize in RobotInit");
+                throw new RuntimeException("Utility.fieldSize not set - you must set this param value in your season json definition");
+
+            if (redStartTransform == Transform3d.kZero)
+                throw new RuntimeException("Utility.redStartTransform not set - you must set this param value in your season json definition");
 
             initialized = true;
         }
@@ -152,6 +186,13 @@ public class Utility {
             return value;
         }
     }
+
+    public static Translation2d[] DefaultSwervePositions = new Translation2d[] {
+        new Translation2d(0.381, 0.381),    // LeftFront
+        new Translation2d(0.381, -0.381),   // RightFront
+        new Translation2d(-0.381, 0.381),   // LeftRear
+        new Translation2d(-0.381, -0.381)   // RightRear
+    };
 
     public static boolean IsRedAlliance() {
         if (allianceOverride != null) return allianceOverride != Alliance.Blue;
@@ -340,7 +381,35 @@ public class Utility {
         return null;
     }
 
+    // NEW: install redStartTransform from season params (expects inches + degrees)
+    private static void ConfigureRedStartTransformFromSeasonParams() {
+        System.out.println("ConfigureFieldFromSeasonParams called");
+        // Translation stored in inches in JSON vec3 policy
+        Translation3d tIn = GetSeasonVec3Inches("redStartTranslation", null);
+        // Rotation stored in degrees in JSON vec3 policy
+        Translation3d rDeg = GetSeasonVec3Inches("redStartRotation", null);
+
+        if (tIn == null || rDeg == null) {
+            System.err.println("redStartTranslation or redStartRotation not defined in season params");
+            return;
+        }
+
+        double xM = inchesToMeters(tIn.getX());
+        double yM = inchesToMeters(tIn.getY());
+        double zM = inchesToMeters(tIn.getZ());
+
+        double rollRad  = degreesToRadians(rDeg.getX());
+        double pitchRad = degreesToRadians(rDeg.getY());
+        double yawRad   = degreesToRadians(rDeg.getZ());
+
+        setRedStartTransform(new Transform3d(
+            new Translation3d(xM, yM, zM),
+            new Rotation3d(rollRad, pitchRad, yawRad)
+        ));
+    }
+
     public static void ConfigureFieldFromSeasonParams() {
+        System.out.println("ConfigureFieldFromSeasonParams called");
         // Idempotent; safe to call every mode init after JSON load
         // (but will re-evaluate if season params change at runtime)
         // If you truly want "only once", gate on fieldConfigured.
@@ -396,6 +465,9 @@ public class Utility {
         waypointOffsetM = GetSeasonNumber("waypointOffsetM", robotSizeM.getNorm() * 1.25);
         alignOffsetM = GetSeasonNumber("alignOffsetM", robotSizeM.getNorm() * 0.75);
         scoreOffsetM = inchesToMeters(GetSeasonNumber("scoreOffset", -3.0));
+
+        // NEW: wire up red alliance transform from JSON (if present)
+        ConfigureRedStartTransformFromSeasonParams();
     }
 
     private static void ensureFieldConfigured() {

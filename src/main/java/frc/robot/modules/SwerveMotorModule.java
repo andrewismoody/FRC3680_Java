@@ -104,6 +104,7 @@ public class SwerveMotorModule {
   public SwerveMotorModule(Utility.SwervePosition SwervePosition, SwerveMotorDefinition MotorDefinition, double EncoderMultiplier, double FloatTolerance, boolean InvertRotation, boolean InvertDrive, double RotationOffset) {
     moduleID = SwervePosition.toString();
     swervePosition = SwervePosition;
+    modulePosition = Utility.DefaultSwervePositions[swervePosition.getValue()];
 
     driveMotor = MotorDefinition.driveMotor;
     driveEncoder = MotorDefinition.driveEncoder;

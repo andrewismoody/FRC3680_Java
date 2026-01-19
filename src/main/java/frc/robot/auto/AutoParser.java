@@ -11,6 +11,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import edu.wpi.first.math.geometry.Translation2d;
+import edu.wpi.first.math.geometry.Translation3d;
 import frc.robot.misc.Utility;
 
 import frc.robot.modules.ModuleController;
@@ -68,8 +69,11 @@ public final class AutoParser {
         HashMap<String, Double> params = resolveParams(rawParams);
 
         HashMap<String, Translation2d> vec2Params = resolveVec2Params(rawParams, params);
+        // CHANGED: pass vec2Params into vec3 resolver so vec3 can reference vec2 expressions
+        HashMap<String, Translation3d> vec3Params = resolveVec3Params(rawParams, params, vec2Params);
 
         Utility.SetSeasonVec2Params(vec2Params);
+        Utility.SetSeasonVec3Params(vec3Params);
 
         if (root.isObject()) {
             expandOffsetVars((ObjectNode) root, params, vec2Params);
@@ -92,6 +96,44 @@ public final class AutoParser {
         return new ParsedDefinitions(def, root);
     }
 
+    // NEW: preload only params/vec2/vec3 into Utility (no fixtures resolved, no controller wiring)
+    public static ParsedDefinitions PreloadSeasonParams(String filePath) throws IOException {
+        ParsedDefinitions defs = LoadDefinitions(filePath);
+
+        // Push resolved params into Utility so Utility can self-configure without calling LoadIntoController.
+        AutoSeasonDefinition def = defs.def;
+        Utility.SetSeasonParams(def.params);
+
+        return defs;
+    }
+
+    // NEW: finish building controller using a preloaded/parsed definition
+    public static void LoadIntoControllerFromPreloaded(
+            ParsedDefinitions defs,
+            AutoController controller,
+            ModuleController moduleController,
+            Supplier<Integer> startLocationProvider,
+            boolean applyAllianceTransform) {
+
+        if (defs == null || defs.def == null) {
+            throw new IllegalArgumentException("defs/defs.def is null");
+        }
+
+        AutoSeasonDefinition def = defs.def;
+
+        controller.SetDefinitions(def.groups, def.locations, def.positions, def.actions);
+
+        FixtureResolver.ResolveAll(def, applyAllianceTransform);
+
+        controller.SetSeasonDefinition(def);
+
+        AutoSequenceFactory factory = new AutoSequenceFactory(controller, def, startLocationProvider);
+        for (JsonNode seqNode : def.sequences) {
+            AutoSequence seq = factory.fromSequenceJson(seqNode);
+            if (seq != null) controller.AddSequence(seq);
+        }
+    }
+
     public static Translation2d GetFieldSizeInchesFromDefinitions(AutoSeasonDefinition def) {
         if (def == null || def.root == null) return null;
 
@@ -101,15 +143,38 @@ public final class AutoParser {
         JsonNode fieldSize = paramsNode.get("fieldSize");
         if (fieldSize == null || !fieldSize.isArray() || fieldSize.size() < 2) return null;
 
-        Double x = AutoExpr.evalNode(fieldSize.get(0), def.params::get,
+        Double x = AutoExpr.evalNode(
+                fieldSize.get(0),
+                def.params::get,
                 (name, comp) -> {
                     Translation2d v = Utility.GetSeasonVec2Inches(name, null);
-                    return (v == null) ? null : ((comp == 'X') ? v.getX() : v.getY());
+                    if (v == null) return null;
+                    return (comp == 'X') ? v.getX() : (comp == 'Y' ? v.getY() : null);
+                },
+                (name, comp) -> {
+                    Translation3d v = Utility.GetSeasonVec3Inches(name, null);
+                    if (v == null) return null;
+                    if (comp == 'X') return v.getX();
+                    if (comp == 'Y') return v.getY();
+                    if (comp == 'Z') return v.getZ();
+                    return null;
                 });
-        Double y = AutoExpr.evalNode(fieldSize.get(1), def.params::get,
+
+        Double y = AutoExpr.evalNode(
+                fieldSize.get(1),
+                def.params::get,
                 (name, comp) -> {
                     Translation2d v = Utility.GetSeasonVec2Inches(name, null);
-                    return (v == null) ? null : ((comp == 'X') ? v.getX() : v.getY());
+                    if (v == null) return null;
+                    return (comp == 'X') ? v.getX() : (comp == 'Y' ? v.getY() : null);
+                },
+                (name, comp) -> {
+                    Translation3d v = Utility.GetSeasonVec3Inches(name, null);
+                    if (v == null) return null;
+                    if (comp == 'X') return v.getX();
+                    if (comp == 'Y') return v.getY();
+                    if (comp == 'Z') return v.getZ();
+                    return null;
                 });
 
         if (x == null || y == null) return null;
@@ -201,6 +266,53 @@ public final class AutoParser {
         return out;
     }
 
+    // CHANGED: add resolvedVec2Params parameter
+    private static HashMap<String, Translation3d> resolveVec3Params(
+            java.util.Map<String, JsonNode> rawParams,
+            java.util.Map<String, Double> resolvedScalarParams,
+            java.util.Map<String, Translation2d> resolvedVec2Params) {
+
+        HashMap<String, Translation3d> out = new HashMap<>();
+        if (rawParams == null || rawParams.isEmpty()) return out;
+
+        // CHANGED: seed vec2Partial with already-resolved vec2s (so $fieldCenter.X works immediately)
+        java.util.HashMap<String, Translation2d> vec2Partial = new java.util.HashMap<>();
+        if (resolvedVec2Params != null) vec2Partial.putAll(resolvedVec2Params);
+
+        java.util.HashMap<String, Translation3d> vec3Partial = new java.util.HashMap<>();
+
+        int passes = 3;
+        for (int pass = 0; pass < passes; pass++) {
+            boolean changed = false;
+
+            for (var e : rawParams.entrySet()) {
+                String key = e.getKey();
+                JsonNode n = e.getValue();
+                if (n == null || !n.isArray() || n.size() < 3) continue;
+
+                Double x = evalNodeToDouble(n.get(0), resolvedScalarParams, vec2Partial, vec3Partial);
+                Double y = evalNodeToDouble(n.get(1), resolvedScalarParams, vec2Partial, vec3Partial);
+                Double z = evalNodeToDouble(n.get(2), resolvedScalarParams, vec2Partial, vec3Partial);
+                if (x == null || y == null || z == null) continue;
+
+                Translation3d v = new Translation3d(x.doubleValue(), y.doubleValue(), z.doubleValue());
+                Translation3d prev = vec3Partial.get(key);
+                if (prev == null || prev.getX() != v.getX() || prev.getY() != v.getY() || prev.getZ() != v.getZ()) {
+                    vec3Partial.put(key, v);
+                    changed = true;
+                }
+
+                // Keep vec2 view updated as a convenience for later vec3 expressions
+                vec2Partial.put(key, new Translation2d(v.getX(), v.getY()));
+            }
+
+            if (!changed) break;
+        }
+
+        out.putAll(vec3Partial);
+        return out;
+    }
+
     private static Double evalNodeToDouble(
             JsonNode node,
             java.util.Map<String, Double> scalarParams,
@@ -212,7 +324,33 @@ public final class AutoParser {
             (name, comp) -> {
                 Translation2d v2 = (vec2Params != null) ? vec2Params.get(name) : null;
                 if (v2 == null) return null;
-                return (comp == 'X') ? v2.getX() : v2.getY();
+                return (comp == 'X') ? v2.getX() : (comp == 'Y' ? v2.getY() : null);
+            },
+            null
+        );
+    }
+
+    private static Double evalNodeToDouble(
+            JsonNode node,
+            java.util.Map<String, Double> scalarParams,
+            java.util.Map<String, Translation2d> vec2Params,
+            java.util.Map<String, Translation3d> vec3Params) {
+
+        return AutoExpr.evalNode(
+            node,
+            scalarParams::get,
+            (name, comp) -> {
+                Translation2d v2 = (vec2Params != null) ? vec2Params.get(name) : null;
+                if (v2 == null) return null;
+                return (comp == 'X') ? v2.getX() : (comp == 'Y' ? v2.getY() : null);
+            },
+            (name, comp) -> {
+                Translation3d v3 = (vec3Params != null) ? vec3Params.get(name) : null;
+                if (v3 == null) return null;
+                if (comp == 'X') return v3.getX();
+                if (comp == 'Y') return v3.getY();
+                if (comp == 'Z') return v3.getZ();
+                return null;
             }
         );
     }
@@ -222,15 +360,47 @@ public final class AutoParser {
             java.util.Map<String, Double> scalarParams,
             java.util.Map<String, Translation2d> vec2Params) {
 
-        return AutoExpr.eval(
+        Double v = AutoExpr.eval(
             expr,
             scalarParams::get,
             (name, comp) -> {
                 Translation2d v2 = (vec2Params != null) ? vec2Params.get(name) : null;
                 if (v2 == null) return null;
-                return (comp == 'X') ? v2.getX() : v2.getY();
+                return (comp == 'X') ? v2.getX() : (comp == 'Y' ? v2.getY() : null);
+            },
+            null
+        );
+
+        if (v == null) throw new RuntimeException("Expr eval failed: " + expr);
+        return v.doubleValue();
+    }
+
+    private static double evalExpr(
+            String expr,
+            java.util.Map<String, Double> scalarParams,
+            java.util.Map<String, Translation2d> vec2Params,
+            java.util.Map<String, Translation3d> vec3Params) {
+
+        Double v = AutoExpr.eval(
+            expr,
+            scalarParams::get,
+            (name, comp) -> {
+                Translation2d v2 = (vec2Params != null) ? vec2Params.get(name) : null;
+                if (v2 == null) return null;
+                return (comp == 'X') ? v2.getX() : (comp == 'Y' ? v2.getY() : null);
+            },
+            (name, comp) -> {
+                Translation3d v3 = (vec3Params != null) ? vec3Params.get(name) : null;
+                if (v3 == null) return null;
+                if (comp == 'X') return v3.getX();
+                if (comp == 'Y') return v3.getY();
+                if (comp == 'Z') return v3.getZ();
+                return null;
             }
         );
+
+        if (v == null) throw new RuntimeException("Expr eval failed: " + expr);
+        return v.doubleValue();
     }
 
     private static void expandOffsetVars(
@@ -292,22 +462,9 @@ public final class AutoParser {
             boolean applyAllianceTransform)
             throws IOException {
 
-        ParsedDefinitions defs = LoadDefinitions(filePath);
-        AutoSeasonDefinition def = defs.def;
-
-        controller.SetDefinitions(def.groups, def.locations, def.positions, def.actions);
-
-        Utility.SetSeasonParams(def.params);
-
-        FixtureResolver.ResolveAll(def, applyAllianceTransform);
-
-        controller.SetSeasonDefinition(def);
-
-        AutoSequenceFactory factory = new AutoSequenceFactory(controller, def, startLocationProvider);
-        for (JsonNode seqNode : def.sequences) {
-            AutoSequence seq = factory.fromSequenceJson(seqNode);
-            if (seq != null) controller.AddSequence(seq);
-        }
+        // CHANGED: split into preload + build to avoid Utility init cycles
+        ParsedDefinitions defs = PreloadSeasonParams(filePath);
+        LoadIntoControllerFromPreloaded(defs, controller, moduleController, startLocationProvider, applyAllianceTransform);
     }
 
     public static void LoadIntoController(

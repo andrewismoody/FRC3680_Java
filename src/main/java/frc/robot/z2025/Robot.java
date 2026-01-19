@@ -169,10 +169,8 @@ public class Robot extends TimedRobot {
 
       try {
         String autoPath = Filesystem.getDeployDirectory().toPath().resolve("auto2025.json").toString();
-        AutoParser.LoadIntoController(autoPath, autoController, modules, Utility::getDriverLocation);
 
-        // keep this: computes JSON-backed geometry used by getMyStartPose()
-        Utility.ConfigureFieldFromSeasonParams();
+        AutoParser.LoadIntoController(autoPath, autoController, modules, Utility::getDriverLocation, true);
 
         // Populate chooser from loaded sequences
         String defaultSeq = autoController.GetDefaultSequenceLabel();
@@ -202,6 +200,8 @@ public class Robot extends TimedRobot {
         System.out.printf("Failed to load auto JSON: %s\n", ex.getMessage());
         ex.printStackTrace();
       }
+    } else {
+      throw new RuntimeException("json load in commonInit called multiple times");
     }
 
     // initialize game controller first because other classes need it.

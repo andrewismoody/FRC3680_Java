@@ -17,7 +17,8 @@
         "fieldCenter": ["$fieldSize.X / 2", "$fieldSize.Y / 2"],
         "startArea": ["($fieldSize.X / 2) - 297.64", 146.46],
 
-        "redStartYawDeg": 180,
+        "redStartTranslation": ["$fieldCenter.X", "$fieldCenter.Y", 0.0],
+        "redStartRotation": [0.0, 0.0, 180],
 
         "frameSize": [27.5, 32.375],
         "frameCenter": ["$frameSize.X / 2", "$frameSize.Y / 2"],

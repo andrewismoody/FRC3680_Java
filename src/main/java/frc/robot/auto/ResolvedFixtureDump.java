@@ -73,6 +73,28 @@ public final class ResolvedFixtureDump {
         if (debug) System.err.println("[ResolvedFixtureDump] file=" + file);
         if (debug) System.err.println("[ResolvedFixtureDump] allianceTransform=" + allianceTransform);
 
+        // NEW: load JSON-driven redStart if allianceTransform on and user didn't override it explicitly
+        // (field size still needs to be provided by args here, unless you also want to read it from JSON)
+        boolean redStartManuallySet = (redStartXIn != null && redStartYIn != null); // minimal heuristic
+
+        if (allianceTransform && !redStartManuallySet) {
+            try {
+                AutoParser.ParsedDefinitions defs = AutoParser.LoadDefinitions(file);
+                AutoSeasonDefinition def = defs.def;
+
+                Translation3d tIn = Utility.GetSeasonVec3Inches("redStartTranslation", null);
+                Translation3d rDeg = Utility.GetSeasonVec3Inches("redStartRotation", null);
+
+                if (tIn != null && rDeg != null) {
+                    redStartXIn = tIn.getX();
+                    redStartYIn = tIn.getY();
+                    redStartYawDeg = rDeg.getZ();
+                }
+            } catch (Throwable t) {
+                // ignore; fall back to CLI defaults
+            }
+        }
+
         if (allianceTransform) {
             if (fieldSizeXIn == null || fieldSizeYIn == null) {
                 throw new IllegalArgumentException("--alliance-transform requires --field-size-x and --field-size-y (inches)");
