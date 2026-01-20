@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AssemblyName>AutoJsonBuilder</AssemblyName>
+    <RootNamespace>AutoJsonBuilder</RootNamespace>
+    <UseWPF>true</UseWPF>
+    <EnableDefaultCompileItems>true</EnableDefaultCompileItems>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="OxyPlot.Wpf" Version="2.1.2" />
+
+    <Compile Remove="Program.cs" />
+    <Compile Remove="..\..\MainWindowViewModel.cs" />
+    <Page Remove="..\..\MainWindow.xaml" />
+  </ItemGroup>
+</Project>
