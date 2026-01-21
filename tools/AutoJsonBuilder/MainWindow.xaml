@@ -9,6 +9,9 @@
         Background="#14161A" Foreground="#E6E6E6">
   <Window.Resources>
     <BooleanToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
+    <!-- Example usage if needed later:
+         IsReadOnly="{Binding SomeBool, Converter={StaticResource InverseBoolConverter}}"
+    -->
   </Window.Resources>
 
   <DockPanel>

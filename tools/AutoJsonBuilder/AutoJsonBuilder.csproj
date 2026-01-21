@@ -13,8 +13,7 @@
   <ItemGroup>
     <PackageReference Include="OxyPlot.Wpf" Version="2.1.2" />
 
-    <Compile Remove="Program.cs" />
-    <Compile Remove="..\..\MainWindowViewModel.cs" />
-    <Page Remove="..\..\MainWindow.xaml" />
+    <Page Update="MainWindow.xaml" />
+    <ApplicationDefinition Update="App.xaml" />
   </ItemGroup>
 </Project>
