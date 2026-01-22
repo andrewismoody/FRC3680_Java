@@ -47,7 +47,7 @@ internal sealed class FlexibleDoubleDictionaryConverter : JsonConverter<Dictiona
                     {
                         // scan array for the first numeric-looking element (number or numeric-string)
                         bool found = false;
-                        while (reader.Read())
+                        while (reader.Read() && !found)
                         {
                             if (reader.TokenType == JsonTokenType.EndArray) break;
 

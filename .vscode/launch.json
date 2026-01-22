@@ -23,7 +23,7 @@
       "preLaunchTask": "build AutoJsonBuilder",
       "program": "${workspaceFolder}/tools/AutoJsonBuilder/bin/Debug/net8.0-windows/AutoJsonBuilder.exe",
       "cwd": "${workspaceFolder}/tools/AutoJsonBuilder",
-      "console": "internalConsole",
+      "console": "integratedTerminal",
       "stopAtEntry": false
     }
   ]

@@ -2,20 +2,43 @@
   "version": "2.0.0",
   "tasks": [
     {
-      "label": "build AutoJsonBuilder",
+      "label": "java: build workspace",
+      "type": "process",
+      // Use gradle wrapper by default; adjust to Maven or other build tool if your project uses that.
+      "command": "${workspaceFolder}/gradlew",
+      "windows": {
+        "command": "${workspaceFolder}/gradlew.bat"
+      },
+      "args": [
+        "build"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "dotnet: build AutoJsonBuilder",
       "type": "process",
       "command": "dotnet",
       "args": [
         "build",
-        "${workspaceFolder}/tools/AutoJsonBuilder/AutoJsonBuilder.csproj",
         "-c",
         "Debug"
       ],
-      "problemMatcher": "$msCompile",
-      "group": {
-        "kind": "build",
-        "isDefault": true
-      }
+      "options": {
+        "cwd": "${workspaceFolder}/tools/AutoJsonBuilder"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "build AutoJsonBuilder",
+      "dependsOn": [
+        "java: build workspace",
+        "dotnet: build AutoJsonBuilder"
+      ],
+      "dependsOrder": "sequence",
+      "problemMatcher": []
     }
   ]
 }

@@ -4,7 +4,8 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using Microsoft.Win32;
 using System.Windows.Data; // for Binding.TargetUpdatedEvent
-using System.Windows.Media; // added for VisualTreeHelper
+using System.Windows.Media;
+using AutoJsonBuilder.Helpers; // added for VisualTreeHelper
 
 namespace AutoJsonBuilder;
 
@@ -66,7 +67,7 @@ public partial class MainWindow : Window
                 Filter = "JSON files (*.json)|*.json|All files (*.*)|*.*",
                 FileName = suggested,
                 OverwritePrompt = true,
-                InitialDirectory = vm.GetDefaultDeployFolder() ?? Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments)
+                InitialDirectory = FileHelper.GetDefaultDeployFolder() ?? Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments)
             };
 
             if (dlg.ShowDialog() == true)
@@ -163,7 +164,7 @@ public partial class MainWindow : Window
 
         var ctxType = dc.GetType().Name;
 
-        string valueStr;
+        string? valueStr;
         switch (fe)
         {
             case TextBox tb:

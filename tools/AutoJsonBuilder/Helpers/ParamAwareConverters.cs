@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.Linq;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
@@ -8,65 +9,82 @@ namespace AutoJsonBuilder.Helpers;
 
 internal static class ParamAwareConverters
 {
-    // Build params map from root JsonElement (if present). Uses forgiving parsing like FlexibleDoubleDictionaryConverter.
-    public static Dictionary<string, double> BuildParamsMap(JsonElement root)
+    // Build params map preserving heterogeneous content:
+    // - numeric scalars -> double
+    // - textual values -> string (preserve expressions)
+    // - arrays -> List<object> where elements are double or string
+    public static Dictionary<string, object> BuildParamsMap(JsonElement root)
     {
-        var map = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
+        var map = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);
         if (!root.TryGetProperty("params", out var pElem) || pElem.ValueKind != JsonValueKind.Object) return map;
 
         foreach (var prop in pElem.EnumerateObject())
         {
-            map[prop.Name] = ParseNumericElement(prop.Value);
+            var val = ParseElementPreserve(prop.Value);
+            map[prop.Name] = val;
         }
         return map;
     }
 
-    private static double ParseNumericElement(JsonElement el)
+    private static object ParseElementPreserve(JsonElement el)
     {
         switch (el.ValueKind)
         {
             case JsonValueKind.Number:
                 return el.GetDouble();
             case JsonValueKind.String:
-                {
-                    var s = el.GetString();
-                    if (double.TryParse(s, NumberStyles.Float, CultureInfo.InvariantCulture, out var d)) return d;
-                    return 0d;
-                }
+                // preserve textual expression as-is
+                return el.GetString() ?? "";
             case JsonValueKind.Array:
+                var list = new List<object>();
+                foreach (var it in el.EnumerateArray())
                 {
-                    foreach (var it in el.EnumerateArray())
-                    {
-                        if (it.ValueKind == JsonValueKind.Number) return it.GetDouble();
-                        if (it.ValueKind == JsonValueKind.String)
-                        {
-                            var s = it.GetString();
-                            if (double.TryParse(s, NumberStyles.Float, CultureInfo.InvariantCulture, out var d)) return d;
-                        }
-                    }
-                    return 0d;
+                    if (it.ValueKind == JsonValueKind.Number) list.Add(it.GetDouble());
+                    else if (it.ValueKind == JsonValueKind.String) list.Add(it.GetString() ?? "");
+                    else if (it.ValueKind == JsonValueKind.Null) list.Add(null!);
+                    // ignore nested objects for params
                 }
+                return list;
             case JsonValueKind.Null:
             default:
                 return 0d;
         }
     }
 
-    // Public helper: resolve "$name" or "${name}" using params map; returns true if resolved
-    public static bool TryResolveParamString(string s, IDictionary<string, double>? paramsMap, out double value)
+    // Resolve "$name" or "${name}" or compute simple expression using the params map.
+    // Returns true if a numeric value could be determined.
+    public static bool TryResolveParamString(string s, IDictionary<string, object>? paramsMap, out double value)
     {
         value = 0d;
         if (string.IsNullOrWhiteSpace(s) || paramsMap is null) return false;
 
+        // strip ${...} or leading $
         if (s.StartsWith("${") && s.EndsWith("}")) s = s.Substring(2, s.Length - 3);
         else if (s.StartsWith("$")) s = s.Substring(1);
 
-        if (paramsMap.TryGetValue(s, out value)) return true;
+        // direct lookup
+        if (paramsMap.TryGetValue(s, out var obj))
+        {
+            // scalar double
+            if (obj is double dd) { value = dd; return true; }
+            // numeric string
+            if (obj is string strVal && double.TryParse(strVal, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var parsed)) { value = parsed; return true; }
+            // array: take first numeric-looking element
+            if (obj is IEnumerable<object> arr)
+            {
+                foreach (var e in arr)
+                {
+                    if (e is double ed) { value = ed; return true; }
+                    if (e is string es && double.TryParse(es, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var ep)) { value = ep; return true; }
+                }
+            }
+            // otherwise can't resolve directly
+        }
 
-        // Not a direct param name — maybe an expression. Heuristic: contains operator or parentheses.
+        // Not a direct param reference — maybe an expression. Heuristic: contains operator or parentheses.
         if (s.IndexOfAny(new[] { '+', '-', '*', '/', '(', ')', '^' }) >= 0)
         {
-            // ask Java evaluator to compute (non-blocking call with timeout inside)
+            // Ask Java evaluator to compute using the full heterogeneous params map so it can recursively resolve references.
             var (ok, val) = AutoExprInterop.TryEvaluate(s, paramsMap);
             if (ok) { value = val; return true; }
         }
@@ -78,9 +96,9 @@ internal static class ParamAwareConverters
 // Converter for double that can resolve param references using the provided params map.
 internal sealed class ParamAwareDoubleConverter : JsonConverter<double>
 {
-    private readonly IDictionary<string, double> _params;
+    private readonly IDictionary<string, object> _params;
 
-    public ParamAwareDoubleConverter(IDictionary<string, double> paramsMap) => _params = paramsMap ?? new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
+    public ParamAwareDoubleConverter(IDictionary<string, object> paramsMap) => _params = paramsMap ?? new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);
 
     public override double Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
     {
@@ -123,9 +141,9 @@ internal sealed class ParamAwareDoubleConverter : JsonConverter<double>
 // Converter for List<double> that accepts arrays with numbers/strings/param refs or single number/string.
 internal sealed class ParamAwareDoubleListConverter : JsonConverter<List<double>>
 {
-    private readonly IDictionary<string, double> _params;
+    private readonly IDictionary<string, object> _params;
 
-    public ParamAwareDoubleListConverter(IDictionary<string, double> paramsMap) => _params = paramsMap ?? new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
+    public ParamAwareDoubleListConverter(IDictionary<string, object> paramsMap) => _params = paramsMap ?? new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);
 
     public override List<double> Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
     {

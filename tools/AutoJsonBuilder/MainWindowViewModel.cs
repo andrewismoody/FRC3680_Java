@@ -6,6 +6,8 @@ using Microsoft.Win32;
 using AutoJsonBuilder.Models;
 using System.Linq;
 using AutoJsonBuilder.Helpers; // <-- added
+using System.Threading.Tasks; // <-- added near other usings
+using System.Windows; // <-- added for Dispatcher
 
 namespace AutoJsonBuilder;
 
@@ -31,7 +33,11 @@ public sealed class MainWindowViewModel : NotifyBase
     public string DebugLog { get => _debugLog; set => Set(ref _debugLog, value); }
 
     // params map used to resolve expressions for calculated display values
-    private IDictionary<string, double> _paramsMap = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
+    private IDictionary<string, object> _paramsMap = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);
+
+    // NEW: loading indicator for long-running tree rebuilds (bind this to a spinner/overlay in the view)
+    private bool _isLoading;
+    public bool IsLoading { get => _isLoading; set => Set(ref _isLoading, value); }
 
     public void Log(string message)
     {
@@ -73,11 +79,10 @@ public sealed class MainWindowViewModel : NotifyBase
     private void UpdateParamsMap()
     {
         _paramsMap.Clear();
+        // copy raw param values preserved in the model (double, string, List<object>, ...)
         foreach (var kv in _doc.Params)
         {
-            // tolerate numeric types stored in the model
-            try { _paramsMap[kv.Key] = Convert.ToDouble(kv.Value); }
-            catch { _paramsMap[kv.Key] = 0d; }
+            _paramsMap[kv.Key] = kv.Value?.Raw ?? 0d;
         }
     }
 
@@ -113,7 +118,7 @@ public sealed class MainWindowViewModel : NotifyBase
         UpdateParamsMap();
 
         CurrentJsonPath = null;
-        RebuildTree();
+        _ = RebuildTreeAsync(); // fire-and-forget so ctor/command remains sync-friendly
 
         Log("NewSeason: document initialized (unsaved).");
     }
@@ -136,7 +141,7 @@ public sealed class MainWindowViewModel : NotifyBase
         CurrentJsonPath = path;
 
         // update root label etc.
-        RebuildTree();
+        await RebuildTreeAsync();
 
         Log($"SaveToPath: wrote '{path}'.");
     }
@@ -153,18 +158,15 @@ public sealed class MainWindowViewModel : NotifyBase
 
         var json = await File.ReadAllTextAsync(dlg.FileName);
 
-        // Parse once to extract params map for resolving param references
-        Dictionary<string, double> paramsMap;
+        // Parse once to extract the heterogeneous params map (preserve arrays/strings/expressions)
         using (var doc = JsonDocument.Parse(json))
         {
-            paramsMap = ParamAwareConverters.BuildParamsMap(doc.RootElement);
+            _paramsMap = ParamAwareConverters.BuildParamsMap(doc.RootElement);
         }
 
-        // use flexible options so numeric fields can accept numbers, numeric-strings, arrays or param refs
+        // Deserialize the model using forgiving dictionary converter for numeric params where the schema expects numbers.
         var opts = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
-        // keep flexible dictionary converter for the params object itself
-        opts.Converters.Add(new FlexibleDoubleDictionaryConverter());
-
+        opts.Converters.Add(new FlexibleDoubleDictionaryConverter()); // keeps older numeric semantics for model values
         _doc = JsonSerializer.Deserialize<AutoDefinitionModel>(json, opts)
                ?? throw new InvalidOperationException("Invalid JSON file.");
 
@@ -174,20 +176,13 @@ public sealed class MainWindowViewModel : NotifyBase
         // ensure pose names are consistent after load
         PoseHelper.EnsurePoseNames(_doc);
 
-        // update params map for UI calculations
-        UpdateParamsMap();
+        // If deserialization produced different params representation, ensure _paramsMap is at least populated from _doc
+        if (_paramsMap.Count == 0) UpdateParamsMap();
 
         CurrentJsonPath = dlg.FileName;
-        RebuildTree();
+        await RebuildTreeAsync();
 
         Log($"OpenJson: loaded '{dlg.FileName}'.");
-    }
-
-    // Return the first 'deploy' folder found under the solution, or a sensible fallback.
-    public string? GetDefaultDeployFolder()
-    {
-        // delegate to FileHelper
-        return FileHelper.GetDefaultDeployFolder();
     }
 
     private async Task SaveAsJsonAsync()
@@ -198,7 +193,7 @@ public sealed class MainWindowViewModel : NotifyBase
             Filter = "JSON files (*.json)|*.json|All files (*.*)|*.*",
             FileName = Path.GetFileName(CurrentJsonPath) ?? "auto.json",
             OverwritePrompt = true,
-            InitialDirectory = GetDefaultDeployFolder() ?? Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments)
+            InitialDirectory = FileHelper.GetDefaultDeployFolder() ?? Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments)
         };
         if (dlg.ShowDialog() != true) return;
 
@@ -206,24 +201,20 @@ public sealed class MainWindowViewModel : NotifyBase
         await File.WriteAllTextAsync(dlg.FileName, json);
         CurrentJsonPath = dlg.FileName;
 
-        RebuildTree(); // update root label
+        await RebuildTreeAsync(); // update root label
 
         Log($"SaveAsJson: wrote '{dlg.FileName}'.");
     }
 
     // ----- Tree helpers -----
 
-    private void RebuildTree()
+    // NEW: build the entire tree into a root TreeItemVm but do not mutate ObservableCollection.
+    private TreeItemVm BuildTreeRoot()
     {
-        Log("RebuildTree()");
-        TreeRootItems.Clear();
-        ParamKeys.Clear();
-        foreach (var k in _doc.Params.Keys.OrderBy(x => x))
-            ParamKeys.Add(k);
-
-        // ensure params map is current before creating nodes
-        UpdateParamsMap();
-
+        // Note: this is the same logic that previously lived inside RebuildTree()
+        // but it only creates/returns the root TreeItemVm and does not touch UI-bound collections.
+        Log("BuildTreeRoot()");
+        // local copies / ensure any prep needed
         var rootTitle = Path.GetFileName(CurrentJsonPath) ?? "(unsaved)";
         var root = new TreeItemVm(rootTitle, TreeItemKind.Root) { IsExpanded = true };
 
@@ -232,7 +223,7 @@ public sealed class MainWindowViewModel : NotifyBase
         root.Children.Add(TreeHelper.CreateField("version", _doc, () => _doc.Version, v => _doc.Version = v));
         root.Children.Add(TreeHelper.CreateField("description", _doc, () => _doc.Description, v => _doc.Description = v));
 
-        // sections
+        // sections (these Create* helpers create TreeItemVm instances, which is the bulk of the work)
         root.Children.Add(BuildParamsSection());
         root.Children.Add(BuildStringListSection("groups", _doc.Groups));
         root.Children.Add(BuildStringListSection("travelGroups", _doc.TravelGroups));
@@ -245,20 +236,68 @@ public sealed class MainWindowViewModel : NotifyBase
         root.Children.Add(BuildTargetsSection());
         root.Children.Add(BuildSequencesSection());
 
+        // Make sure options are computed for nodes that rely on ParamKeys etc.
+        // (RefreshAllOptions will be invoked after the root is attached to the ObservableCollection.)
+        return root;
+    }
+
+    // RebuildTree now simply constructs and installs the tree synchronously (kept for compatibility).
+    private void RebuildTree()
+    {
+        var root = BuildTreeRoot();
+
+        // install on UI-bound collection (must be done on UI thread)
+        TreeRootItems.Clear();
         TreeRootItems.Add(root);
         OnPropertyChanged(nameof(TreeRootItems));
 
-        RefreshAllOptions();
+        TreeHelper.RefreshAllOptions(TreeRootItems);
 
-        // NEW: log resolved node values so we can see what the UI should be binding to
-        // delegated to LoggingHelper (pass our Log method)
+        // logging for diagnostics
         LoggingHelper.LogAllNodeBindings(TreeRootItems, Log);
     }
 
-    private void RefreshAllOptions()
+    // NEW: async wrapper so UI can show a loading indicator while tree is rebuilt.
+    public async Task RebuildTreeAsync()
     {
-        // delegated to TreeHelper
-        TreeHelper.RefreshAllOptions(TreeRootItems);
+        if (IsLoading) return;
+
+        IsLoading = true;
+        try
+        {
+            // yield to UI so bound spinner/overlay can render before heavy work begins
+            await Task.Yield();
+
+            // Build the tree on a background thread (the expensive part)
+            var root = await Task.Run(() => BuildTreeRoot());
+
+            // Marshal applying the constructed root to the UI thread
+            // Use Application.Current.Dispatcher to ensure UI-thread update
+            if (Application.Current?.Dispatcher != null)
+            {
+                Application.Current.Dispatcher.Invoke(() =>
+                {
+                    TreeRootItems.Clear();
+                    TreeRootItems.Add(root);
+                    OnPropertyChanged(nameof(TreeRootItems));
+                    TreeHelper.RefreshAllOptions(TreeRootItems);
+                    LoggingHelper.LogAllNodeBindings(TreeRootItems, Log);
+                });
+            }
+            else
+            {
+                // fallback if no dispatcher available
+                TreeRootItems.Clear();
+                TreeRootItems.Add(root);
+                OnPropertyChanged(nameof(TreeRootItems));
+                TreeHelper.RefreshAllOptions(TreeRootItems);
+                LoggingHelper.LogAllNodeBindings(TreeRootItems, Log);
+            }
+        }
+        finally
+        {
+            IsLoading = false;
+        }
     }
 
     private TreeItemVm BuildParamsSection()
@@ -267,22 +306,75 @@ public sealed class MainWindowViewModel : NotifyBase
         sec.AddCommand = new RelayCommand(() =>
         {
             var key = $"param{_doc.Params.Count + 1}";
-            _doc.Params[key] = 0;
-            RebuildTree();
+            // new ParamValue wrapper for a numeric 0 default
+            _doc.Params[key] = new AutoJsonBuilder.Models.ParamValue(0d);
+            _ = RebuildTreeAsync(); // command handler stays sync, rebuild asynchronously
             TreeHelper.FocusNewUnder(TreeRootItems, "params", key);
         });
 
         foreach (var kvp in _doc.Params.OrderBy(k => k.Key))
         {
-            var item = new TreeItemVm(kvp.Key, TreeItemKind.Field)
+            var raw = kvp.Value?.Raw;
+
+            // If param is an array (preserved as List<object>), create an object node with one child per element.
+            if (raw is IList<object> list)
             {
-                Editor = TreeEditorKind.NumberOrParam,
-                Value = kvp.Value,
-                HasRemove = true,
-                Model = kvp
-            };
-            item.RemoveCommand = new RelayCommand(() => { _doc.Params.Remove(kvp.Key); RebuildTree(); });
-            sec.Children.Add(item);
+                var node = new TreeItemVm(kvp.Key, TreeItemKind.Object)
+                {
+                    HasRemove = true,
+                    Model = kvp
+                };
+                node.RemoveCommand = new RelayCommand(() => { _doc.Params.Remove(kvp.Key); _ = RebuildTreeAsync(); });
+
+                // Add command to append a new element
+                node.HasAdd = true;
+                node.AddCommand = new RelayCommand(() =>
+                {
+                    list.Add(0d);
+                    _ = RebuildTreeAsync();
+                    TreeHelper.FocusNewUnder(TreeRootItems, "params", kvp.Key);
+                });
+
+                for (var i = 0; i < list.Count; i++)
+                {
+                    var index = i;
+                    // create per-element editor using TreeHelper so it gets the same NumberOrParam behavior/hints
+                    var child = TreeHelper.CreateNumberOrParamField(
+                        $"[{index}]",
+                        kvp.Value!,                     // model (ParamValue)
+                        () => list[index],              // getter returns element
+                        v => { list[index] = v; },      // setter updates element in-place
+                        _paramsMap                       // params map for previews/options
+                    );
+
+                    child.HasRemove = true;
+                    child.RemoveCommand = new RelayCommand(() =>
+                    {
+                        if (index >= 0 && index < list.Count) list.RemoveAt(index);
+                        _ = RebuildTreeAsync();
+                    });
+
+                    node.Children.Add(child);
+                }
+
+                sec.Children.Add(node);
+            }
+            else
+            {
+                // scalar (number/string) param: single field
+                var item = TreeHelper.CreateNumberOrParamField(
+                    kvp.Key,
+                    kvp.Value!,                      // model (ParamValue)
+                    () => kvp.Value?.Raw,            // getter: raw value
+                    v => { kvp.Value.Raw = v; },     // setter: update raw
+                    _paramsMap                        // params map for previews/options
+                );
+                item.HasRemove = true;
+                item.Model = kvp;
+                item.RemoveCommand = new RelayCommand(() => { _doc.Params.Remove(kvp.Key); _ = RebuildTreeAsync(); });
+
+                sec.Children.Add(item);
+            }
         }
         return sec;
     }
@@ -293,7 +385,7 @@ public sealed class MainWindowViewModel : NotifyBase
         sec.AddCommand = new RelayCommand(() =>
         {
             list.Add($"{name}{list.Count + 1}");
-            RebuildTree();           // guarantees pose dropdowns are rebuilt with fresh Options
+            _ = RebuildTreeAsync();           // guarantees pose dropdowns are rebuilt with fresh Options
             TreeHelper.FocusNewUnder(TreeRootItems, name, list.Last());
         });
 
@@ -314,13 +406,13 @@ public sealed class MainWindowViewModel : NotifyBase
                 if (string.IsNullOrWhiteSpace(newValue)) return;
 
                 list[index] = newValue;
-                RebuildTree();       // guarantees pose dropdowns are rebuilt with fresh Options
+                _ = RebuildTreeAsync();       // guarantees pose dropdowns are rebuilt with fresh Options
             };
 
             node.RemoveCommand = new RelayCommand(() =>
             {
                 list.RemoveAt(index);
-                RebuildTree();       // guarantees pose dropdowns are rebuilt with fresh Options
+                _ = RebuildTreeAsync();       // guarantees pose dropdowns are rebuilt with fresh Options
             });
 
             sec.Children.Add(node);
@@ -350,7 +442,7 @@ public sealed class MainWindowViewModel : NotifyBase
             // ensure stable unique names after adding (moved)
             PoseHelper.EnsurePoseNames(_doc);
 
-            RebuildTree();
+            _ = RebuildTreeAsync();
             TreeHelper.FocusNewUnder(TreeRootItems, "poses");
         });
 
@@ -359,7 +451,7 @@ public sealed class MainWindowViewModel : NotifyBase
             var node = new TreeItemVm(p.Name ?? $"pose[{p.Group},{p.Location},{p.Index}]", TreeItemKind.Object)
             {
                 HasRemove = true,
-                RemoveCommand = new RelayCommand(() => { _doc.Poses.Remove(p); PoseHelper.EnsurePoseNames(_doc); RebuildTree(); }),
+                RemoveCommand = new RelayCommand(() => { _doc.Poses.Remove(p); PoseHelper.EnsurePoseNames(_doc); _ = RebuildTreeAsync(); }),
                 Model = p
             };
 
@@ -383,7 +475,7 @@ public sealed class MainWindowViewModel : NotifyBase
         {
             var poseName = _doc.Poses.FirstOrDefault()?.Name ?? "pose1";
             _doc.Events.Add(new EventModel { Name = $"event{_doc.Events.Count + 1}", Type = "await", Parallel = false, Pose = poseName });
-            RebuildTree();
+            _ = RebuildTreeAsync();
             TreeHelper.FocusNewUnder(TreeRootItems, "events");
         });
 
@@ -392,7 +484,7 @@ public sealed class MainWindowViewModel : NotifyBase
             var node = new TreeItemVm(ev.Name, TreeItemKind.Object)
             {
                 HasRemove = true,
-                RemoveCommand = new RelayCommand(() => { _doc.Events.Remove(ev); RebuildTree(); }),
+                RemoveCommand = new RelayCommand(() => { _doc.Events.Remove(ev); _ = RebuildTreeAsync(); }),
                 Model = ev
             };
             var type = new TreeItemVm("type", TreeItemKind.Field) { Editor = TreeEditorKind.Enum, Value = ev.Type, Model = ev };
@@ -445,7 +537,7 @@ public sealed class MainWindowViewModel : NotifyBase
         sec.AddCommand = new RelayCommand(() =>
         {
             _doc.Sequences.Add(new SequenceModel { Name = $"seq{_doc.Sequences.Count + 1}", Events = new() { _doc.Events.First().Name } });
-            RebuildTree();
+            _ = RebuildTreeAsync();
             TreeHelper.FocusNewUnder(TreeRootItems, "sequences");
         });
 
@@ -454,7 +546,7 @@ public sealed class MainWindowViewModel : NotifyBase
             var node = new TreeItemVm(s.Name, TreeItemKind.Object)
             {
                 HasRemove = true,
-                RemoveCommand = new RelayCommand(() => { _doc.Sequences.Remove(s); RebuildTree(); }),
+                RemoveCommand = new RelayCommand(() => { _doc.Sequences.Remove(s); _ = RebuildTreeAsync(); }),
                 Model = s
             };
             sec.Children.Add(node);

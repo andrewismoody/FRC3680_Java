@@ -47,40 +47,141 @@ internal static class TreeHelper
 	public static TreeItemVm CreateTextField(string label, object model, Func<string> get, Action<string> set)
 		=> CreateField(label, model, get, set);
 
-	public static TreeItemVm CreateNumberOrParamField(string label, object model, Func<object> get, Action<object> set, IDictionary<string,double>? paramsMap)
+	// updated signature: paramsMap can contain heterogeneous values (double, string, IEnumerable<object>)
+	public static TreeItemVm CreateNumberOrParamField(string label, object model, Func<object> get, Action<object> set, IDictionary<string, object>? paramsMap)
 	{
 		var n = new TreeItemVm(label, TreeItemKind.Field) { IsCaptionEditable = false, Editor = TreeEditorKind.NumberOrParam, Model = model };
 		var initial = get();
 		// set initial value without marking dirty (preserve expressions as strings)
 		n.SetInitialValue(initial);
 
-		// if paramsMap provided, attempt to compute a calculated numeric value for display
-		double? calc = null;
+		// compute a human-friendly calculated preview (scalar or vector) from paramsMap if available
+		string? hint = null;
+
+		// existing preview logic (keeps working for non-param cases)
 		if (paramsMap != null)
 		{
-			// Attempt to resolve numeric value without mutating model:
-			if (initial is double d) calc = d;
-			else if (initial is float f) calc = Convert.ToDouble(f);
-			else if (initial is int i) calc = Convert.ToDouble(i);
-			else if (initial is long l) calc = Convert.ToDouble(l);
-			else if (initial is string s)
+			// Helper to attempt resolving a single element (object may be double/string or param ref)
+			bool TryResolveElement(object? el, out double resolved)
 			{
-				if (ParamAwareConverters.TryResolveParamString(s, paramsMap, out var resolved)) calc = resolved;
-				else if (double.TryParse(s, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var parsed)) calc = parsed;
+				resolved = 0d;
+				if (el is double dd) { resolved = dd; return true; }
+				if (el is float f) { resolved = Convert.ToDouble(f); return true; }
+				if (el is int i) { resolved = Convert.ToDouble(i); return true; }
+				if (el is long l) { resolved = Convert.ToDouble(l); return true; }
+				if (el is string s)
+				{
+					// try direct numeric parse
+					if (double.TryParse(s, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var pd)) { resolved = pd; return true; }
+					// try param expression resolution
+					if (ParamAwareConverters.TryResolveParamString(s, paramsMap, out var rv)) { resolved = rv; return true; }
+				}
+				return false;
 			}
-			// arrays or lists are not collapsed here; you can extend to handle IList<double> etc.
+
+			// scalar initial
+			if (initial is double sd) { hint = $"(= {sd:G})"; }
+			else if (initial is string strInit)
+			{
+				if (TryResolveElement(strInit, out var rv)) hint = $"(= {rv:G})";
+			}
+			else if (initial is IEnumerable<object> seq)
+			{
+				// attempt to resolve each element into numbers for a vector preview
+				var resolvedList = new List<string>();
+				foreach (var e in seq)
+				{
+					if (TryResolveElement(e, out var rv)) resolvedList.Add(rv.ToString("G"));
+					else resolvedList.Add("?");
+				}
+				hint = "(= [" + string.Join(", ", resolvedList) + "])";
+			}
+			else if (initial is System.Collections.IEnumerable seq2 && !(initial is string))
+			{
+				var resolvedList = new List<string>();
+				foreach (var e in seq2)
+				{
+					if (TryResolveElement(e, out var rv)) resolvedList.Add(rv.ToString("G"));
+					else resolvedList.Add("?");
+				}
+				hint = "(= [" + string.Join(", ", resolvedList) + "])";
+			}
 		}
 
-		// Add param keys/options if caller supplies them via model binding (number-or-param UI expects param names)
+		 // If this field is likely an expression/param (string) we replace combobox with a plain text editor
+		// and surface a tooltip with the evaluated value. We also keep the old hint behavior for numeric cases.
+		bool isParamLike = initial is string || (initial is null && paramsMap != null);
+
+		if (isParamLike)
+		{
+			// replace editor with text box (no options)
+			n.Editor = TreeEditorKind.Text;
+			n.Options.Clear();
+
+			// helper to update tooltip/preview child
+			void SetPreview(string? text)
+			{
+				// compute evaluated value
+				double val = 0.0;
+				var resolved = false;
+				if (!string.IsNullOrWhiteSpace(text) && paramsMap != null)
+					resolved = ParamAwareConverters.TryResolveParamString(text, paramsMap, out val);
+
+				string preview = resolved ? $"(= {val:G})" : "(= ?)";
+				// try set ToolTip property if present
+				var prop = n.GetType().GetProperty("ToolTip");
+				if (prop != null && prop.PropertyType == typeof(string))
+				{
+					try { prop.SetValue(n, preview); }
+					catch { /* ignore */ }
+				}
+				else
+				{
+					// fallback: ensure a single readonly child with the preview text
+					// remove any existing preview child (Title starts with "(=")
+					var existing = n.Children.FirstOrDefault(c => c.Title != null && c.Title.StartsWith("(="));
+					if (existing != null)
+					{
+						existing.Title = preview;
+					}
+					else
+					{
+						var previewNode = new TreeItemVm(preview, TreeItemKind.Field) { Editor = TreeEditorKind.None, Model = null };
+						previewNode.IsCaptionEditable = false;
+						previewNode.HasRemove = false;
+						// insert preview as first child so it's visible
+						n.Children.Insert(0, previewNode);
+					}
+				}
+			}
+
+			// set initial preview based on initial value (if string)
+			SetPreview(initial as string);
+
+			// on Value change, persist new string into model via set, and refresh preview
+			n.PropertyChanged += (_, e) =>
+			{
+				if (e.PropertyName == nameof(TreeItemVm.Value))
+				{
+					var v = n.Value;
+					// write back raw string/value to model
+					set(v ?? "");
+					// re-evaluate preview if text
+					var s = v?.ToString() ?? "";
+					SetPreview(s);
+				}
+			};
+
+			// done: return field configured as text with preview tooltip/child
+			return n;
+		}
+
+		// Non-param case: keep previous behavior (preview as first Options entry + param names)
+		if (!string.IsNullOrWhiteSpace(hint))
+			n.Options.Insert(0, hint);
+
 		if (paramsMap != null)
 		{
-			// insert a calculated hint as the first option if we have one
-			if (calc.HasValue)
-			{
-				var hint = $"(= {calc.Value:G})";
-				n.Options.Insert(0, hint);
-			}
-			// then populate remaining Options with param names (so the ComboBox still contains usable params)
 			foreach (var k in paramsMap.Keys) n.Options.Add(k);
 		}
 
@@ -160,22 +261,35 @@ internal static class TreeHelper
 		return n;
 	}
 
+	// Public: map array indices to axis labels: 0->X, 1->Y, 2->Z, otherwise numeric index.
+	public static string GetArrayIndexLabel(int index) => index switch { 0 => "X", 1 => "Y", 2 => "Z", _ => index.ToString() };
+
+	// Public: normalize any title string by replacing bracketed numeric indices with axis labels.
+	// Example: "position[0]" => "position[X]" and "[0]" => "[X]". Use when building tree node titles for params/arrays.
+	public static string NormalizeIndexLabels(string? s)
+	{
+		if (string.IsNullOrEmpty(s)) return s ?? string.Empty;
+		// Only replace the first three numeric bracket tokens; lightweight and safe for existing strings.
+		return s.Replace("[0]", "[X]").Replace("[1]", "[Y]").Replace("[2]", "[Z]");
+	}
+
 	public static TreeItemVm CreateTranslationNode(TranslationModel tr, IEnumerable<string> paramKeys)
 	{
 		var node = new TreeItemVm("translation", TreeItemKind.Object) { Model = tr };
 		tr.Position ??= new() { 0d, 0d, 0d };
 		while (tr.Position.Count < 3) tr.Position.Add(0d);
 
-		node.Children.Add(CreateNumberOrParamField("position[0]", tr, () => tr.Position[0], v => tr.Position[0] = v, paramKeys.ToDictionary(k => k, k => 0d)));
-		node.Children.Add(CreateNumberOrParamField("position[1]", tr, () => tr.Position[1], v => tr.Position[1] = v, paramKeys.ToDictionary(k => k, k => 0d)));
-		node.Children.Add(CreateNumberOrParamField("position[2]", tr, () => tr.Position[2], v => tr.Position[2] = v, paramKeys.ToDictionary(k => k, k => 0d)));
+		// Display axis labels instead of numeric indices (use shared helper)
+		node.Children.Add(CreateNumberOrParamField($"position[{GetArrayIndexLabel(0)}]", tr, () => tr.Position[0], v => tr.Position[0] = v, paramKeys.ToDictionary(k => k, k => (object)0d)));
+		node.Children.Add(CreateNumberOrParamField($"position[{GetArrayIndexLabel(1)}]", tr, () => tr.Position[1], v => tr.Position[1] = v, paramKeys.ToDictionary(k => k, k => (object)0d)));
+		node.Children.Add(CreateNumberOrParamField($"position[{GetArrayIndexLabel(2)}]", tr, () => tr.Position[2], v => tr.Position[2] = v, paramKeys.ToDictionary(k => k, k => (object)0d)));
 
 		var pu = new TreeItemVm("positionUnits", TreeItemKind.Field) { Editor = TreeEditorKind.Enum, Value = tr.PositionUnits ?? "inches", Model = tr };
 		pu.Options.Add("meters"); pu.Options.Add("inches");
 		pu.PropertyChanged += (_, e) => { if (e.PropertyName == nameof(TreeItemVm.Value)) tr.PositionUnits = pu.Value?.ToString(); };
 		node.Children.Add(pu);
 
-		node.Children.Add(CreateNumberOrParamField("rotation", tr, () => tr.Rotation ?? 0d, v => tr.Rotation = v, paramKeys.ToDictionary(k => k, k => 0d)));
+		node.Children.Add(CreateNumberOrParamField("rotation", tr, () => tr.Rotation ?? 0d, v => tr.Rotation = v, paramKeys.ToDictionary(k => k, k => (object)0d)));
 
 		var ru = new TreeItemVm("rotationUnits", TreeItemKind.Field) { Editor = TreeEditorKind.Enum, Value = tr.RotationUnits ?? "degrees", Model = tr };
 		ru.Options.Add("radians"); ru.Options.Add("degrees");

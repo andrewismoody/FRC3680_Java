@@ -18,9 +18,9 @@ internal static class AutoExprInterop
 	private static Task? _stderrReader;
 	private static string? _cachedJavaExe;
 
-	// Try to evaluate 'expr' using a persistent Java autoexpr.jar server.
-	// paramsMap may be null or empty. Returns (success, value).
-	public static (bool ok, double value) TryEvaluate(string expr, IDictionary<string,double>? paramsMap)
+	// Try to evaluate 'expr' using a persistent Java autoexpr server.
+	// paramsMap may contain numbers, strings or arrays (heterogeneous).
+	public static (bool ok, double value) TryEvaluate(string expr, IDictionary<string, object>? paramsMap)
 	{
 		if (string.IsNullOrWhiteSpace(expr)) return (false, 0d);
 
@@ -31,8 +31,9 @@ internal static class AutoExprInterop
 			var req = new Dictionary<string, object?>
 			{
 				["expr"] = expr,
-				["params"] = paramsMap ?? new Dictionary<string,double>()
+				["params"] = paramsMap ?? new Dictionary<string, object>()
 			};
+			// serialize heterogeneous params map (numbers, strings, lists)
 			var json = JsonSerializer.Serialize(req);
 
 			lock (_sync)

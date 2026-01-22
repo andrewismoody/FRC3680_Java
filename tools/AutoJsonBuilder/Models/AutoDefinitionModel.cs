@@ -8,8 +8,7 @@ public sealed class AutoDefinitionModel
     public string Version { get; set; } = "1";
     public string Description { get; set; } = "";
 
-    // params.schema.json is effectively a string->number map
-    public Dictionary<string, double> Params { get; set; } = new();
+    public Dictionary<string, ParamValue> Params { get; set; } = new();
 
     public List<PoseModel> Poses { get; set; } = new();
     public List<string> Groups { get; set; } = new();
