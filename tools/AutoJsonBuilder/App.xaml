@@ -5,6 +5,16 @@
              StartupUri="MainWindow.xaml">
   <Application.Resources>
     <!-- ...existing code... -->
+
+    <!-- System-aware brushes (use DynamicResource to follow OS theme) -->
+    <SolidColorBrush x:Key="AppBackgroundBrush" Color="{DynamicResource {x:Static SystemColors.WindowColorKey}}" />
+    <SolidColorBrush x:Key="AppForegroundBrush" Color="{DynamicResource {x:Static SystemColors.WindowTextColorKey}}" />
+    <SolidColorBrush x:Key="AppControlBackgroundBrush" Color="{DynamicResource {x:Static SystemColors.ControlColorKey}}" />
+    <SolidColorBrush x:Key="AppBorderBrush" Color="{DynamicResource {x:Static SystemColors.ActiveBorderColorKey}}" />
+    <SolidColorBrush x:Key="AppHoverBrush" Color="{DynamicResource {x:Static SystemColors.ControlLightColorKey}}" />
+    <SolidColorBrush x:Key="AppSelectionBrush" Color="{DynamicResource {x:Static SystemColors.HighlightColorKey}}" />
+    <SolidColorBrush x:Key="AppSelectionTextBrush" Color="{DynamicResource {x:Static SystemColors.HighlightTextColorKey}}" />
+
     <conv:InverseBooleanConverter x:Key="InverseBoolConverter" />
     <!-- ...existing code... -->
   </Application.Resources>

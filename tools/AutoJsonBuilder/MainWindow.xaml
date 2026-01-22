@@ -6,7 +6,7 @@
         xmlns:b="clr-namespace:AutoJsonBuilder.Behaviors"
         xmlns:val="clr-namespace:AutoJsonBuilder.Validation"
         Title="AutoJsonBuilder [TOOLS/AUTOJSONBUILDER]" Width="1200" Height="750"
-        Background="#14161A" Foreground="#E6E6E6">
+        Background="{DynamicResource AppBackgroundBrush}" Foreground="{DynamicResource AppForegroundBrush}">
   <Window.Resources>
     <BooleanToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
     <!-- Example usage if needed later:
@@ -17,19 +17,19 @@
   <DockPanel>
 
     <!-- Menu bar -->
-    <Menu DockPanel.Dock="Top" Background="#1B1F24" Foreground="#E6E6E6">
+    <Menu DockPanel.Dock="Top" Background="{DynamicResource AppControlBackgroundBrush}" Foreground="{DynamicResource AppForegroundBrush}">
       <Menu.ItemContainerStyle>
         <Style TargetType="{x:Type MenuItem}">
-          <Setter Property="Background" Value="#1B1F24"/>
-          <Setter Property="Foreground" Value="#E6E6E6"/>
+          <Setter Property="Background" Value="{DynamicResource AppControlBackgroundBrush}"/>
+          <Setter Property="Foreground" Value="{DynamicResource AppForegroundBrush}"/>
           <Setter Property="Padding" Value="10,4"/>
           <Style.Triggers>
             <Trigger Property="IsHighlighted" Value="True">
-              <Setter Property="Background" Value="#21262D"/>
-              <Setter Property="Foreground" Value="#E6E6E6"/>
+              <Setter Property="Background" Value="{DynamicResource AppHoverBrush}"/>
+              <Setter Property="Foreground" Value="{DynamicResource AppForegroundBrush}"/>
             </Trigger>
             <Trigger Property="IsEnabled" Value="False">
-              <Setter Property="Foreground" Value="#8B949E"/>
+              <Setter Property="Foreground" Value="{DynamicResource {x:Static SystemColors.GrayTextBrushKey}}"/>
             </Trigger>
           </Style.Triggers>
         </Style>
@@ -49,7 +49,7 @@
     </Menu>
 
     <!-- Top toolbar -->
-    <Border DockPanel.Dock="Top" Background="#1B1F24" Padding="10">
+    <Border DockPanel.Dock="Top" Background="{DynamicResource AppControlBackgroundBrush}" Padding="10">
       <Grid>
         <TextBlock Text="AutoJsonBuilder" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center" />
       </Grid>
@@ -63,167 +63,171 @@
       </Grid.ColumnDefinitions>
 
       <!-- Left: hierarchy tree -->
-      <Border Grid.Column="0" Background="#111318" BorderBrush="#2C313A" BorderThickness="0,0,1,0">
+      <Border Grid.Column="0" Background="{DynamicResource AppControlBackgroundBrush}" BorderBrush="{DynamicResource AppBorderBrush}" BorderThickness="0,0,1,0">
         <DockPanel>
-          <TextBlock DockPanel.Dock="Top" Text="Hierarchy" Padding="10" FontWeight="SemiBold" Foreground="#C9D1D9"/>
+          <TextBlock DockPanel.Dock="Top" Text="Hierarchy" Padding="10" FontWeight="SemiBold" Foreground="{DynamicResource AppForegroundBrush}"/>
 
           <TreeView ItemsSource="{Binding TreeRootItems}"
                     b:TreeViewSelectedItemBehavior.AutoFocusSelectedItem="True"
-                    Background="#111318"
-                    Foreground="#E6E6E6"
+                    Background="{DynamicResource AppControlBackgroundBrush}"
+                    Foreground="{DynamicResource AppForegroundBrush}"
                     BorderThickness="0"
                     SelectedItemChanged="TreeView_SelectedItemChanged">
             <TreeView.Resources>
               <Style TargetType="{x:Type TreeViewItem}">
                 <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}"/>
                 <Setter Property="IsSelected" Value="{Binding IsSelected, Mode=TwoWay}"/>
-                <Setter Property="Foreground" Value="#E6E6E6"/>
+                <Setter Property="Foreground" Value="{DynamicResource AppForegroundBrush}"/>
                 <Setter Property="Background" Value="Transparent"/>
                 <Style.Triggers>
                   <Trigger Property="IsMouseOver" Value="True">
-                    <Setter Property="Background" Value="#21262D"/>
+                    <Setter Property="Background" Value="{DynamicResource AppHoverBrush}"/>
                   </Trigger>
                   <Trigger Property="IsSelected" Value="True">
-                    <Setter Property="Background" Value="#2A4B8D"/>
-                    <Setter Property="Foreground" Value="White"/>
+                    <Setter Property="Background" Value="{DynamicResource AppSelectionBrush}"/>
+                    <Setter Property="Foreground" Value="{DynamicResource AppSelectionTextBrush}"/>
                   </Trigger>
                 </Style.Triggers>
               </Style>
 
               <HierarchicalDataTemplate DataType="{x:Type local:TreeItemVm}" ItemsSource="{Binding Children}">
-                <DockPanel LastChildFill="True">
-                  <Button DockPanel.Dock="Right"
-                          Width="22" Height="22" Margin="6,0,0,0"
-                          Content="＋" ToolTip="Add"
-                          Command="{Binding AddCommand}"
-                          Visibility="{Binding HasAdd, Converter={StaticResource BoolToVisibilityConverter}}"/>
-                  <Button DockPanel.Dock="Right"
-                          Width="22" Height="22" Margin="6,0,0,0"
-                          Content="🗑" ToolTip="Remove"
-                          Command="{Binding RemoveCommand}"
-                          Visibility="{Binding HasRemove, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                <Grid DataContext="{Binding}"> <!-- explicit binding so inner controls inherit the TreeItemVm -->
+                  <DockPanel LastChildFill="True">
+                    <Button DockPanel.Dock="Right"
+                            Width="22" Height="22" Margin="6,0,0,0"
+                            Content="＋" ToolTip="Add"
+                            Command="{Binding AddCommand}"
+                            Visibility="{Binding HasAdd, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                    <Button DockPanel.Dock="Right"
+                            Width="22" Height="22" Margin="6,0,0,0"
+                            Content="🗑" ToolTip="Remove"
+                            Command="{Binding RemoveCommand}"
+                            Visibility="{Binding HasRemove, Converter={StaticResource BoolToVisibilityConverter}}"/>
 
-                  <Grid>
-                    <Grid.ColumnDefinitions>
-                      <ColumnDefinition Width="Auto"/>
-                      <ColumnDefinition Width="*"/>
-                    </Grid.ColumnDefinitions>
+                    <Grid>
+                      <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                      </Grid.ColumnDefinitions>
 
-                    <!-- Caption (editable for non-section nodes) -->
-                    <Grid Grid.Column="0">
-                      <!-- Label caption (default visible; hidden for Object nodes) -->
-                      <TextBlock x:Name="CaptionLabel"
-                                 Text="{Binding Title}"
-                                 Margin="0,2,8,0">
-                        <TextBlock.Style>
-                          <Style TargetType="{x:Type TextBlock}">
-                            <Setter Property="Visibility" Value="Visible"/>
+                      <!-- Caption (editable for non-section nodes) -->
+                      <Grid Grid.Column="0">
+                        <!-- Label caption (default visible; hidden for Object nodes) -->
+                        <TextBlock x:Name="CaptionLabel"
+                                   Text="{Binding Title}"
+                                   Margin="0,2,8,0"
+                                   Foreground="{DynamicResource AppForegroundBrush}">
+                          <TextBlock.Style>
+                            <Style TargetType="{x:Type TextBlock}">
+                              <Setter Property="Visibility" Value="Visible"/>
+                              <Style.Triggers>
+                                <DataTrigger Binding="{Binding Kind}" Value="{x:Static local:TreeItemKind.Object}">
+                                  <Setter Property="Visibility" Value="Collapsed"/>
+                                </DataTrigger>
+                              </Style.Triggers>
+                            </Style>
+                          </TextBlock.Style>
+                        </TextBlock>
+
+                        <!-- Editable caption (default hidden; shown for Object nodes) -->
+                        <TextBox x:Name="CaptionEditor"
+                                 Text="{Binding Caption, UpdateSourceTrigger=PropertyChanged, NotifyOnTargetUpdated=True}"
+                                 Background="{DynamicResource AppControlBackgroundBrush}" Foreground="{DynamicResource AppForegroundBrush}" BorderBrush="{DynamicResource AppBorderBrush}"
+                                 Padding="2" MinWidth="140">
+                          <TextBox.Style>
+                            <Style TargetType="{x:Type TextBox}">
+                              <Setter Property="Visibility" Value="Collapsed"/>
+                              <Style.Triggers>
+                                <DataTrigger Binding="{Binding Kind}" Value="{x:Static local:TreeItemKind.Object}">
+                                  <Setter Property="Visibility" Value="Visible"/>
+                                </DataTrigger>
+                              </Style.Triggers>
+                            </Style>
+                          </TextBox.Style>
+                        </TextBox>
+
+                      </Grid>
+
+                      <!-- editor area -->
+                      <ContentControl Grid.Column="1"
+                                      Content="{Binding}"
+                                      Visibility="{Binding IsEditable, Converter={StaticResource BoolToVisibilityConverter}}">
+                        <ContentControl.Style>
+                          <Style TargetType="{x:Type ContentControl}">
+                            <Setter Property="ContentTemplate">
+                              <Setter.Value>
+                                <DataTemplate>
+                                  <TextBox Text="{Binding Value, UpdateSourceTrigger=PropertyChanged, NotifyOnTargetUpdated=True}"
+                                           Background="{DynamicResource AppControlBackgroundBrush}" Foreground="{DynamicResource AppForegroundBrush}" BorderBrush="{DynamicResource AppBorderBrush}"/>
+                                </DataTemplate>
+                              </Setter.Value>
+                            </Setter>
+
                             <Style.Triggers>
-                              <DataTrigger Binding="{Binding Kind}" Value="{x:Static local:TreeItemKind.Object}">
-                                <Setter Property="Visibility" Value="Collapsed"/>
+                              <DataTrigger Binding="{Binding Editor}" Value="{x:Static local:TreeEditorKind.Enum}">
+                                <Setter Property="ContentTemplate">
+                                  <Setter.Value>
+                                    <DataTemplate>
+                                      <ComboBox ItemsSource="{Binding Options}"
+                                                SelectedItem="{Binding Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged, NotifyOnTargetUpdated=True}"
+                                                IsEditable="False"
+                                                Background="{DynamicResource AppControlBackgroundBrush}" Foreground="{DynamicResource AppForegroundBrush}" BorderBrush="{DynamicResource AppBorderBrush}"/>
+                                    </DataTemplate>
+                                  </Setter.Value>
+                                </Setter>
                               </DataTrigger>
+
+                              <DataTrigger Binding="{Binding Editor}" Value="{x:Static local:TreeEditorKind.NumberOrParam}">
+                                <Setter Property="ContentTemplate">
+                                  <Setter.Value>
+                                    <DataTemplate>
+                                      <ComboBox ItemsSource="{Binding Options}"
+                                                Text="{Binding Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged, NotifyOnTargetUpdated=True}"
+                                                IsEditable="True"
+                                                Background="{DynamicResource AppControlBackgroundBrush}" Foreground="{DynamicResource AppForegroundBrush}" BorderBrush="{DynamicResource AppBorderBrush}"/>
+                                    </DataTemplate>
+                                  </Setter.Value>
+                                </Setter>
+                              </DataTrigger>
+
+                              <DataTrigger Binding="{Binding Editor}" Value="{x:Static local:TreeEditorKind.List}">
+                                <Setter Property="ContentTemplate">
+                                  <Setter.Value>
+                                    <DataTemplate>
+                                      <ComboBox ItemsSource="{Binding Options}"
+                                                SelectedItem="{Binding Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged, NotifyOnTargetUpdated=True}"
+                                                IsEditable="False"
+                                                Background="{DynamicResource AppControlBackgroundBrush}" Foreground="{DynamicResource AppForegroundBrush}" BorderBrush="{DynamicResource AppBorderBrush}"/>
+                                    </DataTemplate>
+                                  </Setter.Value>
+                                </Setter>
+                              </DataTrigger>
+
+                              <DataTrigger Binding="{Binding Editor}" Value="{x:Static local:TreeEditorKind.Int}">
+                                <Setter Property="ContentTemplate">
+                                  <Setter.Value>
+                                    <DataTemplate>
+                                      <TextBox Background="{DynamicResource AppControlBackgroundBrush}" Foreground="{DynamicResource AppForegroundBrush}" BorderBrush="{DynamicResource AppBorderBrush}">
+                                        <TextBox.Text>
+                                          <Binding Path="Value" Mode="TwoWay" UpdateSourceTrigger="PropertyChanged" NotifyOnTargetUpdated="True">
+                                            <Binding.ValidationRules>
+                                              <val:IntValidationRule />
+                                            </Binding.ValidationRules>
+                                          </Binding>
+                                        </TextBox.Text>
+                                      </TextBox>
+                                    </DataTemplate>
+                                  </Setter.Value>
+                                </Setter>
+                              </DataTrigger>
+
                             </Style.Triggers>
                           </Style>
-                        </TextBlock.Style>
-                      </TextBlock>
-
-                      <!-- Editable caption (default hidden; shown for Object nodes) -->
-                      <TextBox x:Name="CaptionEditor"
-                               Text="{Binding Caption, UpdateSourceTrigger=PropertyChanged}"
-                               Background="#111318" Foreground="#E6E6E6" BorderBrush="#2C313A"
-                               Padding="2" MinWidth="140">
-                        <TextBox.Style>
-                          <Style TargetType="{x:Type TextBox}">
-                            <Setter Property="Visibility" Value="Collapsed"/>
-                            <Style.Triggers>
-                              <DataTrigger Binding="{Binding Kind}" Value="{x:Static local:TreeItemKind.Object}">
-                                <Setter Property="Visibility" Value="Visible"/>
-                              </DataTrigger>
-                            </Style.Triggers>
-                          </Style>
-                        </TextBox.Style>
-                      </TextBox>
-
+                        </ContentControl.Style>
+                      </ContentControl>
                     </Grid>
-
-                    <!-- editor area -->
-                    <ContentControl Grid.Column="1"
-                                    Visibility="{Binding IsEditable, Converter={StaticResource BoolToVisibilityConverter}}">
-                      <ContentControl.Style>
-                        <Style TargetType="{x:Type ContentControl}">
-                          <Setter Property="ContentTemplate">
-                            <Setter.Value>
-                              <DataTemplate>
-                                <TextBox Text="{Binding Value, UpdateSourceTrigger=PropertyChanged}"
-                                         Background="#111318" Foreground="#E6E6E6" BorderBrush="#2C313A" />
-                              </DataTemplate>
-                            </Setter.Value>
-                          </Setter>
-
-                          <Style.Triggers>
-                            <DataTrigger Binding="{Binding Editor}" Value="{x:Static local:TreeEditorKind.Enum}">
-                              <Setter Property="ContentTemplate">
-                                <Setter.Value>
-                                  <DataTemplate>
-                                    <ComboBox ItemsSource="{Binding Options}"
-                                              SelectedItem="{Binding Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                              IsEditable="False"
-                                              Background="#111318" Foreground="#E6E6E6" BorderBrush="#2C313A"/>
-                                  </DataTemplate>
-                                </Setter.Value>
-                              </Setter>
-                            </DataTrigger>
-
-                            <DataTrigger Binding="{Binding Editor}" Value="{x:Static local:TreeEditorKind.NumberOrParam}">
-                              <Setter Property="ContentTemplate">
-                                <Setter.Value>
-                                  <DataTemplate>
-                                    <ComboBox ItemsSource="{Binding Options}"
-                                              Text="{Binding Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                              IsEditable="True"
-                                              Background="#111318" Foreground="#E6E6E6" BorderBrush="#2C313A"/>
-                                  </DataTemplate>
-                                </Setter.Value>
-                              </Setter>
-                            </DataTrigger>
-
-                            <DataTrigger Binding="{Binding Editor}" Value="{x:Static local:TreeEditorKind.List}">
-                              <Setter Property="ContentTemplate">
-                                <Setter.Value>
-                                  <DataTemplate>
-                                    <ComboBox ItemsSource="{Binding Options}"
-                                              SelectedItem="{Binding Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                              IsEditable="False"
-                                              Background="#111318" Foreground="#E6E6E6" BorderBrush="#2C313A"/>
-                                  </DataTemplate>
-                                </Setter.Value>
-                              </Setter>
-                            </DataTrigger>
-
-                            <DataTrigger Binding="{Binding Editor}" Value="{x:Static local:TreeEditorKind.Int}">
-                              <Setter Property="ContentTemplate">
-                                <Setter.Value>
-                                  <DataTemplate>
-                                    <TextBox Background="#111318" Foreground="#E6E6E6" BorderBrush="#2C313A">
-                                      <TextBox.Text>
-                                        <Binding Path="Value" Mode="TwoWay" UpdateSourceTrigger="PropertyChanged">
-                                          <Binding.ValidationRules>
-                                            <val:IntValidationRule />
-                                          </Binding.ValidationRules>
-                                        </Binding>
-                                      </TextBox.Text>
-                                    </TextBox>
-                                  </DataTemplate>
-                                </Setter.Value>
-                              </Setter>
-                            </DataTrigger>
-
-                          </Style.Triggers>
-                        </Style>
-                      </ContentControl.Style>
-                    </ContentControl>
-                  </Grid>
-                </DockPanel>
+                  </DockPanel>
+                </Grid>
               </HierarchicalDataTemplate>
             </TreeView.Resources>
           </TreeView>
@@ -231,24 +235,24 @@
       </Border>
 
       <!-- Right: field + details -->
-      <Grid Grid.Column="1" Background="#14161A">
+      <Grid Grid.Column="1" Background="{DynamicResource AppBackgroundBrush}">
         <Grid.RowDefinitions>
           <RowDefinition Height="2*" />
           <RowDefinition Height="*" />
           <RowDefinition Height="160" />
         </Grid.RowDefinitions>
 
-        <Border Grid.Row="0" Margin="10" Background="#0F1115" BorderBrush="#2C313A" BorderThickness="1" CornerRadius="6">
+        <Border Grid.Row="0" Margin="10" Background="{DynamicResource AppControlBackgroundBrush}" BorderBrush="{DynamicResource AppBorderBrush}" BorderThickness="1" CornerRadius="6">
           <oxy:PlotView Model="{Binding FieldPlotModel}" />
         </Border>
 
-        <Border Grid.Row="1" Margin="10,0,10,10" Background="#0F1115" BorderBrush="#2C313A" BorderThickness="1" CornerRadius="6">
+        <Border Grid.Row="1" Margin="10,0,10,10" Background="{DynamicResource AppControlBackgroundBrush}" BorderBrush="{DynamicResource AppBorderBrush}" BorderThickness="1" CornerRadius="6">
           <DockPanel>
-            <TextBlock DockPanel.Dock="Top" Text="Selection Details" Padding="10" FontWeight="SemiBold" Foreground="#C9D1D9"/>
+            <TextBlock DockPanel.Dock="Top" Text="Selection Details" Padding="10" FontWeight="SemiBold" Foreground="{DynamicResource AppForegroundBrush}"/>
             <ScrollViewer VerticalScrollBarVisibility="Auto">
               <TextBox Text="{Binding SelectionDetails}"
                        IsReadOnly="True"
-                       Background="#0F1115" Foreground="#E6E6E6"
+                       Background="{DynamicResource AppControlBackgroundBrush}" Foreground="{DynamicResource AppForegroundBrush}"
                        BorderThickness="0"
                        Padding="10"
                        FontFamily="Consolas" />
@@ -256,14 +260,14 @@
           </DockPanel>
         </Border>
 
-        <Border Grid.Row="2" Margin="10,0,10,10" Background="#0F1115" BorderBrush="#2C313A" BorderThickness="1" CornerRadius="6">
+        <Border Grid.Row="2" Margin="10,0,10,10" Background="{DynamicResource AppControlBackgroundBrush}" BorderBrush="{DynamicResource AppBorderBrush}" BorderThickness="1" CornerRadius="6">
           <DockPanel>
-            <TextBlock DockPanel.Dock="Top" Text="Debug Output" Padding="10" FontWeight="SemiBold" Foreground="#C9D1D9"/>
+            <TextBlock DockPanel.Dock="Top" Text="Debug Output" Padding="10" FontWeight="SemiBold" Foreground="{DynamicResource AppForegroundBrush}"/>
             <ScrollViewer VerticalScrollBarVisibility="Auto">
               <TextBox x:Name="DebugOutput"
                        Text="{Binding DebugLog}"
                        IsReadOnly="True"
-                       Background="#0F1115" Foreground="#E6E6E6"
+                       Background="{DynamicResource AppControlBackgroundBrush}" Foreground="{DynamicResource AppForegroundBrush}"
                        BorderThickness="0"
                        Padding="10"
                        FontFamily="Consolas"

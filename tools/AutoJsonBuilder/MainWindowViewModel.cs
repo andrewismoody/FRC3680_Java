@@ -4,6 +4,8 @@ using System.Text.Json;
 using System.Windows.Input;
 using Microsoft.Win32;
 using AutoJsonBuilder.Models;
+using System.Linq;
+using AutoJsonBuilder.Helpers; // <-- added
 
 namespace AutoJsonBuilder;
 
@@ -27,6 +29,9 @@ public sealed class MainWindowViewModel : NotifyBase
 
     private string _debugLog = "";
     public string DebugLog { get => _debugLog; set => Set(ref _debugLog, value); }
+
+    // params map used to resolve expressions for calculated display values
+    private IDictionary<string, double> _paramsMap = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
 
     public void Log(string message)
     {
@@ -65,22 +70,20 @@ public sealed class MainWindowViewModel : NotifyBase
         SelectionDetails = JsonSerializer.Serialize(item.Model, new JsonSerializerOptions { WriteIndented = true });
     }
 
-    private static string EnsureListHas(IList<string> list, string fallback)
+    private void UpdateParamsMap()
     {
-        if (list.Count == 0) list.Add(fallback);
-        return list[0];
-    }
-
-    private void EnsurePoseBackingLists()
-    {
-        EnsureListHas(_doc.Groups, "group1");
-        EnsureListHas(_doc.Locations, "location1");
-        EnsureListHas(_doc.Positions, "position1");
-        EnsureListHas(_doc.Actions, "action1");
+        _paramsMap.Clear();
+        foreach (var kv in _doc.Params)
+        {
+            // tolerate numeric types stored in the model
+            try { _paramsMap[kv.Key] = Convert.ToDouble(kv.Value); }
+            catch { _paramsMap[kv.Key] = 0d; }
+        }
     }
 
     private void NewSeason()
     {
+        Log("NewSeason: creating new document (seed).");
         _doc = new AutoDefinitionModel
         {
             // schema requires minItems 1 for most arrays; seed with sensible placeholders
@@ -89,7 +92,8 @@ public sealed class MainWindowViewModel : NotifyBase
             Description = "",
         };
 
-        EnsurePoseBackingLists();
+        // moved to PoseHelper
+        PoseHelper.EnsurePoseBackingLists(_doc);
 
         var group = _doc.Groups[0];
         var location = _doc.Locations[0];
@@ -102,8 +106,39 @@ public sealed class MainWindowViewModel : NotifyBase
         _doc.Targets.Add(new TargetSchemaModel { Module = "module1", Translation = new TranslationModel { Position = new() { 0d, 0d, 0d }, PositionUnits = "inches" } });
         _doc.Sequences.Add(new SequenceModel { Name = "seq1", Events = new() { "event1" } });
 
+        // ensure names exist (moved)
+        PoseHelper.EnsurePoseNames(_doc);
+
+        // update params map for UI calculations
+        UpdateParamsMap();
+
         CurrentJsonPath = null;
         RebuildTree();
+
+        Log("NewSeason: document initialized (unsaved).");
+    }
+
+    public string Season
+    {
+        get => _doc.Season ?? "";
+        set
+        {
+            if (_doc.Season == value) return;
+            _doc.Season = value;
+            RebuildTree(); // update tree to reflect new season value
+        }
+    }
+
+    public async Task SaveToPathAsync(string path)
+    {
+        var json = JsonSerializer.Serialize(_doc, new JsonSerializerOptions { WriteIndented = true });
+        await File.WriteAllTextAsync(path, json);
+        CurrentJsonPath = path;
+
+        // update root label etc.
+        RebuildTree();
+
+        Log($"SaveToPath: wrote '{path}'.");
     }
 
     private async Task OpenJsonAsync()
@@ -117,13 +152,42 @@ public sealed class MainWindowViewModel : NotifyBase
         if (dlg.ShowDialog() != true) return;
 
         var json = await File.ReadAllTextAsync(dlg.FileName);
-        _doc = JsonSerializer.Deserialize<AutoDefinitionModel>(json, new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
+
+        // Parse once to extract params map for resolving param references
+        Dictionary<string, double> paramsMap;
+        using (var doc = JsonDocument.Parse(json))
+        {
+            paramsMap = ParamAwareConverters.BuildParamsMap(doc.RootElement);
+        }
+
+        // use flexible options so numeric fields can accept numbers, numeric-strings, arrays or param refs
+        var opts = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+        // keep flexible dictionary converter for the params object itself
+        opts.Converters.Add(new FlexibleDoubleDictionaryConverter());
+
+        _doc = JsonSerializer.Deserialize<AutoDefinitionModel>(json, opts)
                ?? throw new InvalidOperationException("Invalid JSON file.");
 
-        EnsurePoseBackingLists();
+        // moved
+        PoseHelper.EnsurePoseBackingLists(_doc);
+
+        // ensure pose names are consistent after load
+        PoseHelper.EnsurePoseNames(_doc);
+
+        // update params map for UI calculations
+        UpdateParamsMap();
 
         CurrentJsonPath = dlg.FileName;
         RebuildTree();
+
+        Log($"OpenJson: loaded '{dlg.FileName}'.");
+    }
+
+    // Return the first 'deploy' folder found under the solution, or a sensible fallback.
+    public string? GetDefaultDeployFolder()
+    {
+        // delegate to FileHelper
+        return FileHelper.GetDefaultDeployFolder();
     }
 
     private async Task SaveAsJsonAsync()
@@ -133,7 +197,8 @@ public sealed class MainWindowViewModel : NotifyBase
             Title = "Save auto JSON",
             Filter = "JSON files (*.json)|*.json|All files (*.*)|*.*",
             FileName = Path.GetFileName(CurrentJsonPath) ?? "auto.json",
-            OverwritePrompt = true
+            OverwritePrompt = true,
+            InitialDirectory = GetDefaultDeployFolder() ?? Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments)
         };
         if (dlg.ShowDialog() != true) return;
 
@@ -142,6 +207,8 @@ public sealed class MainWindowViewModel : NotifyBase
         CurrentJsonPath = dlg.FileName;
 
         RebuildTree(); // update root label
+
+        Log($"SaveAsJson: wrote '{dlg.FileName}'.");
     }
 
     // ----- Tree helpers -----
@@ -154,13 +221,16 @@ public sealed class MainWindowViewModel : NotifyBase
         foreach (var k in _doc.Params.Keys.OrderBy(x => x))
             ParamKeys.Add(k);
 
+        // ensure params map is current before creating nodes
+        UpdateParamsMap();
+
         var rootTitle = Path.GetFileName(CurrentJsonPath) ?? "(unsaved)";
         var root = new TreeItemVm(rootTitle, TreeItemKind.Root) { IsExpanded = true };
 
         // required scalars
-        root.Children.Add(Field("season", _doc, () => _doc.Season, v => _doc.Season = v));
-        root.Children.Add(Field("version", _doc, () => _doc.Version, v => _doc.Version = v));
-        root.Children.Add(Field("description", _doc, () => _doc.Description, v => _doc.Description = v));
+        root.Children.Add(TreeHelper.CreateField("season", _doc, () => _doc.Season, v => _doc.Season = v));
+        root.Children.Add(TreeHelper.CreateField("version", _doc, () => _doc.Version, v => _doc.Version = v));
+        root.Children.Add(TreeHelper.CreateField("description", _doc, () => _doc.Description, v => _doc.Description = v));
 
         // sections
         root.Children.Add(BuildParamsSection());
@@ -179,35 +249,16 @@ public sealed class MainWindowViewModel : NotifyBase
         OnPropertyChanged(nameof(TreeRootItems));
 
         RefreshAllOptions();
+
+        // NEW: log resolved node values so we can see what the UI should be binding to
+        // delegated to LoggingHelper (pass our Log method)
+        LoggingHelper.LogAllNodeBindings(TreeRootItems, Log);
     }
 
     private void RefreshAllOptions()
     {
-        foreach (var root in TreeRootItems)
-            RefreshAllOptions(root);
-    }
-
-    private static void RefreshAllOptions(TreeItemVm node)
-    {
-        node.RefreshOptions();
-        foreach (var c in node.Children)
-            RefreshAllOptions(c);
-    }
-
-    private TreeItemVm Field(string title, object model, Func<string> get, Action<string> set)
-    {
-        var node = new TreeItemVm(title, TreeItemKind.Field)
-        {
-            Editor = TreeEditorKind.Text,
-            Value = get(),
-            Model = model
-        };
-        node.PropertyChanged += (_, e) =>
-        {
-            if (e.PropertyName == nameof(TreeItemVm.Value) && node.Value is string s)
-                set(s);
-        };
-        return node;
+        // delegated to TreeHelper
+        TreeHelper.RefreshAllOptions(TreeRootItems);
     }
 
     private TreeItemVm BuildParamsSection()
@@ -218,7 +269,7 @@ public sealed class MainWindowViewModel : NotifyBase
             var key = $"param{_doc.Params.Count + 1}";
             _doc.Params[key] = 0;
             RebuildTree();
-            FocusNewUnder("params", key);
+            TreeHelper.FocusNewUnder(TreeRootItems, "params", key);
         });
 
         foreach (var kvp in _doc.Params.OrderBy(k => k.Key))
@@ -243,7 +294,7 @@ public sealed class MainWindowViewModel : NotifyBase
         {
             list.Add($"{name}{list.Count + 1}");
             RebuildTree();           // guarantees pose dropdowns are rebuilt with fresh Options
-            FocusNewUnder(name, list.Last());
+            TreeHelper.FocusNewUnder(TreeRootItems, name, list.Last());
         });
 
         for (var i = 0; i < list.Count; i++)
@@ -285,16 +336,22 @@ public sealed class MainWindowViewModel : NotifyBase
         var sec = new TreeItemVm("poses", TreeItemKind.Section) { HasAdd = true };
         sec.AddCommand = new RelayCommand(() =>
         {
-            _doc.Poses.Add(new PoseModel
+            var newPose = new PoseModel
             {
                 Group = _doc.Groups.FirstOrDefault() ?? "",
                 Location = _doc.Locations.FirstOrDefault() ?? "",
                 Index = 0,
                 Position = _doc.Positions.FirstOrDefault() ?? "",
                 Action = _doc.Actions.FirstOrDefault() ?? ""
-            });
+            };
+
+            _doc.Poses.Add(newPose);
+
+            // ensure stable unique names after adding (moved)
+            PoseHelper.EnsurePoseNames(_doc);
+
             RebuildTree();
-            FocusNewUnder("poses");
+            TreeHelper.FocusNewUnder(TreeRootItems, "poses");
         });
 
         foreach (var p in _doc.Poses)
@@ -302,16 +359,16 @@ public sealed class MainWindowViewModel : NotifyBase
             var node = new TreeItemVm(p.Name ?? $"pose[{p.Group},{p.Location},{p.Index}]", TreeItemKind.Object)
             {
                 HasRemove = true,
-                RemoveCommand = new RelayCommand(() => { _doc.Poses.Remove(p); RebuildTree(); }),
+                RemoveCommand = new RelayCommand(() => { _doc.Poses.Remove(p); PoseHelper.EnsurePoseNames(_doc); RebuildTree(); }),
                 Model = p
             };
 
-            // TEMP: marker to confirm you're running this BuildPosesSection()
-            node.Children.Add(MakePoseDropdown("group_TEST", p, () => p.Group, v => p.Group = v, _doc.Groups));
-            node.Children.Add(MakePoseDropdown("location", p, () => p.Location, v => p.Location = v, _doc.Locations));
-            node.Children.Add(MakeIntField("index", p, () => p.Index, v => p.Index = v));
-            node.Children.Add(MakePoseDropdown("position", p, () => p.Position, v => p.Position = v, _doc.Positions));
-            node.Children.Add(MakePoseDropdown("action", p, () => p.Action, v => p.Action = v, _doc.Actions));
+            // fixed label: use "group" not "group_TEST"
+            node.Children.Add(TreeHelper.CreatePoseDropdown("group", p, () => p.Group, v => p.Group = v, _doc.Groups));
+            node.Children.Add(TreeHelper.CreatePoseDropdown("location", p, () => p.Location, v => p.Location = v, _doc.Locations));
+            node.Children.Add(TreeHelper.CreateIntField("index", p, () => p.Index, v => p.Index = v));
+            node.Children.Add(TreeHelper.CreatePoseDropdown("position", p, () => p.Position, v => p.Position = v, _doc.Positions));
+            node.Children.Add(TreeHelper.CreatePoseDropdown("action", p, () => p.Action, v => p.Action = v, _doc.Actions));
 
             sec.Children.Add(node);
         }
@@ -327,7 +384,7 @@ public sealed class MainWindowViewModel : NotifyBase
             var poseName = _doc.Poses.FirstOrDefault()?.Name ?? "pose1";
             _doc.Events.Add(new EventModel { Name = $"event{_doc.Events.Count + 1}", Type = "await", Parallel = false, Pose = poseName });
             RebuildTree();
-            FocusNewUnder("events");
+            TreeHelper.FocusNewUnder(TreeRootItems, "events");
         });
 
         foreach (var ev in _doc.Events)
@@ -389,7 +446,7 @@ public sealed class MainWindowViewModel : NotifyBase
         {
             _doc.Sequences.Add(new SequenceModel { Name = $"seq{_doc.Sequences.Count + 1}", Events = new() { _doc.Events.First().Name } });
             RebuildTree();
-            FocusNewUnder("sequences");
+            TreeHelper.FocusNewUnder(TreeRootItems, "sequences");
         });
 
         foreach (var s in _doc.Sequences)
@@ -413,15 +470,16 @@ public sealed class MainWindowViewModel : NotifyBase
         tr.Position ??= new() { 0d, 0d, 0d };
         while (tr.Position.Count < 3) tr.Position.Add(0d);
 
-        node.Children.Add(BuildNumberOrParamField("position[0]", tr, () => tr.Position[0], v => tr.Position[0] = v));
-        node.Children.Add(BuildNumberOrParamField("position[1]", tr, () => tr.Position[1], v => tr.Position[1] = v));
-        node.Children.Add(BuildNumberOrParamField("position[2]", tr, () => tr.Position[2], v => tr.Position[2] = v));
+        // pass params map so the created node can expose a calculated hint while preserving the expression
+        node.Children.Add(TreeHelper.CreateNumberOrParamField("position[0]", tr, () => tr.Position[0], v => tr.Position[0] = v, _paramsMap));
+        node.Children.Add(TreeHelper.CreateNumberOrParamField("position[1]", tr, () => tr.Position[1], v => tr.Position[1] = v, _paramsMap));
+        node.Children.Add(TreeHelper.CreateNumberOrParamField("position[2]", tr, () => tr.Position[2], v => tr.Position[2] = v, _paramsMap));
 
         var pu = new TreeItemVm("positionUnits", TreeItemKind.Field) { Editor = TreeEditorKind.Enum, Value = tr.PositionUnits ?? "inches", Model = tr };
         pu.Options.Add("meters"); pu.Options.Add("inches");
         node.Children.Add(pu);
 
-        node.Children.Add(BuildNumberOrParamField("rotation", tr, () => tr.Rotation ?? 0d, v => tr.Rotation = v));
+        node.Children.Add(TreeHelper.CreateNumberOrParamField("rotation", tr, () => tr.Rotation ?? 0d, v => tr.Rotation = v, _paramsMap));
 
         var ru = new TreeItemVm("rotationUnits", TreeItemKind.Field) { Editor = TreeEditorKind.Enum, Value = tr.RotationUnits ?? "degrees", Model = tr };
         ru.Options.Add("radians"); ru.Options.Add("degrees");
@@ -429,45 +487,6 @@ public sealed class MainWindowViewModel : NotifyBase
 
         return node;
     }
-
-    private TreeItemVm BuildNumberOrParamField(string title, object model, Func<object> get, Action<object> set)
-    {
-        var node = new TreeItemVm(title, TreeItemKind.Field)
-        {
-            Editor = TreeEditorKind.NumberOrParam,
-            Value = get(),
-            Model = model
-        };
-        // options = params keys for ComboBox usage in XAML (when Editor == NumberOrParam)
-        foreach (var k in ParamKeys) node.Options.Add(k);
-
-        node.PropertyChanged += (_, e) =>
-        {
-            if (e.PropertyName == nameof(TreeItemVm.Value) && node.Value is not null)
-                set(node.Value);
-        };
-        return node;
-    }
-
-    private void FocusNewUnder(string sectionTitle, string? childTitle = null)
-    {
-        if (TreeRootItems.Count == 0) return;
-        var root = TreeRootItems[0];
-        var sec = root.Children.FirstOrDefault(x => x.Title == sectionTitle);
-        if (sec is null) return;
-
-        sec.IsExpanded = true;
-
-        var child = childTitle is null
-            ? sec.Children.LastOrDefault()
-            : sec.Children.LastOrDefault(x => x.Title == childTitle) ?? sec.Children.LastOrDefault();
-
-        if (child is null) return;
-        child.IsSelected = true;
-    }
-
-    private TreeItemVm? FindSection(string title)
-        => TreeRootItems.FirstOrDefault()?.Children.FirstOrDefault(c => c.Title == title);
 
     private void AddFixtureVm(TreeItemVm fixturesSection, FixtureSchemaModel f)
     {
@@ -484,12 +503,12 @@ public sealed class MainWindowViewModel : NotifyBase
         });
 
         // Editable fields per fixture.schema.json
-        node.Children.Add(MakeTextField("type", f, () => f.Type, v => f.Type = v));
-        node.Children.Add(MakeNumberOrParamField("index", f, () => f.Index, v => f.Index = (int)v));
+        node.Children.Add(TreeHelper.CreateTextField("type", f, () => f.Type, v => f.Type = v));
+        node.Children.Add(TreeHelper.CreateNumberOrParamField("index", f, () => f.Index, v => f.Index = (int)v, _paramsMap));
 
         // translation (oneOf translation|derivedFrom); create by default
         f.Translation ??= new TranslationModel { Position = new() { 0d, 0d, 0d }, PositionUnits = "inches", RotationUnits = "degrees" };
-        node.Children.Add(BuildTranslationNodeVm(f.Translation));
+        node.Children.Add(TreeHelper.CreateTranslationNode(f.Translation, ParamKeys));
 
         fixturesSection.Children.Add(node);
 
@@ -512,16 +531,16 @@ public sealed class MainWindowViewModel : NotifyBase
         });
 
         // Editable fields per target.schema.json
-        node.Children.Add(MakeTextField("module", t, () => t.Module, v => t.Module = v));
-        node.Children.Add(MakeTextField("group", t, () => t.Group ?? "", v => t.Group = string.IsNullOrWhiteSpace(v) ? null : v));
-        node.Children.Add(MakeTextField("location", t, () => t.Location ?? "", v => t.Location = string.IsNullOrWhiteSpace(v) ? null : v));
-        node.Children.Add(MakeNumberOrParamField("index", t, () => t.Index ?? -1, v => t.Index = Convert.ToInt32(v)));
-        node.Children.Add(MakeTextField("position", t, () => t.Position ?? "", v => t.Position = string.IsNullOrWhiteSpace(v) ? null : v));
-        node.Children.Add(MakeTextField("action", t, () => t.Action ?? "", v => t.Action = string.IsNullOrWhiteSpace(v) ? null : v));
+        node.Children.Add(TreeHelper.CreateTextField("module", t, () => t.Module, v => t.Module = v));
+        node.Children.Add(TreeHelper.CreateTextField("group", t, () => t.Group ?? "", v => t.Group = string.IsNullOrWhiteSpace(v) ? null : v));
+        node.Children.Add(TreeHelper.CreateTextField("location", t, () => t.Location ?? "", v => t.Location = string.IsNullOrWhiteSpace(v) ? null : v));
+        node.Children.Add(TreeHelper.CreateNumberOrParamField("index", t, () => t.Index ?? -1, v => t.Index = Convert.ToInt32(v), _paramsMap));
+        node.Children.Add(TreeHelper.CreateTextField("position", t, () => t.Position ?? "", v => t.Position = string.IsNullOrWhiteSpace(v) ? null : v));
+        node.Children.Add(TreeHelper.CreateTextField("action", t, () => t.Action ?? "", v => t.Action = string.IsNullOrWhiteSpace(v) ? null : v));
 
         // oneOf: measurement | state | translation | fixture (seed translation by default)
         t.Translation ??= new TranslationModel { Position = new() { 0d, 0d, 0d }, PositionUnits = "inches", RotationUnits = "degrees" };
-        node.Children.Add(BuildTranslationNodeVm(t.Translation));
+        node.Children.Add(TreeHelper.CreateTranslationNode(t.Translation, ParamKeys));
 
         targetsSection.Children.Add(node);
 
@@ -529,182 +548,6 @@ public sealed class MainWindowViewModel : NotifyBase
         node.IsSelected = true;
     }
 
-    private TreeItemVm MakeTextField(string label, object model, Func<string> get, Action<string> set)
-    {
-        var n = new TreeItemVm(label, TreeItemKind.Field)
-        {
-            IsCaptionEditable = false,
-            Editor = TreeEditorKind.Text,
-            Value = get(),
-            Model = model
-        };
-        n.PropertyChanged += (_, e) =>
-        {
-            if (e.PropertyName == nameof(TreeItemVm.Value) && n.Value is string s)
-                set(s);
-        };
-        return n;
-    }
+    // wrappers removed; VM now calls TreeHelper.Create* / TreeHelper.FocusNewUnder directly.
 
-    private TreeItemVm MakeNumberOrParamField(string label, object model, Func<object> get, Action<object> set)
-    {
-        var n = new TreeItemVm(label, TreeItemKind.Field)
-        {
-            IsCaptionEditable = false,
-            Editor = TreeEditorKind.NumberOrParam,
-            Value = get(),
-            Model = model
-        };
-        foreach (var k in ParamKeys) n.Options.Add(k);
-        n.PropertyChanged += (_, e) =>
-        {
-            if (e.PropertyName == nameof(TreeItemVm.Value) && n.Value is not null)
-                set(n.Value);
-        };
-        return n;
-    }
-
-    private TreeItemVm BuildTranslationNodeVm(TranslationModel tr)
-    {
-        var node = new TreeItemVm("translation", TreeItemKind.Object) { Model = tr };
-
-        tr.Position ??= new() { 0d, 0d, 0d };
-        while (tr.Position.Count < 3) tr.Position.Add(0d);
-
-        node.Children.Add(MakeNumberOrParamField("position[0]", tr, () => tr.Position[0], v => tr.Position[0] = v));
-        node.Children.Add(MakeNumberOrParamField("position[1]", tr, () => tr.Position[1], v => tr.Position[1] = v));
-        node.Children.Add(MakeNumberOrParamField("position[2]", tr, () => tr.Position[2], v => tr.Position[2] = v));
-
-        var pu = new TreeItemVm("positionUnits", TreeItemKind.Field) { Editor = TreeEditorKind.Enum, Value = tr.PositionUnits ?? "inches", Model = tr };
-        pu.Options.Add("meters"); pu.Options.Add("inches");
-        pu.PropertyChanged += (_, e) => { if (e.PropertyName == nameof(TreeItemVm.Value)) tr.PositionUnits = pu.Value?.ToString(); };
-        node.Children.Add(pu);
-
-        node.Children.Add(MakeNumberOrParamField("rotation", tr, () => tr.Rotation ?? 0d, v => tr.Rotation = v));
-
-        var ru = new TreeItemVm("rotationUnits", TreeItemKind.Field) { Editor = TreeEditorKind.Enum, Value = tr.RotationUnits ?? "degrees", Model = tr };
-        ru.Options.Add("radians"); ru.Options.Add("degrees");
-        ru.PropertyChanged += (_, e) => { if (e.PropertyName == nameof(TreeItemVm.Value)) tr.RotationUnits = ru.Value?.ToString(); };
-        node.Children.Add(ru);
-
-        return node;
-    }
-
-    private TreeItemVm MakeListField(string label, object model, Func<string> get, Action<string> set, IList<string> source)
-    {
-        var n = new TreeItemVm(label, TreeItemKind.Field)
-        {
-            Editor = TreeEditorKind.List,
-            Value = get(),
-            Model = model,
-            OptionsProvider = () => source
-        };
-
-        // populate Options immediately (this is what was missing in your current poses UI)
-        n.RefreshOptions();
-
-        n.PropertyChanged += (_, e) =>
-        {
-            if (e.PropertyName == nameof(TreeItemVm.Value) && n.Value is string s && !string.IsNullOrWhiteSpace(s))
-                set(s);
-        };
-
-        return n;
-    }
-
-    private TreeItemVm MakeListField(string label, object model, Func<string> get, Action<string> set, Func<IEnumerable<string>> optionsProvider)
-    {
-        var n = new TreeItemVm(label, TreeItemKind.Field)
-        {
-            IsCaptionEditable = false,
-            Editor = TreeEditorKind.List,
-            Value = get(),
-            Model = model,
-            OptionsProvider = optionsProvider
-        };
-
-        n.RefreshOptions();
-
-        n.PropertyChanged += (_, e) =>
-        {
-            if (e.PropertyName == nameof(TreeItemVm.Value) && n.Value is string s && !string.IsNullOrWhiteSpace(s))
-                set(s);
-        };
-        return n;
-    }
-
-    private TreeItemVm MakeIntField(string label, object model, Func<int> get, Action<int> set)
-    {
-        var n = new TreeItemVm(label, TreeItemKind.Field)
-        {
-            IsCaptionEditable = false,
-            Editor = TreeEditorKind.Int,
-            Value = get().ToString(),
-            Model = model
-        };
-        n.PropertyChanged += (_, e) =>
-        {
-            if (e.PropertyName != nameof(TreeItemVm.Value)) return;
-            if (int.TryParse(n.Value?.ToString(), out var i)) set(i);
-        };
-        return n;
-    }
-
-    private static void FillOptions(TreeItemVm node, IEnumerable<string> values)
-    {
-        node.Options.Clear();
-        foreach (var v in values.Where(x => !string.IsNullOrWhiteSpace(x)).Distinct())
-            node.Options.Add(v);
-    }
-
-    private TreeItemVm MakePoseDropdown(string label, object model, Func<string> get, Action<string> set, IList<string> source)
-    {
-        var n = new TreeItemVm(label, TreeItemKind.Field)
-        {
-            Editor = TreeEditorKind.List,
-            Value = get(),
-            Model = model,
-        };
-
-        // deterministically populate dropdown choices from the array section
-        FillOptions(n, source);
-
-        // if current value isn't in the array yet, keep it visible
-        if (n.Value is string cur && !string.IsNullOrWhiteSpace(cur) && !n.Options.Contains(cur))
-            n.Options.Insert(0, cur);
-
-        n.PropertyChanged += (_, e) =>
-        {
-            if (e.PropertyName == nameof(TreeItemVm.Value) && n.Value is string s && !string.IsNullOrWhiteSpace(s))
-                set(s);
-        };
-
-        return n;
-    }
-
-    private TreeItemVm MakePoseListField(string label, object model, Func<string> get, Action<string> set, Func<IEnumerable<string>> optionsProvider)
-    {
-        var n = new TreeItemVm(label, TreeItemKind.Field)
-        {
-            Editor = TreeEditorKind.List,
-            Value = get(),
-            Model = model,
-            OptionsProvider = optionsProvider
-        };
-
-        // Eager fill (so it's not blank even if RefreshAllOptions isn't hit for some reason)
-        n.RefreshOptions();
-
-        // Ensure current value doesn't disappear from selection if it's not in the array yet
-        if (n.Value is string cur && !string.IsNullOrWhiteSpace(cur) && !n.Options.Contains(cur))
-            n.Options.Insert(0, cur);
-
-        n.PropertyChanged += (_, e) =>
-        {
-            if (e.PropertyName == nameof(TreeItemVm.Value) && n.Value is string s && !string.IsNullOrWhiteSpace(s))
-                set(s);
-        };
-
-        return n;
-    }
 }

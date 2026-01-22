@@ -22,7 +22,16 @@ public sealed class TreeItemVm : NotifyBase
     public Guid Id { get; }
 
     private string _title;
-    public string Title { get => _title; set => Set(ref _title, value); }
+    public string Title
+    {
+        get => _title;
+        set
+        {
+            // set field and notify; also notify Caption so XAML bound to Caption updates
+            Set(ref _title, value);
+            OnPropertyChanged(nameof(Caption));
+        }
+    }
 
     // Title shown in the tree (editable)
     public string Caption
@@ -56,7 +65,16 @@ public sealed class TreeItemVm : NotifyBase
     public TreeEditorKind Editor { get; set; } = TreeEditorKind.None;
 
     private object? _value;
-    public object? Value { get => _value; set => Set(ref _value, value); }
+    public object? Value
+    {
+        get => _value;
+        set
+        {
+            if (Equals(_value, value)) return;
+            Set(ref _value, value);
+            IsDirty = true; // mark changed by user-facing setter
+        }
+    }
 
     public ObservableCollection<string> Options { get; } = new(); // for ComboBox
 
@@ -77,4 +95,14 @@ public sealed class TreeItemVm : NotifyBase
     // For dropdowns that should bind directly to underlying arrays (e.g., _doc.Groups)
     private IEnumerable? _itemsSource;
     public IEnumerable? ItemsSource { get => _itemsSource; set => Set(ref _itemsSource, value); }
+
+    private bool _isDirty;
+    public bool IsDirty { get => _isDirty; set => Set(ref _isDirty, value); }
+
+    // New: set value during creation without marking dirty
+    public void SetInitialValue(object? v)
+    {
+        _value = v;
+        OnPropertyChanged(nameof(Value));
+    }
 }

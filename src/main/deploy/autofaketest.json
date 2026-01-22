@@ -1,0 +1,93 @@
+{
+  "Season": "2025",
+  "Version": "1",
+  "Description": "",
+  "Params": {},
+  "Poses": [
+    {
+      "Name": "pose1",
+      "Group": "group1",
+      "Location": "location1",
+      "Index": 0,
+      "Position": "position1",
+      "Action": "action1"
+    }
+  ],
+  "Groups": [
+    "group1"
+  ],
+  "TravelGroups": [],
+  "Locations": [
+    "location1"
+  ],
+  "Positions": [
+    "position1"
+  ],
+  "Actions": [
+    "action1"
+  ],
+  "Events": [
+    {
+      "Name": "event1",
+      "Type": "await",
+      "Parallel": false,
+      "Pose": "pose1",
+      "Milliseconds": null,
+      "TriggerType": null,
+      "TriggerValue": null,
+      "TriggerModule": null,
+      "TriggerInvert": false
+    }
+  ],
+  "Targets": [
+    {
+      "Module": "module1",
+      "Group": null,
+      "Location": null,
+      "Index": null,
+      "Position": null,
+      "Action": null,
+      "Measurement": null,
+      "State": null,
+      "Translation": {
+        "Position": [
+          0,
+          0,
+          0
+        ],
+        "PositionUnits": "inches",
+        "Rotation": null,
+        "RotationUnits": null
+      },
+      "Fixture": null
+    }
+  ],
+  "Fixtures": [
+    {
+      "Type": "fixture",
+      "Index": 0,
+      "Translation": {
+        "Position": [
+          0,
+          0,
+          0
+        ],
+        "PositionUnits": "inches",
+        "Rotation": 0,
+        "RotationUnits": "degrees"
+      },
+      "DerivedFrom": null
+    }
+  ],
+  "Sequences": [
+    {
+      "Name": "seq1",
+      "Start1": null,
+      "Start2": null,
+      "Start3": null,
+      "Events": [
+        "event1"
+      ]
+    }
+  ]
+}
