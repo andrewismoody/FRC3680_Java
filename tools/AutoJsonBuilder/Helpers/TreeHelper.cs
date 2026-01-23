@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Globalization;
 using AutoJsonBuilder;
 using AutoJsonBuilder.Models;
 
@@ -8,6 +9,37 @@ namespace AutoJsonBuilder.Helpers;
 
 internal static class TreeHelper
 {
+	// Callback assigned by VM to perform the actual save/prompt action.
+	// The helpers below schedule/trigger that callback in a debounced way.
+	public static Action? OnModelChangedCallback;
+
+	// Debounce implementation: ScheduleModelChanged delays invocation until user stops typing.
+	// TriggerModelChangedImmediate forces an immediate invocation (used for explicit add/remove/rename commands).
+	private static readonly object _debounceLock = new();
+	private static System.Threading.Timer? _debounceTimer;
+	private const int DefaultDebounceMs = 700;
+
+	public static void ScheduleModelChanged(int delayMs = DefaultDebounceMs)
+	{
+		// No-op: scheduling removed. The UI should commit edits on LostFocus and call
+		// TreeHelper.TriggerModelChangedImmediate() when a save is desired.
+		return;
+	}
+
+	public static void TriggerModelChangedImmediate()
+	{
+		lock (_debounceLock)
+		{
+			try
+			{
+				_debounceTimer?.Dispose();
+				_debounceTimer = null;
+			}
+			catch { }
+		}
+		try { OnModelChangedCallback?.Invoke(); } catch { /* swallow */ }
+	}
+
 	public static void RefreshAllOptions(IEnumerable<TreeItemVm> roots)
 	{
 		if (roots is null) return;
@@ -39,7 +71,11 @@ internal static class TreeHelper
 		node.PropertyChanged += (_, e) =>
 		{
 			if (e.PropertyName == nameof(TreeItemVm.Value) && node.Value is string s)
+			{
+				// update model immediately but do NOT trigger save here.
+				// View should call TreeHelper.TriggerModelChangedImmediate() on LostFocus.
 				set(s);
+			}
 		};
 		return node;
 	}
@@ -48,9 +84,10 @@ internal static class TreeHelper
 		=> CreateField(label, model, get, set);
 
 	// updated signature: paramsMap can contain heterogeneous values (double, string, IEnumerable<object>)
-	public static TreeItemVm CreateNumberOrParamField(string label, object model, Func<object> get, Action<object> set, IDictionary<string, object>? paramsMap)
+	public static TreeItemVm CreateNumberOrParamField(string label, object model, Func<object> get, Action<object> set, IDictionary<string, object>? paramsMap, bool captionEditable = false)
 	{
-		var n = new TreeItemVm(label, TreeItemKind.Field) { IsCaptionEditable = false, Editor = TreeEditorKind.NumberOrParam, Model = model };
+		var valPrefix = "Evaluated Value: ";
+		var n = new TreeItemVm(label, TreeItemKind.Field) { IsCaptionEditable = captionEditable, Editor = TreeEditorKind.NumberOrParam, Model = model };
 		var initial = get();
 		// set initial value without marking dirty (preserve expressions as strings)
 		n.SetInitialValue(initial);
@@ -79,11 +116,11 @@ internal static class TreeHelper
 				return false;
 			}
 
-			// scalar initial
-			if (initial is double sd) { hint = $"(= {sd:G})"; }
+            // scalar initial
+            if (initial is double sd) { hint = $"{valPrefix}{sd:G}"; }
 			else if (initial is string strInit)
 			{
-				if (TryResolveElement(strInit, out var rv)) hint = $"(= {rv:G})";
+				if (TryResolveElement(strInit, out var rv)) hint = $"{valPrefix}{rv:G}";
 			}
 			else if (initial is IEnumerable<object> seq)
 			{
@@ -94,7 +131,7 @@ internal static class TreeHelper
 					if (TryResolveElement(e, out var rv)) resolvedList.Add(rv.ToString("G"));
 					else resolvedList.Add("?");
 				}
-				hint = "(= [" + string.Join(", ", resolvedList) + "])";
+				hint = valPrefix + "[" + string.Join(", ", resolvedList) + "]";
 			}
 			else if (initial is System.Collections.IEnumerable seq2 && !(initial is string))
 			{
@@ -104,7 +141,7 @@ internal static class TreeHelper
 					if (TryResolveElement(e, out var rv)) resolvedList.Add(rv.ToString("G"));
 					else resolvedList.Add("?");
 				}
-				hint = "(= [" + string.Join(", ", resolvedList) + "])";
+				hint = valPrefix + "[" + string.Join(", ", resolvedList) + "]";
 			}
 		}
 
@@ -127,7 +164,7 @@ internal static class TreeHelper
 				if (!string.IsNullOrWhiteSpace(text) && paramsMap != null)
 					resolved = ParamAwareConverters.TryResolveParamString(text, paramsMap, out val);
 
-				string preview = resolved ? $"(= {val:G})" : "(= ?)";
+				string preview = resolved ? $"{valPrefix}{val:G}" : valPrefix + "(n/a)";
 				// try set ToolTip property if present
 				var prop = n.GetType().GetProperty("ToolTip");
 				if (prop != null && prop.PropertyType == typeof(string))
@@ -169,6 +206,7 @@ internal static class TreeHelper
 					// re-evaluate preview if text
 					var s = v?.ToString() ?? "";
 					SetPreview(s);
+					// do NOT trigger save here; UI should call TriggerModelChangedImmediate on LostFocus
 				}
 			};
 
@@ -185,10 +223,13 @@ internal static class TreeHelper
 			foreach (var k in paramsMap.Keys) n.Options.Add(k);
 		}
 
+		// For non-editable NumberOrParam fields (options present) treat selection changes as immediate commits.
 		n.PropertyChanged += (_, e) =>
 		{
-			if (e.PropertyName == nameof(TreeItemVm.Value) && n.Value is not null)
-				set(n.Value);
+			if (e.PropertyName != nameof(TreeItemVm.Value) || n.Value is null) return;
+			set(n.Value);
+			// selection/change -> immediate save
+			TriggerModelChangedImmediate();
 		};
 		return n;
 	}
@@ -201,7 +242,11 @@ internal static class TreeHelper
 		n.PropertyChanged += (_, e) =>
 		{
 			if (e.PropertyName == nameof(TreeItemVm.Value) && n.Value is string s && !string.IsNullOrWhiteSpace(s))
+			{
 				set(s);
+				 // list selection -> immediate save
+				TriggerModelChangedImmediate();
+			}
 		};
 		return n;
 	}
@@ -214,7 +259,11 @@ internal static class TreeHelper
 		n.PropertyChanged += (_, e) =>
 		{
 			if (e.PropertyName == nameof(TreeItemVm.Value) && n.Value is string s && !string.IsNullOrWhiteSpace(s))
+			{
 				set(s);
+				 // selection -> immediate save
+				TriggerModelChangedImmediate();
+			}
 		};
 		return n;
 	}
@@ -226,7 +275,12 @@ internal static class TreeHelper
 		n.PropertyChanged += (_, e) =>
 		{
 			if (e.PropertyName != nameof(TreeItemVm.Value)) return;
-			if (int.TryParse(n.Value?.ToString(), out var i)) set(i);
+			if (int.TryParse(n.Value?.ToString(), out var i))
+			{
+				set(i);
+				 // integer change -> immediate save
+				TriggerModelChangedImmediate();
+			}
 		};
 		return n;
 	}
@@ -234,14 +288,30 @@ internal static class TreeHelper
 	public static TreeItemVm CreatePoseDropdown(string label, object model, Func<string> get, Action<string> set, IList<string> source)
 	{
 		var n = new TreeItemVm(label, TreeItemKind.Field) { Editor = TreeEditorKind.List, Model = model };
-		n.SetInitialValue(get());
+
+		// Determine current model value and prefer "any" when empty.
+		var curVal = get();
+		var initial = string.IsNullOrWhiteSpace(curVal) ? "any" : curVal;
+
+		// Populate options from source then ensure "any" is present as the primary default.
 		FillOptions(n, source);
-		if (n.Value is string cur && !string.IsNullOrWhiteSpace(cur) && !n.Options.Contains(cur))
-			n.Options.Insert(0, cur);
+		if (!n.Options.Contains("any")) n.Options.Insert(0, "any");
+
+		// If the model has a concrete current value that isn't in the options, preserve it just after "any".
+		if (!string.IsNullOrWhiteSpace(curVal) && !n.Options.Contains(curVal))
+			n.Options.Insert(1, curVal);
+
+		// Set the UI initial selection (does not immediately mutate model).
+		n.SetInitialValue(initial);
+
 		n.PropertyChanged += (_, e) =>
 		{
 			if (e.PropertyName == nameof(TreeItemVm.Value) && n.Value is string s && !string.IsNullOrWhiteSpace(s))
+			{
 				set(s);
+				// dropdown selection -> immediate save
+				TriggerModelChangedImmediate();
+			}
 		};
 		return n;
 	}
@@ -249,14 +319,28 @@ internal static class TreeHelper
 	public static TreeItemVm CreatePoseListField(string label, object model, Func<string> get, Action<string> set, Func<IEnumerable<string>> optionsProvider)
 	{
 		var n = new TreeItemVm(label, TreeItemKind.Field) { Editor = TreeEditorKind.List, Model = model, OptionsProvider = optionsProvider };
+
+		// Refresh available options and ensure "any" default exists
 		n.RefreshOptions();
-		n.SetInitialValue(get());
-		if (n.Value is string cur && !string.IsNullOrWhiteSpace(cur) && !n.Options.Contains(cur))
-			n.Options.Insert(0, cur);
+		if (!n.Options.Contains("any")) n.Options.Insert(0, "any");
+
+		// Preserve current model value if present (place it after "any" when missing)
+		var curVal = get();
+		if (!string.IsNullOrWhiteSpace(curVal) && !n.Options.Contains(curVal))
+			n.Options.Insert(1, curVal);
+
+		// Use "any" as the shown initial value when model value is empty
+		var initial = string.IsNullOrWhiteSpace(curVal) ? "any" : curVal;
+		n.SetInitialValue(initial);
+
 		n.PropertyChanged += (_, e) =>
 		{
 			if (e.PropertyName == nameof(TreeItemVm.Value) && n.Value is string s && !string.IsNullOrWhiteSpace(s))
+			{
 				set(s);
+				// selection -> immediate save
+				TriggerModelChangedImmediate();
+			}
 		};
 		return n;
 	}
@@ -276,20 +360,35 @@ internal static class TreeHelper
 	public static TreeItemVm CreateTranslationNode(TranslationModel tr, IEnumerable<string> paramKeys)
 	{
 		var node = new TreeItemVm("translation", TreeItemKind.Object) { Model = tr };
+
+		// Ensure position is present and exactly 3 elements.
 		tr.Position ??= new() { 0d, 0d, 0d };
 		while (tr.Position.Count < 3) tr.Position.Add(0d);
 
-		// Display axis labels instead of numeric indices (use shared helper)
-		node.Children.Add(CreateNumberOrParamField($"position[{GetArrayIndexLabel(0)}]", tr, () => tr.Position[0], v => tr.Position[0] = v, paramKeys.ToDictionary(k => k, k => (object)0d)));
-		node.Children.Add(CreateNumberOrParamField($"position[{GetArrayIndexLabel(1)}]", tr, () => tr.Position[1], v => tr.Position[1] = v, paramKeys.ToDictionary(k => k, k => (object)0d)));
-		node.Children.Add(CreateNumberOrParamField($"position[{GetArrayIndexLabel(2)}]", tr, () => tr.Position[2], v => tr.Position[2] = v, paramKeys.ToDictionary(k => k, k => (object)0d)));
+		// Create a parent "position" node so it can be expanded/collapsed like params arrays.
+		var posNode = new TreeItemVm("position", TreeItemKind.Object) { Model = tr.Position };
+		for (var idx = 0; idx < 3; idx++)
+		{
+			var index = idx; // capture for lambda
+			// child labeled X/Y/Z and bound to tr.Position[index]
+			var child = CreateNumberOrParamField(GetArrayIndexLabel(index), tr, () => tr.Position[index], v => tr.Position[index] = v, paramKeys.ToDictionary(k => k, k => (object)0d));
+			// Render position elements the same way param array elements do: plain text editors (no Options).
+			child.Editor = TreeEditorKind.Text;
+			child.Options.Clear();
+			posNode.Children.Add(child);
+		}
+		node.Children.Add(posNode);
 
 		var pu = new TreeItemVm("positionUnits", TreeItemKind.Field) { Editor = TreeEditorKind.Enum, Value = tr.PositionUnits ?? "inches", Model = tr };
 		pu.Options.Add("meters"); pu.Options.Add("inches");
 		pu.PropertyChanged += (_, e) => { if (e.PropertyName == nameof(TreeItemVm.Value)) tr.PositionUnits = pu.Value?.ToString(); };
 		node.Children.Add(pu);
 
-		node.Children.Add(CreateNumberOrParamField("rotation", tr, () => tr.Rotation ?? 0d, v => tr.Rotation = v, paramKeys.ToDictionary(k => k, k => (object)0d)));
+		// Rotation should be a plain text editor (accept numeric literal or param expression).
+		var rot = CreateNumberOrParamField("rotation", tr, () => tr.Rotation ?? 0d, v => tr.Rotation = v, paramKeys.ToDictionary(k => k, k => (object)0d));
+		rot.Editor = TreeEditorKind.Text;
+		rot.Options.Clear();
+		node.Children.Add(rot);
 
 		var ru = new TreeItemVm("rotationUnits", TreeItemKind.Field) { Editor = TreeEditorKind.Enum, Value = tr.RotationUnits ?? "degrees", Model = tr };
 		ru.Options.Add("radians"); ru.Options.Add("degrees");
@@ -323,5 +422,303 @@ internal static class TreeHelper
 	{
 		var root = roots.FirstOrDefault();
 		return root?.Children.FirstOrDefault(c => c.Title == title);
+	}
+
+	// Simple container for saved view state
+	public sealed class TreeViewState
+	{
+		public HashSet<string> Expanded { get; } = new(StringComparer.Ordinal);
+		public string? SelectedPath { get; set; }
+	}
+
+	// Build a path for a node by concatenating titles with '/' (root-first).
+	private static string BuildPath(string parentPath, TreeItemVm node)
+		=> string.IsNullOrEmpty(parentPath) ? (node.Title ?? "") : (parentPath + "/" + (node.Title ?? ""));
+
+	// Capture expanded nodes and selected node path for all roots.
+	public static TreeViewState GetViewState(IEnumerable<TreeItemVm> roots)
+	{
+		var state = new TreeViewState();
+		if (roots == null) return state;
+
+		// Start collection at first-level children under each root so the saved paths are
+		// independent of the root title (which changes when the file is saved / renamed).
+		void collect(TreeItemVm node, string path)
+		{
+			var cur = BuildPath(path, node);
+			if (node.IsExpanded) state.Expanded.Add(cur);
+			if (node.IsSelected) state.SelectedPath = cur;
+			foreach (var c in node.Children) collect(c, cur);
+		}
+
+		foreach (var r in roots)
+		{
+			// iterate children so stored paths are root-agnostic
+			foreach (var c in r.Children) collect(c, "");
+		}
+
+		return state;
+	}
+
+	// Apply saved state to the newly built tree. Returns the node that was selected (if found).
+	public static TreeItemVm? ApplyViewState(IEnumerable<TreeItemVm> roots, TreeViewState state)
+	{
+		if (roots == null || state == null) return null;
+		TreeItemVm? selected = null;
+
+		// Apply state to first-level children under each root (saved state is root-agnostic).
+		void apply(TreeItemVm node, string path)
+		{
+			var cur = BuildPath(path, node);
+			node.IsExpanded = state.Expanded.Contains(cur);
+			if (state.SelectedPath != null && state.SelectedPath == cur)
+			{
+				node.IsSelected = true;
+				selected = node;
+			}
+			else
+			{
+				node.IsSelected = false;
+			}
+			foreach (var c in node.Children) apply(c, cur);
+		}
+
+		foreach (var r in roots)
+		{
+			foreach (var c in r.Children) apply(c, "");
+		}
+
+		return selected;
+	}
+
+	public static TreeItemVm CreateFixtureRefNode(string title, object model /* FixtureRefModel expected */, Func<string> getType, Action<string> setType, Func<int> getIndex, Action<int> setIndex, Func<IEnumerable<string>>? optionsProvider = null)
+	{
+		// fixtureref label must NOT be editable in the tree
+		// If optionsProvider is supplied, render a single dropdown (reference) that selects an existing fixture "type:index".
+		if (optionsProvider != null)
+		{
+			var list = CreateListField(title, model,
+				() => $"{getType()}:{getIndex()}",
+				(v) =>
+				{
+					if (string.IsNullOrWhiteSpace(v)) return;
+					var parts = v.Split(':');
+					if (parts.Length >= 2 && int.TryParse(parts[^1], out var idx))
+					{
+						var type = string.Join(":", parts.Take(parts.Length - 1));
+						setType(type);
+						setIndex(idx);
+					}
+					else
+					{
+						// fallback: try to match exactly
+						var found = optionsProvider().FirstOrDefault(x => x == v);
+						if (found != null)
+						{
+							var p = found.Split(':');
+							if (p.Length >= 2 && int.TryParse(p[^1], out var i2))
+							{
+								setType(string.Join(":", p.Take(p.Length - 1)));
+								setIndex(i2);
+							}
+						}
+					}
+				},
+				optionsProvider);
+			list.IsCaptionEditable = false;
+			list.Model = model;
+			return list;
+		}
+
+		// fallback: separate type + index fields (used when no global fixture list is available)
+		var node = new TreeItemVm(title, TreeItemKind.Object) { Model = model, IsCaptionEditable = false };
+		// type
+		var t = CreateTextField("type", model, getType, setType);
+		node.Children.Add(t);
+		// index
+		var idxField = CreateIntField("index", model, getIndex, setIndex);
+		node.Children.Add(idxField);
+		return node;
+	}
+
+	// Create a derivedFrom node editor that matches derivedFrom.schema.json
+	// fixtureOptionsProvider: optional provider that returns "type:index" strings for existing fixtures.
+	public static TreeItemVm CreateDerivedFromNode(object model /* DerivedFromModel expected */, IEnumerable<string> paramKeys, Func<IEnumerable<string>>? fixtureOptionsProvider = null, Func<object?>? getOffset = null, Action<object?>? setOffset = null)
+	{
+		// The model parameter is left as object to avoid tight coupling; callers set Model appropriately.
+		// derivedFrom label must NOT be editable
+		var node = new TreeItemVm("derivedFrom", TreeItemKind.Object) { Model = model, IsCaptionEditable = false };
+
+		// function enum
+		var fn = new TreeItemVm("function", TreeItemKind.Field) { Editor = TreeEditorKind.Enum, Value = GetPropAsString(model, "Function") ?? "none", Model = model };
+		fn.Options.Add("parallel"); fn.Options.Add("perpendicular"); fn.Options.Add("bisector"); fn.Options.Add("none");
+		fn.PropertyChanged += (_, e) =>
+		{
+			if (e.PropertyName == nameof(TreeItemVm.Value))
+			{
+				SetProp(model, "Function", fn.Value?.ToString());
+				TriggerModelChangedImmediate();
+			}
+		};
+		node.Children.Add(fn);
+
+		 // For each slot pair (primary and secondary) provide a small wrapper that lets the user
+		// choose between a FixtureRef or a nested DerivedFrom. This mirrors the schema's "oneOf"
+		// semantics for fixture/derivedFrom and fixture2/derivedFrom2, and allows recursion.
+		void AddSlot(string slotBaseName) // slotBaseName: "" or "2"
+		{
+			var fixtureProp = "Fixture" + (slotBaseName == "" ? "" : "2");
+			var derivedProp = "DerivedFrom" + (slotBaseName == "" ? "" : "2");
+			var slotTitle = slotBaseName == "" ? "slot" : "slot2";
+		
+			// wrapper node to host a small kind selector plus the actual child editor
+			// slot labels must NOT be editable
+			var slotNode = new TreeItemVm(slotTitle, TreeItemKind.Object) { Model = model, IsCaptionEditable = false };
+		
+			// determine current kind based on which prop is present on the model
+			var fixtureObj = GetProp(model, fixtureProp);
+			var derivedObj = GetProp(model, derivedProp);
+			var initialKind = fixtureObj != null ? "fixture" : (derivedObj != null ? "derivedFrom" : "fixture");
+		
+			// small selector to choose which kind to edit
+			var kindField = new TreeItemVm("kind", TreeItemKind.Field) { Editor = TreeEditorKind.Enum, Value = initialKind, Model = model };
+			kindField.Options.Add("fixture"); kindField.Options.Add("derivedFrom");
+			slotNode.Children.Add(kindField);
+		
+			// helper to create the active child under the slot
+			void CreateChildForKind(string kind)
+			{
+				// remove any existing child named "fixture"/"derivedFrom"
+				var existing = slotNode.Children.FirstOrDefault(c => c.Title == "fixture" || c.Title == "derivedFrom");
+				if (existing != null) slotNode.Children.Remove(existing);
+		
+				if (kind == "fixture")
+				{
+					// ensure Fixture model exists
+					var fObj = GetProp(model, fixtureProp);
+					if (fObj == null)
+					{
+						var frcType = GetTypeByName("FixtureRefModel");
+						if (frcType != null) fObj = Activator.CreateInstance(frcType);
+						SetProp(model, fixtureProp, fObj);
+					}
+					var cur = GetProp(model, fixtureProp);
+					if (cur != null)
+					{
+						 // Pass the fixtureOptionsProvider so fixture references render as a dropdown of known fixtures.
+						slotNode.Children.Add(CreateFixtureRefNode("fixture", cur,
+							() => GetPropAsString(cur, "Type") ?? "",
+							v => SetProp(cur, "Type", v),
+							() => GetPropAsInt(cur, "Index"),
+							v => SetProp(cur, "Index", v),
+							fixtureOptionsProvider));
+					}
+					// remove any derivedFrom model to respect oneOf
+					SetProp(model, derivedProp, null);
+				}
+				else // derivedFrom
+				{
+					// ensure DerivedFrom model exists
+					var dObj = GetProp(model, derivedProp);
+					if (dObj == null)
+					{
+						var dfType = GetTypeByName("DerivedFromModel");
+						if (dfType != null) dObj = Activator.CreateInstance(dfType);
+						SetProp(model, derivedProp, dObj);
+					}
+					var cur = GetProp(model, derivedProp);
+					if (cur != null)
+					{
+						 // pass fixtureOptionsProvider recursively for nested derivedFrom nodes
+						slotNode.Children.Add(CreateDerivedFromNode(cur, paramKeys, fixtureOptionsProvider));
+					}
+					// remove any fixture model to respect oneOf
+					SetProp(model, fixtureProp, null);
+				}
+				TriggerModelChangedImmediate();
+			}
+		
+			// initial child
+			CreateChildForKind(kindField.Value?.ToString() ?? initialKind);
+		
+			// when user switches kind, swap child and model props
+			kindField.PropertyChanged += (_, e) =>
+			{
+				if (e.PropertyName != nameof(TreeItemVm.Value)) return;
+				var k = kindField.Value?.ToString() ?? "fixture";
+				CreateChildForKind(k);
+			};
+		
+			// expose the slot node as either "fixture"/"fixture2" if it currently contains a fixture,
+			// otherwise title remains "derivedFrom"/"derivedFrom2" depending on child. For simplicity
+			// keep the wrapper title but the child nodes are correctly named for schema paths.
+			node.Children.Add(slotNode);
+		}
+		
+		// add primary and secondary slots
+		AddSlot("");
+		AddSlot("2");
+		
+		// offset: allow either numeric literal or parameter-expression string.
+		object? offVal = GetProp(model, "Offset");
+		var offsetText = offVal == null ? "" : offVal.ToString() ?? "";
+		var offsetField = new TreeItemVm("offset", TreeItemKind.Field) { Editor = TreeEditorKind.Text, Model = model };
+		offsetField.SetInitialValue(offsetText);
+		offsetField.PropertyChanged += (_, e) =>
+		{
+			if (e.PropertyName != nameof(TreeItemVm.Value)) return;
+			var s = offsetField.Value?.ToString() ?? "";
+			// Prefer numeric storage when the user typed a plain number
+			if (double.TryParse(s, NumberStyles.Float, CultureInfo.InvariantCulture, out var d))
+			{
+				SetProp(model, "Offset", d);
+			}
+			else if (string.IsNullOrWhiteSpace(s))
+			{
+				// empty -> remove/zero (schema default is 0)
+				SetProp(model, "Offset", 0d);
+			}
+			else
+			{
+				// keep as string (param expression)
+				SetProp(model, "Offset", s);
+			}
+			TriggerModelChangedImmediate();
+		};
+		node.Children.Add(offsetField);
+		
+		return node;
+	}
+
+	// reflection helpers (lightweight, null-safe) to avoid adding model references in helper project
+	private static object? GetProp(object? obj, string name)
+	{
+		if (obj == null) return null;
+		var p = obj.GetType().GetProperty(name);
+		return p == null ? null : p.GetValue(obj);
+	}
+	private static string? GetPropAsString(object? obj, string name) => GetProp(obj, name)?.ToString();
+	private static int GetPropAsInt(object? obj, string name)
+	{
+		var v = GetProp(obj, name);
+		if (v == null) return 0;
+		try { return Convert.ToInt32(v); } catch { return 0; }
+	}
+	private static void SetProp(object? obj, string name, object? value)
+	{
+		if (obj == null) return;
+		var p = obj.GetType().GetProperty(name);
+		if (p == null) return;
+		try { p.SetValue(obj, value); } catch { }
+	}
+	private static Type? GetTypeByName(string name)
+	{
+		// search loaded assembly types for the model name
+		foreach (var a in AppDomain.CurrentDomain.GetAssemblies())
+		{
+			var t = a.GetTypes().FirstOrDefault(x => x.Name == name);
+			if (t != null) return t;
+		}
+		return null;
 	}
 }

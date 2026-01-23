@@ -33,9 +33,9 @@
       "Parallel": false,
       "Pose": "pose1",
       "Milliseconds": null,
-      "TriggerType": null,
-      "TriggerValue": null,
-      "TriggerModule": null,
+      "TriggerType": "boolean",
+      "TriggerValue": true,
+      "TriggerModule": "swerveDrive",
       "TriggerInvert": false
     }
   ],

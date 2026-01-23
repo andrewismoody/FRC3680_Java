@@ -58,35 +58,23 @@ internal static class ParamAwareConverters
         value = 0d;
         if (string.IsNullOrWhiteSpace(s) || paramsMap is null) return false;
 
-        // strip ${...} or leading $
-        if (s.StartsWith("${") && s.EndsWith("}")) s = s.Substring(2, s.Length - 3);
-        else if (s.StartsWith("$")) s = s.Substring(1);
-
-        // direct lookup
-        if (paramsMap.TryGetValue(s, out var obj))
+        // Delegate all expression evaluation to the external expression server (no local parsing).
+        // Important: send the string exactly as-is (do not strip leading '$' or modify the expression).
+        try
         {
-            // scalar double
-            if (obj is double dd) { value = dd; return true; }
-            // numeric string
-            if (obj is string strVal && double.TryParse(strVal, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var parsed)) { value = parsed; return true; }
-            // array: take first numeric-looking element
-            if (obj is IEnumerable<object> arr)
-            {
-                foreach (var e in arr)
-                {
-                    if (e is double ed) { value = ed; return true; }
-                    if (e is string es && double.TryParse(es, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var ep)) { value = ep; return true; }
-                }
-            }
-            // otherwise can't resolve directly
-        }
-
-        // Not a direct param reference — maybe an expression. Heuristic: contains operator or parentheses.
-        if (s.IndexOfAny(new[] { '+', '-', '*', '/', '(', ')', '^' }) >= 0)
-        {
-            // Ask Java evaluator to compute using the full heterogeneous params map so it can recursively resolve references.
             var (ok, val) = AutoExprInterop.TryEvaluate(s, paramsMap);
             if (ok) { value = val; return true; }
+        }
+        catch
+        {
+            // fall through to numeric fallback
+        }
+
+        // Fallback: if the token is a plain numeric literal, parse it locally.
+        if (double.TryParse(s, NumberStyles.Float, CultureInfo.InvariantCulture, out var d))
+        {
+            value = d;
+            return true;
         }
 
         return false;

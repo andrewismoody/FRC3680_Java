@@ -12,6 +12,7 @@ public sealed class AutoDefinitionModel
 
     public List<PoseModel> Poses { get; set; } = new();
     public List<string> Groups { get; set; } = new();
+    public List<string> Modules { get; set; } = new();
     public List<string> TravelGroups { get; set; } = new();
     public List<string> Locations { get; set; } = new();
     public List<string> Positions { get; set; } = new();

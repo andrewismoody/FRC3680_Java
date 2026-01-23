@@ -112,7 +112,10 @@
 
                       <!-- Caption (editable for non-section nodes) -->
                       <Grid Grid.Column="0">
-                        <!-- Label caption (default visible; hidden for Object nodes) -->
+                        <!-- Label caption:
+                             - Show for non-object nodes
+                             - Also show for object nodes when IsCaptionEditable == false (non-editable object labels)
+                        -->
                         <TextBlock x:Name="CaptionLabel"
                                    Text="{Binding Title}"
                                    Margin="0,2,8,0"
@@ -121,26 +124,36 @@
                             <Style TargetType="{x:Type TextBlock}">
                               <Setter Property="Visibility" Value="Visible"/>
                               <Style.Triggers>
-                                <DataTrigger Binding="{Binding Kind}" Value="{x:Static local:TreeItemKind.Object}">
+                                <!-- hide only when this is an editable object (we'll show the TextBox instead) -->
+                                <MultiDataTrigger>
+                                  <MultiDataTrigger.Conditions>
+                                    <Condition Binding="{Binding Kind}" Value="{x:Static local:TreeItemKind.Object}"/>
+                                    <Condition Binding="{Binding IsCaptionEditable}" Value="True"/>
+                                  </MultiDataTrigger.Conditions>
                                   <Setter Property="Visibility" Value="Collapsed"/>
-                                </DataTrigger>
+                                </MultiDataTrigger>
                               </Style.Triggers>
                             </Style>
                           </TextBlock.Style>
                         </TextBlock>
 
-                        <!-- Editable caption (default hidden; shown for Object nodes) -->
+                        <!-- Editable caption TextBox: only visible for Object nodes that are caption-editable -->
                         <TextBox x:Name="CaptionEditor"
-                                 Text="{Binding Caption, UpdateSourceTrigger=PropertyChanged, NotifyOnTargetUpdated=True}"
+                                 Text="{Binding Title, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
+                                 LostFocus="TreeItemCaption_LostFocus"
                                  Background="{DynamicResource AppControlBackgroundBrush}" Foreground="{DynamicResource AppForegroundBrush}" BorderBrush="{DynamicResource AppBorderBrush}"
                                  Padding="2" MinWidth="140">
                           <TextBox.Style>
                             <Style TargetType="{x:Type TextBox}">
                               <Setter Property="Visibility" Value="Collapsed"/>
                               <Style.Triggers>
-                                <DataTrigger Binding="{Binding Kind}" Value="{x:Static local:TreeItemKind.Object}">
+                                <MultiDataTrigger>
+                                  <MultiDataTrigger.Conditions>
+                                    <Condition Binding="{Binding Kind}" Value="{x:Static local:TreeItemKind.Object}"/>
+                                    <Condition Binding="{Binding IsCaptionEditable}" Value="True"/>
+                                  </MultiDataTrigger.Conditions>
                                   <Setter Property="Visibility" Value="Visible"/>
-                                </DataTrigger>
+                                </MultiDataTrigger>
                               </Style.Triggers>
                             </Style>
                           </TextBox.Style>
