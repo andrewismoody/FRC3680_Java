@@ -1,4 +1,4 @@
-package frc.robot.zMechinarium;
+package frc.robot.z2026;
 
 import java.util.HashMap;
 
@@ -10,7 +10,7 @@ import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.geometry.Translation3d;
 import frc.robot.action.Group;
 import frc.robot.misc.Utility;
-import frc.robot.zMechinarium.action.Location;
+import frc.robot.z2026.action.Location;
 
 public class Constants {
     public static final double floatTolerance = 0.04; // 0.2;
@@ -68,9 +68,11 @@ public class Constants {
 
     // 'wide' edge is front
     // width and length of robot frame (excluding bumpers)
-    public static final Translation2d frameSize = new Translation2d(Utility.inchesToMeters(27.5), Utility.inchesToMeters(32.375));
+    public static final Translation2d frameSize = new Translation2d(Utility.inchesToMeters(27), Utility.inchesToMeters(27));
     public static final Translation2d frameCenter = new Translation2d(frameSize.getX() / 2, frameSize.getY() / 2);
-    public static final Translation2d motorOffset = new Translation2d(Utility.inchesToMeters(4.0), Utility.inchesToMeters(4.5));
+    // motorOffset is the distance from the edge of the frame to the center of the drive module wheel rotation axis
+    public static final Translation2d motorOffset = new Translation2d(Utility.inchesToMeters(1.81), Utility.inchesToMeters(1.81));
+    // motorPosition is the distance from the center of the frame to the center of the drive module wheel rotation axis
     public static final Translation2d motorPosition = frameCenter.minus(motorOffset);
 
     public static final double bumperWidth = Utility.inchesToMeters(4);

@@ -2,35 +2,44 @@
 // Open Source Software; you can modify and/or share it under the terms of
 // the WPILib BSD license file in the root directory of this project.
 
-package frc.robot.z2024;
+package frc.robot.z2026;
 
 import java.util.Hashtable;
 
 import edu.wpi.first.math.geometry.Pose3d;
+import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Rotation3d;
 import edu.wpi.first.math.geometry.Transform3d;
+import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.geometry.Translation3d;
 import edu.wpi.first.networktables.DoubleSubscriber;
 import edu.wpi.first.networktables.NetworkTableInstance;
+import edu.wpi.first.wpilibj.Relay;
 import edu.wpi.first.wpilibj.RobotBase;
 import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj.Timer;
-import edu.wpi.first.wpilibj.motorcontrol.PWMTalonSRX;
-import edu.wpi.first.wpilibj.motorcontrol.Spark;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
+
+import com.revrobotics.spark.SparkLowLevel.MotorType;
+import com.revrobotics.spark.SparkFlex;
+import com.revrobotics.spark.SparkMax;
 
 import frc.robot.auto.AutoController;
 import frc.robot.gyro.AHRSGyro;
 import frc.robot.gyro.Gyro;
 import frc.robot.misc.GameController;
 import frc.robot.misc.Utility;
+import frc.robot.misc.Utility.SwervePosition;
 import frc.robot.modules.ModuleController;
+import frc.robot.modules.SingleActuatorModule;
 import frc.robot.modules.SingleMotorModule;
-import frc.robot.modules.DifferentialDriveModule;
-import frc.robot.modules.DualMotorModule;
+import frc.robot.modules.SwerveDriveModule;
+import frc.robot.modules.SwerveMotorDefinition;
+import frc.robot.modules.SwerveMotorModule;
 import frc.robot.positioner.LimeLightPositioner;
 import frc.robot.positioner.Positioner;
 import frc.robot.encoder.Encoder;
+import frc.robot.encoder.REVEncoder;
 
 /**
  * The VM is configured to automatically run this class, and to call the
@@ -45,29 +54,37 @@ public class Robot extends TimedRobot {
 
   double elapsedTime;
 
-  final String codeBuildVersion = "2025.10.18-THOR";
+  final String codeBuildVersion = "2026.01.22";
   boolean initialized = false;
 
-  final PWMTalonSRX can_drive_left = new PWMTalonSRX(5);
-  final PWMTalonSRX can_drive_right = new PWMTalonSRX(4);
+  final SparkFlex can_drive_lf = new SparkFlex(6, MotorType.kBrushless);
+  final SparkMax can_steer_lf = new SparkMax(2,MotorType.kBrushless);
 
-  final Spark can_shoot_left = new Spark(8);
-  final Spark can_shoot_right = new Spark(9);
-  final Spark can_pickup = new Spark(1);
-  final Spark can_feed = new Spark(0);
-  final Spark can_lift_left = new Spark(6);
-  final Spark can_lift_right = new Spark(7);
+  final SparkFlex can_drive_rf = new SparkFlex(7, MotorType.kBrushless);
+  final SparkMax can_steer_rf = new SparkMax(3, MotorType.kBrushless);
 
-  final Encoder enc_drive_left = null; // new REVEncoder(can_drive_left.getEncoder());
-  final Encoder enc_drive_right = null; // new REVEncoder(can_drive_right.getEncoder());
+  final SparkFlex can_drive_lr = new SparkFlex(8, MotorType.kBrushless);
+  final SparkMax can_steer_lr = new SparkMax(4, MotorType.kBrushless);
 
-  final Encoder enc_shoot_left = null; // new REVEncoder(can_shoot_left.getEncoder());
-  final Encoder enc_shoot_right = null; // new REVEncoder(can_shoot_right.getEncoder());
+  final SparkFlex can_drive_rr = new SparkFlex(9, MotorType.kBrushless);
+  final SparkMax can_steer_rr = new SparkMax(5, MotorType.kBrushless);
 
-  // final Encoder enc_lift_left = new REVEncoder(can_lift_left.getEncoder());
-  // final Encoder enc_lift_right = new REVEncoder(can_lift_right.getEncoder());
+  final SparkMax can_elev = new SparkMax(2, MotorType.kBrushless);
+
+  final Relay pwm_slide = new Relay(0);
+
+  final Encoder enc_steer_lf = new REVEncoder(can_steer_lf.getEncoder());
+  final Encoder enc_steer_rf = new REVEncoder(can_steer_rf.getEncoder());
+  final Encoder enc_steer_lr = new REVEncoder(can_steer_lr.getEncoder());
+  final Encoder enc_steer_rr = new REVEncoder(can_steer_rr.getEncoder());
+
+  final Encoder enc_drive_lf = new REVEncoder(can_drive_lf.getEncoder());
+  final Encoder enc_drive_rf = new REVEncoder(can_drive_rf.getEncoder());
+  final Encoder enc_drive_lr = new REVEncoder(can_drive_lr.getEncoder());
+  final Encoder enc_drive_rr = new REVEncoder(can_drive_rr.getEncoder());
 
   final Gyro m_gyro = new AHRSGyro();
+  final Encoder enc_elev = new REVEncoder(can_elev.getEncoder());
   final Positioner m_positioner = new LimeLightPositioner(true);
 
   GameController m_controller = null;
@@ -76,18 +93,25 @@ public class Robot extends TimedRobot {
   final Timer gc_timer = new Timer();
 
   final boolean isFieldOriented = true;
-  SingleMotorModule shoot_left = new SingleMotorModule("shoot_left", can_shoot_left, Constants.shootSpeed, false, null, null, enc_shoot_left, 1.0, 1.0, Constants.shootDistancePerRotation, 0.0, true);
-  SingleMotorModule shoot_right = new SingleMotorModule("shoot_right", can_shoot_right, Constants.shootSpeed, true, null, null, enc_shoot_right, 1.0, 1.0, Constants.shootDistancePerRotation, 0.0, true);
-  DualMotorModule shoot = new DualMotorModule("shoot", shoot_left, shoot_right);
+  SingleMotorModule elevator = new SingleMotorModule("elevator", can_elev, Constants.elevatorSpeed, false, null, null, enc_elev, Constants.elevatorEncoderMultiplier, 0.5, Constants.elevatorDistancePerRotation, Constants.elevatorMaxDistance, false);
+  SingleActuatorModule slide = new SingleActuatorModule("slide", pwm_slide, false);
 
-  SingleMotorModule lift_left = new SingleMotorModule("lift_left", can_lift_left, Constants.liftSpeed, false, null, null, null, 1.0, 1.0, Constants.liftDistancePerRotation, 0.0, false);
-  SingleMotorModule lift_right = new SingleMotorModule("lift_right", can_lift_right, Constants.liftSpeed, true, null, null, null, 1.0, 1.0, Constants.liftDistancePerRotation, 0.0, false);
-  DualMotorModule lift = new DualMotorModule("lift", lift_left, lift_right);
-
-  SingleMotorModule feed = new SingleMotorModule("feed", can_feed, Constants.feedSpeed, false, null, null, null, 1.0, 1.0, Constants.feedDistancePerRotation, 0.0, true);
-  SingleMotorModule pickup = new SingleMotorModule("pickup", can_pickup, Constants.pickupSpeed, false, null, null, null, 1.0, 1.0, Constants.pickupDistancePerRotation, 0.0, true);
-
-  DifferentialDriveModule diffDrive = new DifferentialDriveModule("diffDrive", m_gyro, m_positioner, Constants.driveSpeed, can_drive_left, enc_drive_left, can_drive_right, enc_drive_right, Constants.driveRatio, Constants.floatTolerance, Constants.frameSize.getNorm(), Constants.robotSize.getY());
+  // leftFront  software position // potentially should be leftrear   hardware position
+  SwerveMotorDefinition leftFrontDef = new SwerveMotorDefinition(can_drive_lf, enc_drive_lf, can_steer_lf, enc_steer_lf);
+  // rightFront software position // potentially should be leftFront  hardware position
+  SwerveMotorDefinition rightFrontDef = new SwerveMotorDefinition(can_drive_rf, enc_drive_rf, can_steer_rf, enc_steer_rf);
+  // leftRear   software position // potentially should be rightRear  hardware position
+  SwerveMotorDefinition leftRearDef = new SwerveMotorDefinition(can_drive_lr, enc_drive_lr, can_steer_lr, enc_steer_lr);
+  // rightRear  software position // potentially should be rightFront hardware position
+  SwerveMotorDefinition rightRearDef = new SwerveMotorDefinition(can_drive_rr, enc_drive_rr, can_steer_rr, enc_steer_rr);
+  // total length of robot is 32.375", width is 27.5", centerline is 16.1875" from edge.  Drive axle center is 4" from edge - 12.1875" from center which is 309.56mm or 0.30956 meters
+  // motor positions are rotated to make the limelight 'forward', this is just labeling.
+  SwerveDriveModule swerveDriveModule = new SwerveDriveModule("swerveDrive", m_gyro, m_positioner, Constants.driveSpeed, Constants.driveRatio, Constants.steerMotorSpeed, Constants.floatTolerance
+    , new SwerveMotorModule(SwervePosition.LeftFront, new Translation2d(Constants.motorPosition.getX(), Constants.motorPosition.getY()), rightFrontDef, Constants.steeringEncoderMultiplier, Constants.floatTolerance, true, false, 0.0)
+    , new SwerveMotorModule(SwervePosition.RightFront, new Translation2d(Constants.motorPosition.getX(), -Constants.motorPosition.getY()), rightRearDef, Constants.steeringEncoderMultiplier, Constants.floatTolerance, true, false, 0.0)
+    , new SwerveMotorModule(SwervePosition.LeftRear, new Translation2d(-Constants.motorPosition.getX(), Constants.motorPosition.getY()), leftFrontDef, Constants.steeringEncoderMultiplier, Constants.floatTolerance, true, false, 0.0)
+    , new SwerveMotorModule(SwervePosition.RightRear, new Translation2d(-Constants.motorPosition.getX(), -Constants.motorPosition.getY()), leftRearDef, Constants.steeringEncoderMultiplier, Constants.floatTolerance, true, false, 0.0)
+  );
 
   ModuleController modules;
 
@@ -108,8 +132,7 @@ public class Robot extends TimedRobot {
   @Override
   public void robotInit() {
     Utility.setFieldSize(Constants.fieldSize);
-    // rotate around z axis to localize the x coordinates, rotate around the x axis to localize the y coordinates
-    Utility.setRedStartTransform(new Transform3d(new Translation3d(Constants.fieldCenter), new Rotation3d(Math.PI, 0, Math.PI)));
+    Utility.setRedStartTransform(new Transform3d(new Translation3d(Constants.fieldCenter), new Rotation3d(new Rotation2d(Math.PI))));
 
     SmartDashboard.putString("DB/String 0", "Code Build Version: ");
     SmartDashboard.putString("DB/String 5", codeBuildVersion);
@@ -124,13 +147,11 @@ public class Robot extends TimedRobot {
     var smartDash = NetworkTableInstance.getDefault().getTable("SmartDashboard");
     slider0Sub= smartDash.getDoubleTopic("DB/Slider 0").subscribe(1.0);
 
-    modules = new ModuleController(diffDrive, Constants.divider);
+    modules = new ModuleController(swerveDriveModule, Constants.divider);
 
-    modules.AddModule(shoot);
-    modules.AddModule(feed);
-    modules.AddModule(pickup);
-    modules.AddModule(lift);
-
+    modules.AddModule(elevator);
+    modules.AddModule(slide);
+    
     // initialize modules
     modules.Initialize();
 
@@ -138,6 +159,7 @@ public class Robot extends TimedRobot {
     // modules.SetEnableSteer(true);
     // modules.SetEnableDriveTrain(false);
 
+    Dashboard.InitializeChoosers();
     autoModes = AutoModes.Initialize(autoModes, modules);
     currentAutoMode = AutoModes.GetDefault(autoModes);
   }
@@ -147,9 +169,9 @@ public class Robot extends TimedRobot {
     // This needs to be here in mode init because we may not have a driver station connection during robotinit.
     m_controller = GameController.Initialize();
     // Add action poses before button mappings so buttons can drive action poses
-    ActionPoses.Initialize(diffDrive, shoot, feed, pickup, lift);
+    ActionPoses.Initialize(swerveDriveModule, elevator, slide);
     // even tho this runs on every init, we clear it out before every run so we don't mess up
-    Joystick.InitializeButtonMappings(m_controller, modules, diffDrive, shoot, feed, pickup, lift);
+    Joystick.InitializeButtonMappings(m_controller, modules, swerveDriveModule, slide, elevator);
 
     // only set start position once per match
     if (!initialized) { 
