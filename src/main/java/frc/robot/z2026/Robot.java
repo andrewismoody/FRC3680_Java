@@ -69,7 +69,7 @@ public class Robot extends TimedRobot {
   final SparkFlex can_drive_rr = new SparkFlex(9, MotorType.kBrushless);
   final SparkMax can_steer_rr = new SparkMax(5, MotorType.kBrushless);
 
-  final SparkMax can_elev = new SparkMax(2, MotorType.kBrushless);
+  // final SparkMax can_elev = new SparkMax(2, MotorType.kBrushless);
 
   final Relay pwm_slide = new Relay(0);
 
@@ -84,7 +84,7 @@ public class Robot extends TimedRobot {
   final Encoder enc_drive_rr = new REVEncoder(can_drive_rr.getEncoder());
 
   final Gyro m_gyro = new AHRSGyro();
-  final Encoder enc_elev = new REVEncoder(can_elev.getEncoder());
+  // final Encoder enc_elev = new REVEncoder(can_elev.getEncoder());
   final Positioner m_positioner = new LimeLightPositioner(true);
 
   GameController m_controller = null;
@@ -93,7 +93,7 @@ public class Robot extends TimedRobot {
   final Timer gc_timer = new Timer();
 
   final boolean isFieldOriented = true;
-  SingleMotorModule elevator = new SingleMotorModule("elevator", can_elev, Constants.elevatorSpeed, false, null, null, enc_elev, Constants.elevatorEncoderMultiplier, 0.5, Constants.elevatorDistancePerRotation, Constants.elevatorMaxDistance, false);
+  // SingleMotorModule elevator = new SingleMotorModule("elevator", can_elev, Constants.elevatorSpeed, false, null, null, enc_elev, Constants.elevatorEncoderMultiplier, 0.5, Constants.elevatorDistancePerRotation, Constants.elevatorMaxDistance, false);
   SingleActuatorModule slide = new SingleActuatorModule("slide", pwm_slide, false);
 
   // leftFront  software position // potentially should be leftrear   hardware position
@@ -149,7 +149,7 @@ public class Robot extends TimedRobot {
 
     modules = new ModuleController(swerveDriveModule, Constants.divider);
 
-    modules.AddModule(elevator);
+    // modules.AddModule(elevator);
     modules.AddModule(slide);
     
     // initialize modules
@@ -169,9 +169,9 @@ public class Robot extends TimedRobot {
     // This needs to be here in mode init because we may not have a driver station connection during robotinit.
     m_controller = GameController.Initialize();
     // Add action poses before button mappings so buttons can drive action poses
-    ActionPoses.Initialize(swerveDriveModule, elevator, slide);
+    ActionPoses.Initialize(swerveDriveModule, slide); // elevator, slide);
     // even tho this runs on every init, we clear it out before every run so we don't mess up
-    Joystick.InitializeButtonMappings(m_controller, modules, swerveDriveModule, slide, elevator);
+    Joystick.InitializeButtonMappings(m_controller, modules, swerveDriveModule, slide); // , elevator);
 
     // only set start position once per match
     if (!initialized) { 

@@ -14,7 +14,7 @@ import frc.robot.z2026.action.Location;
 import frc.robot.z2026.action.Position;
 
 public class ActionPoses {
-    public static void Initialize(DriveModule swerveDriveModule, SingleMotorModule elevator, SingleActuatorModule slide) {
+    public static void Initialize(DriveModule swerveDriveModule, SingleActuatorModule slide) { // , SingleMotorModule elevator, SingleActuatorModule slide) {
         // start, (we don't know where we are yet, so rotate a specific angle to face a tag)
         // get facing direction
         var startRotation = swerveDriveModule.GetPositionerOffset().getRotation().toRotation2d();
@@ -83,9 +83,9 @@ public class ActionPoses {
             System.out.printf(outputFormatter, pose.group, pose.location, pose.locationIndex, pose.position, pose.action, Utility.metersToInches(pose.target.Position.getX()), Utility.metersToInches(pose.target.Position.getY()));
         }
 
-        elevator.AddActionPose(new ActionPose(Group.Score, Location.Any.getValue(), -1, Position.Middle.getValue(), Action.Any, new AutoTarget(1.36)));
-        elevator.AddActionPose(new ActionPose(Group.Score, Location.Any.getValue(), -1, Position.Lower.getValue(), Action.Any, new AutoTarget(0.55)));
-        elevator.AddActionPose(new ActionPose(Group.Any, Location.Any.getValue(), -1, Position.Trough.getValue(), Action.Any, new AutoTarget(0.0)));
+        // elevator.AddActionPose(new ActionPose(Group.Score, Location.Any.getValue(), -1, Position.Middle.getValue(), Action.Any, new AutoTarget(1.36)));
+        // elevator.AddActionPose(new ActionPose(Group.Score, Location.Any.getValue(), -1, Position.Lower.getValue(), Action.Any, new AutoTarget(0.55)));
+        // elevator.AddActionPose(new ActionPose(Group.Any, Location.Any.getValue(), -1, Position.Trough.getValue(), Action.Any, new AutoTarget(0.0)));
 
         slide.AddActionPose(new ActionPose(Group.Any, Location.Any.getValue(), -1, Position.Any.getValue(), Action.Drop, new AutoTarget(ModuleState.Forward)));
         slide.AddActionPose(new ActionPose(Group.Any, Location.Any.getValue(), -1, Position.Any.getValue(), Action.Pickup, new AutoTarget(ModuleState.Reverse)));
