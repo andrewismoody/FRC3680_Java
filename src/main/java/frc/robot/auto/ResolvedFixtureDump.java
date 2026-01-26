@@ -125,6 +125,15 @@ public final class ResolvedFixtureDump {
 
         ObjectMapper om = new ObjectMapper();
 
+        // Debug: print the raw JSON file being loaded so we can inspect missing/invalid fields.
+        try {
+            String raw = java.nio.file.Files.readString(java.nio.file.Path.of(file));
+            System.err.println("[ResolvedFixtureDump] loaded JSON file '" + file + "':");
+            System.err.println(raw);
+        } catch (Throwable t) {
+            System.err.println("[ResolvedFixtureDump] failed to read input file for debug: " + t.toString());
+        }
+
         AutoParser.ParsedDefinitions defs = AutoParser.LoadDefinitions(file);
         AutoSeasonDefinition def = defs.def;
 

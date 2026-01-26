@@ -10,6 +10,12 @@ using System.Threading.Tasks; // <-- added near other usings
 using System.Windows; // <-- added for Dispatcher
 using System.Threading; // <-- add this near other usings
 using System.Diagnostics; // <-- added for timing
+using OxyPlot;
+using OxyPlot.Series;
+using OxyPlot.Annotations;
+using OxyPlot.Axes;
+using System.Runtime.CompilerServices; // add near other usings
+using System.Text; // <-- added for StringBuilder / Encoding
 
 namespace AutoJsonBuilder;
 
@@ -17,6 +23,10 @@ public sealed class MainWindowViewModel : NotifyBase
 {
     // SINGLE FLOW: schema-aligned document only
     private AutoDefinitionModel _doc = new();
+
+    // JSON options that produce schema-compliant property names (camelCase)
+    private static readonly JsonSerializerOptions JsonOptionsCamel = new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
+    private static readonly JsonSerializerOptions JsonOptionsCamelIndented = new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase, WriteIndented = true };
 
     public ObservableCollection<TreeItemVm> TreeRootItems { get; } = new();
     public ObservableCollection<string> ParamKeys { get; } = new();
@@ -52,6 +62,424 @@ public sealed class MainWindowViewModel : NotifyBase
     // In-memory buffer for log lines while disk writes are suppressed during load.
     private readonly List<string> _deferredLogLines = new();
     private readonly object _deferredLogLock = new();
+
+    // Plot model exposed to the view (bound to PlotView in XAML)
+    private PlotModel? _fieldPlotModel;
+    public PlotModel? FieldPlotModel { get => _fieldPlotModel; set => Set(ref _fieldPlotModel, value); }
+
+    // Simple palette used to assign a unique color to each fixture type (wraps if more types).
+    private static readonly OxyColor[] _palette = new[]
+    {
+        OxyColors.SteelBlue, OxyColors.IndianRed, OxyColors.DarkGreen, OxyColors.Goldenrod,
+        OxyColors.MediumPurple, OxyColors.CadetBlue, OxyColors.Chocolate, OxyColors.DarkMagenta
+    };
+
+    // evaluated lookup (param name -> evaluated value). Populated for each Rebuild.
+    private readonly Dictionary<string, object?> _evaluatedLookup = new(StringComparer.OrdinalIgnoreCase);
+
+    // resolved fixture positions keyed by "type:index" -> (x,y,z,rotation?)
+    private readonly Dictionary<string, (double x, double y, double z, double? rot)> _resolvedFixturePositions
+        = new(StringComparer.OrdinalIgnoreCase);
+
+    // Try to resolve an arbitrary "raw" value into a double.
+    // Accepts numbers, boxed numeric types, numeric strings, or parameter name strings that exist in _evaluatedLookup.
+    // Returns true and sets out value on success.
+    private bool TryResolveDoubleFromObject(object? raw, out double value)
+    {
+        value = 0.0;
+        try
+        {
+            if (raw is null) return false;
+
+            // unwrap nullable numeric (boxed)
+            switch (raw)
+            {
+                case double d:
+                    value = d; return true;
+                case float f:
+                    value = Convert.ToDouble(f); return true;
+                case int i:
+                    value = Convert.ToDouble(i); return true;
+                case long l:
+                    value = Convert.ToDouble(l); return true;
+                case decimal m:
+                    value = Convert.ToDouble(m); return true;
+                case bool _:
+                    return false; // don't coerce booleans
+            }
+
+            // string: numeric literal or param key
+            if (raw is string s)
+            {
+                if (double.TryParse(s, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var parsed))
+                {
+                    value = parsed; return true;
+                }
+                // look up evaluated params / values
+                if (_evaluatedLookup.TryGetValue(s, out var ev))
+                {
+                    return TryResolveDoubleFromObject(ev, out value);
+                }
+                return false;
+            }
+
+            // If it's a wrapper with a 'Raw' property (ParamValue), attempt to get it
+            var t = raw.GetType();
+            var rawProp = t.GetProperty("Raw");
+            if (rawProp != null)
+            {
+                var inner = rawProp.GetValue(raw);
+                return TryResolveDoubleFromObject(inner, out value);
+            }
+        }
+        catch { /* best-effort */ }
+
+        return false;
+    }
+
+    // Try to resolve a fixture's numeric position + rotation.
+    // Returns true if X/Y were resolved (Z/rotation optional).
+    private bool TryGetFixturePosition(FixtureSchemaModel f, out double x, out double y, out double z, out double? rot)
+    {
+        x = 0; y = 0; z = 0; rot = null;
+        if (f == null) return false;
+
+        // Only use the resolved positions provided by the external Java resolver.
+        // Do NOT attempt to evaluate expressions or derivedFrom locally for plotting.
+        try
+        {
+            var key = $"{f.Type}:{f.Index}";
+            if (_resolvedFixturePositions.TryGetValue(key, out var pos))
+            {
+                x = pos.x; y = pos.y; z = pos.z; rot = pos.rot;
+                return true;
+            }
+        }
+        catch { /* best-effort */ }
+
+        return false;
+    }
+
+    // No-op ResolveFixturePositions: resolution is performed by the external Java resolver (EvaluateAllExpressions).
+    // Keep this method so callers (UpdatePlotModel) can call it safely without duplicating logic in C#.
+    private void ResolveFixturePositions()
+    {
+        // intentionally empty — _resolvedFixturePositions is populated by EvaluateAllExpressions via FixtureResolverInterop.Resolve.
+    }
+
+    // Rebuild the PlotModel from current _doc fixtures. Groups fixtures by Type and plots XY points.
+    private void UpdatePlotModel()
+    {
+        try
+        {
+            // ensure fixture resolution is up-to-date before plotting.
+            // Do NOT evaluate expressions here; the Java resolver performs expression evaluation.
+            try { ResolveFixturesOnly(); } catch { /* best-effort */ }
+
+            var pm = new PlotModel { Title = "Field fixtures" };
+
+            // Simple pan/zoom axes (X = horizontal, Y = vertical)
+            pm.Axes.Add(new LinearAxis { Position = AxisPosition.Bottom, Title = "X" });
+            pm.Axes.Add(new LinearAxis { Position = AxisPosition.Left, Title = "Y" });
+
+            // Ensure we have resolved positions (lookup) available as a fast-path (optional)
+            ResolveFixturePositions();
+
+            // Group fixtures by type
+            var groups = _doc.Fixtures
+                .Where(f => f != null)
+                .GroupBy(f => f.Type ?? "(none)")
+                .ToList();
+
+            var colorIdx = 0;
+            var totalFixtures = _doc.Fixtures.Count;
+            var plottedCount = 0;
+
+            // collect arrow annotations so we can size them after the PlotModel has axes/transforms computed
+            var collectedArrows = new List<ArrowAnnotation>();
+
+            foreach (var g in groups)
+            {
+                var type = g.Key;
+                var color = _palette[colorIdx % _palette.Length];
+                colorIdx++;
+
+                // Scatter series for the fixture points
+                var scatter = new ScatterSeries
+                {
+                    MarkerType = MarkerType.Circle,
+                    MarkerFill = color,
+                    MarkerSize = 6,
+                    Title = type
+                };
+
+                // Optional arrow annotations for rotation (collect per-group)
+                var arrows = new List<ArrowAnnotation>();
+
+                foreach (var f in g)
+                {
+                    if (TryGetFixturePosition(f, out var fx, out var fy, out var fz, out var frot))
+                    {
+                        scatter.Points.Add(new ScatterPoint(fx, fy));
+                        plottedCount++;
+                        if (frot.HasValue)
+                        {
+                            var theta = frot.Value * Math.PI / 180.0;
+                            // Use ~12 inches in meters for arrow length so it matches field units (resolver emits meters)
+                            var arrowLengthMeters = 12.0 * 0.0254; // 12 in = 0.3048 m
+                            var ex = fx + Math.Cos(theta) * arrowLengthMeters;
+                            var ey = fy + Math.Sin(theta) * arrowLengthMeters;
+
+                            var ann = new ArrowAnnotation
+                            {
+                                StartPoint = new DataPoint(fx, fy),
+                                EndPoint = new DataPoint(ex, ey),
+                                Color = color,
+                                // placeholder head sizes; will be resized after pm.Update(...)
+                                HeadLength = 12,
+                                HeadWidth = 8
+                            };
+                            arrows.Add(ann);
+                            collectedArrows.Add(ann);
+                        }
+                    }
+                    else
+                    {
+                        // skip but log minimally for diagnostics
+                        Log($"UpdatePlotModel: skipped fixture {f.Type}:{f.Index} (no resolved position)");
+                    }
+                }
+
+                if (scatter.Points.Count > 0)
+                {
+                    pm.Series.Add(scatter);
+                    // do not add arrows yet; we'll size them after Update
+                }
+            }
+
+            // Add collected arrows to the model now; sizes will be kept in sync by the Updated handler below.
+            foreach (var ann in collectedArrows) pm.Annotations.Add(ann);
+
+            // Recompute arrow head sizes on every PlotModel update so heads scale with zoom/pan.
+            pm.Updated += (sender, ev) =>
+            {
+                try
+                {
+                    var xAxis = pm.Axes.FirstOrDefault(a => a.Position == AxisPosition.Bottom) ?? pm.Axes.FirstOrDefault();
+                    var yAxis = pm.Axes.FirstOrDefault(a => a.Position == AxisPosition.Left) ?? pm.Axes.Skip(1).FirstOrDefault() ?? xAxis;
+                    var plotArea = pm.PlotArea;
+                    if (xAxis == null || yAxis == null || plotArea.Width <= 0 || plotArea.Height <= 0) return;
+
+                    double xRange = xAxis.ActualMaximum - xAxis.ActualMinimum;
+                    double yRange = yAxis.ActualMaximum - yAxis.ActualMinimum;
+                    if (xRange <= 0 || yRange <= 0) return;
+
+                    double pxPerUnitX = plotArea.Width / xRange;
+                    double pxPerUnitY = plotArea.Height / yRange;
+
+                    foreach (var a in pm.Annotations.OfType<ArrowAnnotation>())
+                    {
+                        try
+                        {
+                            var dx = a.EndPoint.X - a.StartPoint.X;
+                            var dy = a.EndPoint.Y - a.StartPoint.Y;
+                            var pixelLen = Math.Sqrt((dx * pxPerUnitX) * (dx * pxPerUnitX) + (dy * pxPerUnitY) * (dy * pxPerUnitY));
+                            var newHeadLength = Math.Max(6, pixelLen * 0.35);
+                            var newHeadWidth = Math.Max(4, pixelLen * 0.25);
+                            // avoid tiny updates that thrash rendering
+                            if (Math.Abs(a.HeadLength - newHeadLength) > 0.5 || Math.Abs(a.HeadWidth - newHeadWidth) > 0.5)
+                            {
+                                a.HeadLength = newHeadLength;
+                                a.HeadWidth = newHeadWidth;
+                            }
+                        }
+                        catch { /* per-annotation best-effort */ }
+                    }
+                }
+                catch { /* best-effort */ }
+            };
+
+            // Small legend
+            pm.IsLegendVisible = true;
+            FieldPlotModel = pm;
+            Log($"UpdatePlotModel: plotted {plottedCount}/{totalFixtures} fixtures");
+        }
+        catch (Exception ex)
+        {
+            Log($"UpdatePlotModel failed: {ex.Message}");
+        }
+    }
+
+    // Populate _evaluatedLookup from _doc.Params (best-effort, local conversion).
+    // Used by tree building / UI editor options. This intentionally does NOT run external Java.
+    private void EvaluateParamsOnly()
+    {
+        _evaluatedLookup.Clear();
+
+        try
+        {
+            // Best-effort local conversion of raw param values into evaluated lookup used by UI previews.
+            // This intentionally does not run external Java expression evaluation; it preserves numbers, strings, arrays.
+            foreach (var kv in _doc.Params)
+            {
+                var name = kv.Key;
+                var wrapper = kv.Value;
+                object? raw = wrapper?.Raw;
+
+                if (raw == null)
+                {
+                    _evaluatedLookup[name] = null;
+                    continue;
+                }
+
+                // numbers -> double
+                if (raw is double d) { _evaluatedLookup[name] = d; continue; }
+                if (raw is float f) { _evaluatedLookup[name] = Convert.ToDouble(f); continue; }
+                if (raw is int i) { _evaluatedLookup[name] = Convert.ToDouble(i); continue; }
+                if (raw is long l) { _evaluatedLookup[name] = Convert.ToDouble(l); continue; }
+                if (raw is decimal dec) { _evaluatedLookup[name] = Convert.ToDouble(dec); continue; }
+
+                // string -> keep as string
+                if (raw is string s) { _evaluatedLookup[name] = s; continue; }
+
+                // array -> preserve as List<object?> with numeric conversions where obvious
+                if (raw is IList<object> list)
+                {
+                    var outList = new List<object?>();
+                    foreach (var el in list)
+                    {
+                        if (el == null) outList.Add(null);
+                        else if (el is double dd) outList.Add(dd);
+                        else if (el is float ff) outList.Add(Convert.ToDouble(ff));
+                        else if (el is int ii) outList.Add(Convert.ToDouble(ii));
+                        else if (el is long ll) outList.Add(Convert.ToDouble(ll));
+                        else if (el is string ss) outList.Add(ss);
+                        else outList.Add(el);
+                    }
+                    _evaluatedLookup[name] = outList;
+                    continue;
+                }
+
+                // fallback: keep raw as-is
+                _evaluatedLookup[name] = raw;
+            }
+        }
+        catch (Exception ex)
+        {
+            Log($"EvaluateParamsOnly failed: {ex.Message}");
+        }
+    }
+
+    // Resolve fixtures using the Java ResolvedFixtureDump (or other configured interop).
+    // Populates _resolvedFixturePositions used exclusively by plotting code.
+    private void ResolveFixturesOnly()
+    {
+        _resolvedFixturePositions.Clear();
+        try
+        {
+            string? outputJson = null;
+            // If we have a saved file path, prefer calling the Java tool with that path (use the actual file).
+            // Call ResolveFromFile unconditionally when CurrentJsonPath != null so the Java loader sees the exact file.
+            if (!string.IsNullOrWhiteSpace(CurrentJsonPath))
+            {
+                Log($"ResolveFixturesOnly: attempting ResolveFromFile('{CurrentJsonPath}')");
+                outputJson = FixtureResolverInterop.ResolveFromFile(CurrentJsonPath);
+                if (string.IsNullOrWhiteSpace(outputJson))
+                {
+                    Log($"ResolveFixturesOnly: ResolveFromFile failed for '{CurrentJsonPath}', falling back to in-memory JSON");
+                }
+            }
+
+            // Fallback: send in-memory JSON (used for unsaved docs or if ResolveFromFile failed)
+            if (string.IsNullOrWhiteSpace(outputJson))
+            {
+                var docJson = JsonSerializer.Serialize(_doc, JsonOptionsCamel);
+                outputJson = FixtureResolverInterop.Resolve(docJson);
+            }
+            if (string.IsNullOrWhiteSpace(outputJson)) return;
+
+            using var doc = JsonDocument.Parse(outputJson);
+            var root = doc.RootElement;
+
+            // helper: parse numeric fields tolerant of strings
+            static bool TryGetDouble(JsonElement el, string name, out double value)
+            {
+                value = 0;
+                if (el.ValueKind != JsonValueKind.Object) return false;
+                if (!el.TryGetProperty(name, out var prop)) return false;
+                if (prop.ValueKind == JsonValueKind.Number && prop.TryGetDouble(out var d)) { value = d; return true; }
+                if (prop.ValueKind == JsonValueKind.String && double.TryParse(prop.GetString(), System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var sd)) { value = sd; return true; }
+                return false;
+            }
+
+            // helper: read rotation and normalize to degrees (assume radians if units omitted)
+            static double? ReadRotationNormalizedToDegrees(JsonElement el)
+            {
+                string[] rotNames = new[] { "rotation", "rot" };
+                string[] unitNames = new[] { "rotationUnits", "rotUnits", "units" };
+                foreach (var rn in rotNames)
+                {
+                    if (el.TryGetProperty(rn, out var rEl))
+                    {
+                        if (rEl.ValueKind == JsonValueKind.Number && rEl.TryGetDouble(out var rVal))
+                        {
+                            string? units = null;
+                            foreach (var un in unitNames)
+                                if (el.TryGetProperty(un, out var uEl) && uEl.ValueKind == JsonValueKind.String) { units = uEl.GetString(); break; }
+                            if (!string.IsNullOrWhiteSpace(units) && units.Trim().Equals("degrees", StringComparison.OrdinalIgnoreCase)) return rVal;
+                            // otherwise assume radians -> convert to degrees
+                            return rVal * 180.0 / Math.PI;
+                        }
+                        if (rEl.ValueKind == JsonValueKind.Null) return null;
+                    }
+                }
+                return null;
+            }
+
+            if (root.TryGetProperty("fixtures", out var fixturesEl))
+            {
+                if (fixturesEl.ValueKind == JsonValueKind.Object)
+                {
+                    foreach (var prop in fixturesEl.EnumerateObject())
+                    {
+                        try
+                        {
+                            var key = prop.Name;
+                            var f = prop.Value;
+                            if (!TryGetDouble(f, "x", out var x)) continue;
+                            if (!TryGetDouble(f, "y", out var y)) continue;
+                            var z = 0.0;
+                            if (!TryGetDouble(f, "z", out var tmpZ)) tmpZ = 0.0; else z = tmpZ;
+                            double? rotDeg = ReadRotationNormalizedToDegrees(f);
+                            _resolvedFixturePositions[key] = (x, y, z, rotDeg);
+                        }
+                        catch { /* skip malformed entry */ }
+                    }
+                }
+                else if (fixturesEl.ValueKind == JsonValueKind.Array)
+                {
+                    foreach (var f in fixturesEl.EnumerateArray())
+                    {
+                        try
+                        {
+                            var key = f.GetProperty("key").GetString() ?? "";
+                            var x = f.GetProperty("x").GetDouble();
+                            var y = f.GetProperty("y").GetDouble();
+                            var z = 0.0;
+                            if (f.TryGetProperty("z", out var zEl) && zEl.ValueKind == JsonValueKind.Number) z = zEl.GetDouble();
+                            double? rotDeg = ReadRotationNormalizedToDegrees(f);
+                            _resolvedFixturePositions[key] = (x, y, z, rotDeg);
+                        }
+                        catch { /* skip malformed entry */ }
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Log($"ResolveFixturesOnly failed: {ex.Message}");
+        }
+    }
 
     public void Log(string message)
     {
@@ -334,7 +762,7 @@ public sealed class MainWindowViewModel : NotifyBase
 
     public async Task SaveToPathAsync(string path)
     {
-        var json = JsonSerializer.Serialize(_doc, new JsonSerializerOptions { WriteIndented = true });
+        var json = JsonSerializer.Serialize(_doc, JsonOptionsCamelIndented);
         await File.WriteAllTextAsync(path, json);
         CurrentJsonPath = path;
 
@@ -433,7 +861,7 @@ public sealed class MainWindowViewModel : NotifyBase
         };
         if (dlg.ShowDialog() != true) return;
 
-        var json = JsonSerializer.Serialize(_doc, new JsonSerializerOptions { WriteIndented = true });
+        var json = JsonSerializer.Serialize(_doc, JsonOptionsCamelIndented);
         await File.WriteAllTextAsync(dlg.FileName, json);
         CurrentJsonPath = dlg.FileName;
 
@@ -468,8 +896,9 @@ public sealed class MainWindowViewModel : NotifyBase
     // NEW: build the entire tree into a root TreeItemVm but do not mutate ObservableCollection.
     private TreeItemVm BuildTreeRoot()
     {
-        // Note: this is the same logic that previously lived inside RebuildTree()
-        // but it only creates/returns the root TreeItemVm and does not touch UI-bound collections.
+        // ensure evaluated lookup is fresh for this document
+        try { EvaluateParamsOnly(); } catch { /* best-effort */ }
+
         Log("BuildTreeRoot()");
         // local copies / ensure any prep needed
         var rootTitle = Path.GetFileName(CurrentJsonPath) ?? "(unsaved)";
@@ -527,6 +956,8 @@ public sealed class MainWindowViewModel : NotifyBase
         var swLog = Stopwatch.StartNew();
         LoggingHelper.LogAllNodeBindings(TreeRootItems, Log);
         swLog.Stop();
+        // update plot to reflect newly built tree/document
+        UpdatePlotModel();
         swUi.Stop();
 
         Log($"RebuildTree: UI apply {swUi.ElapsedMilliseconds}ms (Refresh {swRefresh.ElapsedMilliseconds}ms, LogAll {swLog.ElapsedMilliseconds}ms)");
@@ -575,6 +1006,8 @@ public sealed class MainWindowViewModel : NotifyBase
                     var swLog = Stopwatch.StartNew();
                     LoggingHelper.LogAllNodeBindings(TreeRootItems, Log);
                     swLog.Stop();
+                    // update plot on UI thread so PlotModel binding sees the new model
+                    UpdatePlotModel();
                     logAllMs = swLog.ElapsedMilliseconds;
                     swUi.Stop();
                     uiTotalMs = swUi.ElapsedMilliseconds;
@@ -599,6 +1032,7 @@ public sealed class MainWindowViewModel : NotifyBase
                 var swLog = Stopwatch.StartNew();
                 LoggingHelper.LogAllNodeBindings(TreeRootItems, Log);
                 swLog.Stop();
+                UpdatePlotModel();
                 logAllMs = swLog.ElapsedMilliseconds;
                 swUi.Stop();
                 uiTotalMs = swUi.ElapsedMilliseconds;
@@ -1421,7 +1855,7 @@ public sealed class MainWindowViewModel : NotifyBase
         {
             var path = CurrentJsonPath;
             if (string.IsNullOrWhiteSpace(path)) return;
-            var json = JsonSerializer.Serialize(_doc, new JsonSerializerOptions { WriteIndented = true });
+            var json = JsonSerializer.Serialize(_doc, JsonOptionsCamelIndented);
             await File.WriteAllTextAsync(path, json);
             Log($"AutoSave: wrote '{path}'.");
         }

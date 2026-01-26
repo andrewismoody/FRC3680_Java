@@ -254,10 +254,31 @@ public final class FixtureResolver {
         }
 
         if (t.hasNonNull("rotation")) {
-            double r = t.get("rotation").asDouble(0.0);
-            String units = t.path("rotationUnits").asText("degrees");
-            if ("degrees".equalsIgnoreCase(units)) r = Utility.degreesToRadians(r);
-            yawOut = new Rotation2d(r);
+            // Evaluate rotation via AutoExpr so strings/expressions are supported (same resolvers as position).
+            Double r0 = AutoExpr.evalNode(t.get("rotation"),
+                    (name) -> {
+                        double v = Utility.GetSeasonNumber(name, Double.NaN);
+                        return Double.isNaN(v) ? null : v;
+                    },
+                    (name, comp) -> {
+                        Translation2d v2 = Utility.GetSeasonVec2Inches(name, null);
+                        if (v2 == null) return null;
+                        return (comp == 'X') ? v2.getX() : (comp == 'Y' ? v2.getY() : null);
+                    },
+                    (name, comp) -> {
+                        Translation3d v3 = Utility.GetSeasonVec3Inches(name, null);
+                        if (v3 == null) return null;
+                        if (comp == 'X') return v3.getX();
+                        if (comp == 'Y') return v3.getY();
+                        if (comp == 'Z') return v3.getZ();
+                        return null;
+                    });
+            if (r0 != null) {
+                double r = r0.doubleValue();
+                String units = t.path("rotationUnits").asText("degrees");
+                if ("degrees".equalsIgnoreCase(units)) r = Utility.degreesToRadians(r);
+                yawOut = new Rotation2d(r);
+            }
         }
 
         if (posOut == null) return null;

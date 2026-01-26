@@ -1,4 +1,4 @@
-Plot all fixtures in one layer
+Plot all fixtures in one layer per type
 Plot all targets per module in its own layer
 Review autotarget implementation - lookat, position, rotation, etc, etc to ensure all available options are included in schema/editor/evaluator
 Default/Required Params - enforce params that are required for minimal functionality
@@ -12,3 +12,4 @@ DONE -- Add save button to menu to force a save
 DONE -- Make selection details and debugoutput collapsable
 User preferences - save between execution instances and reload on startup.
 
+Find out why edits got reverted and restore from previous commits
