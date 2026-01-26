@@ -133,13 +133,133 @@ public sealed class MainWindowViewModel : NotifyBase
 
     public void SetSelectedTreeItem(TreeItemVm? item)
     {
-        if (item?.Model is null)
+        if (item == null)
         {
-            SelectionDetails = item?.Title ?? "";
+            SelectionDetails = "";
             return;
         }
 
-        SelectionDetails = JsonSerializer.Serialize(item.Model, new JsonSerializerOptions { WriteIndented = true });
+        // Prefer a short description header for all selections
+        var descHeader = GetNodeDescription(item);
+
+        // Determine the JSON payload to show:
+        // - Field nodes => show { "<fieldName>": <value> }
+        // - Section nodes (no model, top-level title) => show the corresponding collection from _doc
+        // - Object/model nodes => show the model itself (KeyValuePair entries, PoseModel, EventModel, etc.)
+        object? payload = null;
+
+        if (item.Kind == TreeItemKind.Field)
+        {
+            // show the single field as a small JSON object { "<title>": value }
+            var fieldName = item.Title ?? "value";
+            var dict = new Dictionary<string, object?> { [fieldName] = item.Value };
+            payload = dict;
+        }
+        else if (item.Model != null)
+        {
+            payload = item.Model;
+        }
+        else
+        {
+            // Top-level section click — map title -> _doc collection
+            var title = (item.Title ?? "").Trim().ToLowerInvariant();
+            switch (title)
+            {
+                case "params": payload = _doc.Params; break;
+                case "poses": payload = _doc.Poses; break;
+                case "fixtures": payload = _doc.Fixtures; break;
+                case "targets": payload = _doc.Targets; break;
+                case "events": payload = _doc.Events; break;
+                case "sequences": payload = _doc.Sequences; break;
+                case "modules": payload = _doc.Modules; break;
+                case "groups": payload = _doc.Groups; break;
+                case "travelgroups": payload = _doc.TravelGroups; break;
+                case "locations": payload = _doc.Locations; break;
+                case "positions": payload = _doc.Positions; break;
+                case "actions": payload = _doc.Actions; break;
+                default: payload = null; break;
+            }
+        }
+
+        if (payload == null)
+        {
+            // fallback to description or title
+            SelectionDetails = string.IsNullOrWhiteSpace(descHeader) ? (item.Title ?? "") : descHeader;
+            return;
+        }
+
+        var json = JsonSerializer.Serialize(payload, new JsonSerializerOptions { WriteIndented = true });
+        SelectionDetails = string.IsNullOrWhiteSpace(descHeader) ? json : $"{descHeader}\n\n{json}";
+    }
+
+    // Return a short description for the selected node to explain what the node represents.
+    // Covers common model types and top-level section titles. Keep descriptions concise for the UI.
+    private string GetNodeDescription(TreeItemVm? item)
+    {
+        if (item == null) return "";
+        // If the VM holds a model object, prefer type-based descriptions
+        var model = item.Model;
+        if (model is null)
+        {
+            // Top-level section titles
+            switch ((item.Title ?? "").Trim().ToLowerInvariant())
+            {
+                case "params":
+                    return "params — Named values (numbers, arrays, or parameter expressions) referenced by other fields and expressions.";
+                case "poses":
+                    return "poses — Definitions of named poses (group, location, index, position, action) used by events and targets.";
+                case "fixtures":
+                    return "fixtures — Field fixtures: physical points on the field, either explicit translations or derived from other fixtures.";
+                case "targets":
+                    return "targets — Targets to pursue during auto: can be a translation, a fixture reference, a measurement, or a module state.";
+                case "events":
+                    return "events — Timing or trigger events that cause sequences to execute targets.";
+                case "sequences":
+                    return "sequences — Ordered lists of event names composing higher-level actions.";
+                case "modules":
+                case "groups":
+                case "locations":
+                case "positions":
+                case "actions":
+                case "travelgroups":
+                    return $"{item.Title} — A list of labels used elsewhere in the document (referenced by poses, targets, and UI dropdowns).";
+                default:
+                    return "";
+            }
+        }
+
+        // Type-based descriptions (models come from AutoJsonBuilder.Models)
+        if (model is AutoDefinitionModel)
+            return "Document root — the top-level auto definition for a season (season, version, description, and arrays of poses/events/etc.).";
+        if (model is PoseModel)
+            return "Pose — describes a named pose: group, location, index, position and action. Poses are referenced by events and targets.";
+        if (model is EventModel)
+            return "Event — a trigger (await/time) that will execute a target; contains pose/time/trigger settings.";
+        if (model is FixtureSchemaModel)
+            return "Fixture — a field fixture definition; either has an explicit translation or is derived from other fixtures.";
+        if (model is TargetSchemaModel)
+            return "Target — defines what to do for a module (or fixture): translation, fixture ref, measurement, or module state.";
+        if (model is SequenceModel)
+            return "Sequence — ordered list of events executed as a grouped action.";
+        if (model is TranslationModel)
+            return "Translation — X/Y/Z coordinates and units describing a physical location on the field.";
+        if (model is FixtureRefModel)
+            return "Fixture reference — refers to an existing fixture by type and index.";
+        if (model is DerivedFromModel)
+            return "Derived translation — computed translation derived from one or more fixtures (e.g. bisector, parallel).";
+        if (model is AutoJsonBuilder.Models.ParamValue)
+            return "Parameter — a named parameter used for expression evaluation; may be a scalar, an array, or an expression string.";
+
+        // KeyValuePair used for params list entries
+        var kvType = model.GetType();
+        if (kvType.IsGenericType && kvType.GetGenericTypeDefinition() == typeof(System.Collections.Generic.KeyValuePair<,>))
+        {
+            // likely a param kvp
+            return "Parameter entry — a named parameter key and its value. Parameters are referenced from expressions elsewhere.";
+        }
+
+        // fallback: for field-level items, show a short generic hint
+        return $"{item.Title} — field within the document; edit the value to change the underlying document content used at runtime.";
     }
 
     private void UpdateParamsMap()

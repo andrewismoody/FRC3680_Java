@@ -4,8 +4,9 @@ Review autotarget implementation - lookat, position, rotation, etc, etc to ensur
 Default/Required Params - enforce params that are required for minimal functionality
 DONE -- target label processing - the target labels should be renderable regardless of target selections
 adding a pose to the poses section doesn't trigger an autosave
-When any part of a node is selected, the selection details should be populated with the whole node
+DONE -- When any part of a node is selected, the selection details should be populated with the whole node
 Go through building a file from scratch and verify all functionality
-Slow loading sometimes, but really fast others - why?
+DONE -- Slow loading sometimes, but really fast others - why?
 DONE -- in events, pose should be drop down box not text box
 Add save button to menu to force a save
+Make selection details and debugoutput collapsable

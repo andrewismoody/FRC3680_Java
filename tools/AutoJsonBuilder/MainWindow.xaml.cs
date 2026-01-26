@@ -115,7 +115,19 @@ public partial class MainWindow : Window
     // Optional: remember original text when focusing an editor (not strictly required).
     private void Editor_GotKeyboardFocus(object? sender, KeyboardFocusChangedEventArgs e)
     {
-        // no-op; placeholder if you want to track original value for undo/compare
+        try
+        {
+            // e.NewFocus is the element that just received keyboard focus.
+            if (e.NewFocus is FrameworkElement fe && fe.DataContext is TreeItemVm tivm)
+            {
+                // Update selection details to match the focused editor's node
+                _vm.SetSelectedTreeItem(tivm);
+            }
+        }
+        catch
+        {
+            // swallow to avoid focus-time exceptions breaking UI
+        }
     }
 
     // Binding target updated: can be used to react when a ComboBox/TextBox binding propagates value.
