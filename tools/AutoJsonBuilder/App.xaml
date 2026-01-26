@@ -15,6 +15,25 @@
     <SolidColorBrush x:Key="AppSelectionBrush" Color="{DynamicResource {x:Static SystemColors.HighlightColorKey}}" />
     <SolidColorBrush x:Key="AppSelectionTextBrush" Color="{DynamicResource {x:Static SystemColors.HighlightTextColorKey}}" />
 
+    <!-- Make editable TextBoxes follow system/theme colors rather than hard-coded colors -->
+    <Style TargetType="TextBox">
+        <!-- default: use control background/foreground so non-editable shells follow theme -->
+        <Setter Property="Background" Value="{DynamicResource {x:Static SystemColors.ControlBrushKey}}" />
+        <Setter Property="Foreground" Value="{DynamicResource {x:Static SystemColors.ControlTextBrushKey}}" />
+        <Style.Triggers>
+            <!-- editable textboxes use the system Window brush/text so they appear like standard input fields -->
+            <Trigger Property="IsReadOnly" Value="False">
+                <Setter Property="Background" Value="{DynamicResource {x:Static SystemColors.WindowBrushKey}}"/>
+                <Setter Property="Foreground" Value="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}"/>
+            </Trigger>
+            <!-- disabled boxes use the disabled text color / control brush -->
+            <Trigger Property="IsEnabled" Value="False">
+                <Setter Property="Background" Value="{DynamicResource {x:Static SystemColors.ControlBrushKey}}"/>
+                <Setter Property="Foreground" Value="{DynamicResource {x:Static SystemColors.GrayTextBrushKey}}"/>
+            </Trigger>
+        </Style.Triggers>
+    </Style>
+
     <conv:InverseBooleanConverter x:Key="InverseBoolConverter" />
     <!-- ...existing code... -->
   </Application.Resources>

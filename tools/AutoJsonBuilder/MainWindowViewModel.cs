@@ -9,6 +9,7 @@ using AutoJsonBuilder.Helpers; // <-- added
 using System.Threading.Tasks; // <-- added near other usings
 using System.Windows; // <-- added for Dispatcher
 using System.Threading; // <-- add this near other usings
+using System.Diagnostics; // <-- added for timing
 
 namespace AutoJsonBuilder;
 
@@ -43,11 +44,27 @@ public sealed class MainWindowViewModel : NotifyBase
     // Guard to prevent concurrent SaveAs prompts / double prompting.
     private int _isSavePromptActive = 0;
 
+    // Suppress autosave/prompt while performing load/rehydrate work (increment for nesting).
+    // When > 0, SavePromptOrAutoSaveAsync will be a no-op.
+    private int _suppressAutoSaveDuringLoad = 0;
+
+    // In-memory buffer for log lines while disk writes are suppressed during load.
+    private readonly List<string> _deferredLogLines = new();
+    private readonly object _deferredLogLock = new();
+
     public void Log(string message)
     {
         var line = $"{DateTime.Now:HH:mm:ss.fff} {message}\n";
-        DebugLog += line;
 
+        // If a load is in progress, buffer all log lines (do NOT update DebugLog/UI to avoid many small UI updates).
+        if (Thread.VolatileRead(ref _suppressAutoSaveDuringLoad) > 0)
+        {
+            lock (_deferredLogLock) { _deferredLogLines.Add(line); }
+            return;
+        }
+
+        // Normal case: update UI log (single update) and attempt disk append.
+        DebugLog += line;
         try
         {
             var path = Path.Combine(AppContext.BaseDirectory, "autobuilder-debug.log");
@@ -57,6 +74,43 @@ public sealed class MainWindowViewModel : NotifyBase
         {
             // ignore file logging failures; UI log still should work
         }
+    }
+
+    // Flush buffered log lines to disk in a single append (async). Safe to call when suppression cleared.
+    private async Task FlushBufferedLogsAsync()
+    {
+        string[] snapshot;
+        lock (_deferredLogLock)
+        {
+            if (_deferredLogLines.Count == 0) return;
+            snapshot = _deferredLogLines.ToArray();
+            _deferredLogLines.Clear();
+        }
+
+        try
+        {
+            var path = Path.Combine(AppContext.BaseDirectory, "autobuilder-debug.log");
+            await File.AppendAllTextAsync(path, string.Concat(snapshot)).ConfigureAwait(false);
+        }
+        catch
+        {
+            // ignore disk failures during flush; the UI still contains the log
+        }
+    }
+
+    // Apply buffered log lines to the in-memory UI log in a single update
+    private void ApplyBufferedLogsToUi()
+    {
+        string[] snapshot;
+        lock (_deferredLogLock)
+        {
+            if (_deferredLogLines.Count == 0) return;
+            snapshot = _deferredLogLines.ToArray();
+            _deferredLogLines.Clear();
+        }
+        // Single string append to avoid many small UI updates
+        var combined = string.Concat(snapshot);
+        DebugLog += combined;
     }
 
     public MainWindowViewModel()
@@ -100,7 +154,10 @@ public sealed class MainWindowViewModel : NotifyBase
 
     private void NewSeason()
     {
+        // Clear previous debug output when creating a new document, then log the new session.
+        DebugLog = "";
         Log("NewSeason: creating new document (seed).");
+
         _doc = new AutoDefinitionModel
         {
             // schema requires minItems 1 for most arrays; seed with sensible placeholders
@@ -175,48 +232,72 @@ public sealed class MainWindowViewModel : NotifyBase
         };
         if (dlg.ShowDialog() != true) return;
 
-        var json = await File.ReadAllTextAsync(dlg.FileName);
-
-        // Parse once to extract the heterogeneous params map (preserve arrays/strings/expressions)
-        using (var doc = JsonDocument.Parse(json))
+        // Clear previous debug output when opening a file so the log reflects the new load.
+        DebugLog = "";
+        // Suppress autosave while we perform the open sequence (rebuilds, helpers, etc).
+        Interlocked.Increment(ref _suppressAutoSaveDuringLoad);
+        try
         {
-            _paramsMap = ParamAwareConverters.BuildParamsMap(doc.RootElement);
+            var json = await File.ReadAllTextAsync(dlg.FileName);
+
+            // Parse once to extract the heterogeneous params map (preserve arrays/strings/expressions)
+            using (var doc = JsonDocument.Parse(json))
+            {
+                _paramsMap = ParamAwareConverters.BuildParamsMap(doc.RootElement);
+            }
+
+            // Deserialize the model using forgiving dictionary converter for numeric params where the schema expects numbers.
+            var opts = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+            opts.Converters.Add(new FlexibleDoubleDictionaryConverter()); // keeps older numeric semantics for model values
+            _doc = JsonSerializer.Deserialize<AutoDefinitionModel>(json, opts)
+                   ?? throw new InvalidOperationException("Invalid JSON file.");
+
+            // moved
+            PoseHelper.EnsurePoseBackingLists(_doc);
+
+            // Ensure module list exists and absorb any module names referenced by targets
+            _doc.Modules ??= new System.Collections.Generic.List<string>();
+            // Collect target module names in document order (preserve existing modules then append missing referenced ones)
+            foreach (var tgt in _doc.Targets)
+            {
+                var m = tgt?.Module;
+                if (string.IsNullOrWhiteSpace(m)) continue;
+                if (!_doc.Modules.Contains(m))
+                    _doc.Modules.Add(m);
+            }
+
+            // ensure pose names are consistent after load
+            PoseHelper.EnsurePoseNames(_doc);
+
+            // If deserialization produced different params representation, ensure _paramsMap is at least populated from _doc
+            if (_paramsMap.Count == 0) UpdateParamsMap();
+
+            CurrentJsonPath = dlg.FileName;
+            await RebuildTreeAsync();
+
+            // note: do NOT perform autosave or disk writes while suppression is active.
+            Log($"OpenJson: loaded (in-memory) '{dlg.FileName}'.");
         }
-
-        // Deserialize the model using forgiving dictionary converter for numeric params where the schema expects numbers.
-        var opts = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
-        opts.Converters.Add(new FlexibleDoubleDictionaryConverter()); // keeps older numeric semantics for model values
-        _doc = JsonSerializer.Deserialize<AutoDefinitionModel>(json, opts)
-               ?? throw new InvalidOperationException("Invalid JSON file.");
-
-        // moved
-        PoseHelper.EnsurePoseBackingLists(_doc);
-
-        // Ensure module list exists and absorb any module names referenced by targets
-        _doc.Modules ??= new System.Collections.Generic.List<string>();
-        // Collect target module names in document order (preserve existing modules then append missing referenced ones)
-        foreach (var tgt in _doc.Targets)
+        finally
         {
-            var m = tgt?.Module;
-            if (string.IsNullOrWhiteSpace(m)) continue;
-            if (!_doc.Modules.Contains(m))
-                _doc.Modules.Add(m);
+            // always clear suppression so subsequent model-changed callbacks will perform autosave/prompt
+            Interlocked.Decrement(ref _suppressAutoSaveDuringLoad);
+
+            // Do NOT perform disk operations automatically after load to avoid intermittent blocking (AV, FS hooks).
+            // Instead, apply buffered logs to the in-memory DebugLog in one UI update (cheap).
+            try
+            {
+                ApplyBufferedLogsToUi();
+            }
+            catch
+            {
+                // best-effort only
+            }
         }
-
-        // ensure pose names are consistent after load
-        PoseHelper.EnsurePoseNames(_doc);
-
-        // If deserialization produced different params representation, ensure _paramsMap is at least populated from _doc
-        if (_paramsMap.Count == 0) UpdateParamsMap();
-
-        CurrentJsonPath = dlg.FileName;
-        await RebuildTreeAsync();
-
-        // after loading a document, ensure any autosave writes will target the loaded file
-        await AutoSaveIfExistsAsync();
-
-        Log($"OpenJson: loaded '{dlg.FileName}'.");
     }
+
+    // When suppression is active the global callback should be a no-op; this check is used by SavePromptOrAutoSaveAsync.
+    private bool IsAutosaveSuppressed => Thread.VolatileRead(ref _suppressAutoSaveDuringLoad) > 0;
 
     private async Task SaveAsJsonAsync()
     {
@@ -279,24 +360,33 @@ public sealed class MainWindowViewModel : NotifyBase
     // RebuildTree now simply constructs and installs the tree synchronously (kept for compatibility).
     private void RebuildTree()
     {
-        // preserve expanded/selected state
+        var sw = Stopwatch.StartNew();
         var prev = TreeHelper.GetViewState(TreeRootItems);
 
         var root = BuildTreeRoot();
+        sw.Stop();
+        Log($"RebuildTree: BuildTreeRoot took {sw.ElapsedMilliseconds}ms");
 
         // install on UI-bound collection (must be done on UI thread)
+        var swUi = Stopwatch.StartNew();
         TreeRootItems.Clear();
         TreeRootItems.Add(root);
         OnPropertyChanged(nameof(TreeRootItems));
 
+        var swRefresh = Stopwatch.StartNew();
         TreeHelper.RefreshAllOptions(TreeRootItems);
+        swRefresh.Stop();
 
         // restore previous expansion/selection where possible
         var sel = TreeHelper.ApplyViewState(TreeRootItems, prev);
         if (sel != null) SetSelectedTreeItem(sel);
 
-        // logging for diagnostics
+        var swLog = Stopwatch.StartNew();
         LoggingHelper.LogAllNodeBindings(TreeRootItems, Log);
+        swLog.Stop();
+        swUi.Stop();
+
+        Log($"RebuildTree: UI apply {swUi.ElapsedMilliseconds}ms (Refresh {swRefresh.ElapsedMilliseconds}ms, LogAll {swLog.ElapsedMilliseconds}ms)");
     }
 
     // NEW: async wrapper so UI can show a loading indicator while tree is rebuilt.
@@ -313,35 +403,64 @@ public sealed class MainWindowViewModel : NotifyBase
             // capture UI state before heavy background work
             var prevState = TreeHelper.GetViewState(TreeRootItems);
 
-            // Build the tree on a background thread (the expensive part)
+            // Build the tree on a background thread (the expensive part) and time it
+            var swBuild = Stopwatch.StartNew();
             var root = await Task.Run(() => BuildTreeRoot());
+            swBuild.Stop();
+            Log($"RebuildTreeAsync: BuildTreeRoot {swBuild.ElapsedMilliseconds}ms");
 
-            // Marshal applying the constructed root to the UI thread
-            // Use Application.Current.Dispatcher to ensure UI-thread update
+            // Marshal applying the constructed root to the UI thread and time UI-phase pieces
+            long refreshMs = 0, logAllMs = 0, uiTotalMs = 0;
             if (Application.Current?.Dispatcher != null)
             {
+                var swUi = Stopwatch.StartNew();
                 Application.Current.Dispatcher.Invoke(() =>
                 {
                     TreeRootItems.Clear();
                     TreeRootItems.Add(root);
                     OnPropertyChanged(nameof(TreeRootItems));
+
+                    var swRefresh = Stopwatch.StartNew();
                     TreeHelper.RefreshAllOptions(TreeRootItems);
+                    swRefresh.Stop();
+                    refreshMs = swRefresh.ElapsedMilliseconds;
+
                     // restore previous expansion/selection where possible
                     var sel = TreeHelper.ApplyViewState(TreeRootItems, prevState);
                     if (sel != null) SetSelectedTreeItem(sel);
+
+                    var swLog = Stopwatch.StartNew();
                     LoggingHelper.LogAllNodeBindings(TreeRootItems, Log);
+                    swLog.Stop();
+                    logAllMs = swLog.ElapsedMilliseconds;
+                    swUi.Stop();
+                    uiTotalMs = swUi.ElapsedMilliseconds;
                 });
+                Log($"RebuildTreeAsync: UI apply {uiTotalMs}ms (Refresh {refreshMs}ms, LogAll {logAllMs}ms)");
             }
             else
             {
-                // fallback if no dispatcher available
+                var swUi = Stopwatch.StartNew();
                 TreeRootItems.Clear();
                 TreeRootItems.Add(root);
                 OnPropertyChanged(nameof(TreeRootItems));
+
+                var swRefresh = Stopwatch.StartNew();
                 TreeHelper.RefreshAllOptions(TreeRootItems);
+                swRefresh.Stop();
+                refreshMs = swRefresh.ElapsedMilliseconds;
+
                 var sel = TreeHelper.ApplyViewState(TreeRootItems, prevState);
                 if (sel != null) SetSelectedTreeItem(sel);
+
+                var swLog = Stopwatch.StartNew();
                 LoggingHelper.LogAllNodeBindings(TreeRootItems, Log);
+                swLog.Stop();
+                logAllMs = swLog.ElapsedMilliseconds;
+                swUi.Stop();
+                uiTotalMs = swUi.ElapsedMilliseconds;
+
+                Log($"RebuildTreeAsync: UI apply {uiTotalMs}ms (Refresh {refreshMs}ms, LogAll {logAllMs}ms)");
             }
         }
         finally
@@ -1164,6 +1283,13 @@ public sealed class MainWindowViewModel : NotifyBase
     // If there is no current path, prompt user with Save As; otherwise perform autosave.
     public async Task SavePromptOrAutoSaveAsync()
     {
+        // If autosave is suppressed (e.g. during OpenJson flow) do nothing.
+        if (IsAutosaveSuppressed)
+        {
+            // Log("Autosave suppressed during document load; skipping SavePromptOrAutoSaveAsync.");
+            return;
+        }
+
         // Prevent re-entrancy/double prompts.
         if (Interlocked.Exchange(ref _isSavePromptActive, 1) == 1)
         {

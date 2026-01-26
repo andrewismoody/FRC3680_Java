@@ -33,6 +33,33 @@ public partial class MainWindow : Window
         InitializeComponent();
         DataContext = _vm;
 
+        // QUICK WARM-UP: force WPF/DirectWrite/D3D init and warm any lazy JIT/resource work.
+        // Keeps UI hidden work cheap; helps avoid many small pauses during the first visible rebuild.
+        _ = Task.Run(() =>
+        {
+            try
+            {
+                // 1) Force a tiny render on UI thread to warm DirectX/text rendering paths.
+                if (Application.Current?.Dispatcher != null)
+                {
+                    Application.Current.Dispatcher.Invoke(() =>
+                    {
+                        try
+                        {
+                            var dv = new System.Windows.Media.DrawingVisual();
+                            var rtb = new System.Windows.Media.Imaging.RenderTargetBitmap(1, 1, 96, 96, System.Windows.Media.PixelFormats.Pbgra32);
+                            rtb.Render(dv);
+                        }
+                        catch { /* best-effort */ }
+                    });
+                }
+
+                // 2) Warm VM tree-building on a background thread (does not touch UI collections).
+                try { _ = _vm.RebuildTreeAsync(); } catch { }
+            }
+            catch { /* swallow */ }
+        });
+
         CommandBindings.Add(new CommandBinding(ApplicationCommands.Close, (_, __) => Close()));
 
         // Listen for lost keyboard focus anywhere in this window (catches TextBoxes inside DataTemplates/Setters)

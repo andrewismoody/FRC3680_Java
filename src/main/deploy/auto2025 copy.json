@@ -1344,9 +1344,11 @@
   "Sequences": [
     {
       "Name": "Score3and4 (Start 1/2)",
-      "Start1": null,
-      "Start2": null,
-      "Start3": null,
+      "Start1": [
+        "Await Pose Start 1"
+      ],
+      "Start2": [],
+      "Start3": [],
       "Events": [
         "Await Pose Start 1",
         "Await Pose Waypoint 12 Reef",
@@ -1375,9 +1377,9 @@
     },
     {
       "Name": "Score3and4 (Start 3)",
-      "Start1": null,
-      "Start2": null,
-      "Start3": null,
+      "Start1": [],
+      "Start2": [],
+      "Start3": [],
       "Events": [
         "Await Pose Start 1",
         "Await Pose Waypoint 11 Reef",

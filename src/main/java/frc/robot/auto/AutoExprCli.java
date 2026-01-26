@@ -47,6 +47,7 @@ public final class AutoExprCli {
     }
 
     private static Double evalExprWithParams(JsonNode root) {
+        long t0 = System.nanoTime();
         String expr = root.has("expr") && !root.get("expr").isNull() ? root.get("expr").asText() : null;
 
         // build params map preserving types: Number -> Double, Text -> String, Array -> List<Object>
@@ -73,29 +74,37 @@ public final class AutoExprCli {
         }
 
         // Delegate full evaluation (including recursive param resolution) to AutoExpr.evalWithParams
-        return AutoExpr.evalWithParams(expr, paramsRaw);
+        Double res = AutoExpr.evalWithParams(expr, paramsRaw);
+        long durMs = (System.nanoTime() - t0) / 1_000_000;
+        logToFile(String.format("EVAL: expr=%s durMs=%d result=%s", expr, durMs, res == null ? "null" : res.toString()));
+        return res;
     }
 
     // Single-shot mode (backward compatible).
     private static void singleShot(ObjectMapper mapper, String input) throws IOException {
+        long t0 = System.nanoTime();
         JsonNode root = mapper.readTree(input);
         Double result = evalExprWithParams(root);
+        long durMs = (System.nanoTime() - t0) / 1_000_000;
         ObjectNode out = mapper.createObjectNode();
         if (result == null) out.putNull("value");
         else out.put("value", result.doubleValue());
         String jsonOut = mapper.writeValueAsString(out);
         System.out.println(jsonOut);
-        logToFile("SINGLE: " + jsonOut);
+        logToFile(String.format("SINGLE: out=%s totalDurMs=%d", jsonOut, durMs));
     }
 
     // Server mode: read newline-delimited JSON requests, write newline-delimited JSON responses.
     private static void serverMode(ObjectMapper mapper) throws IOException {
         BufferedReader reader = new BufferedReader(new InputStreamReader(System.in, java.nio.charset.StandardCharsets.UTF_8));
+        // Log server ready timestamp so we can separate JVM startup time from per-request time
+        logToFile("SERVER_READY: " + java.time.Instant.now().toString());
         String line;
         while ((line = reader.readLine()) != null) {
             line = line.trim();
             if (line.isEmpty()) continue;
             try {
+                long t0 = System.nanoTime();
                 JsonNode root = mapper.readTree(line);
                 Double result = evalExprWithParams(root);
                 ObjectNode out = mapper.createObjectNode();
@@ -103,7 +112,8 @@ public final class AutoExprCli {
                 else out.put("value", result.doubleValue());
                 String jsonOut = mapper.writeValueAsString(out);
                 System.out.println(jsonOut);
-                logToFile("SERVER: in=" + line + " out=" + jsonOut);
+                long durMs = (System.nanoTime() - t0) / 1_000_000;
+                logToFile("SERVER: in=" + line + " out=" + jsonOut + " evalDurMs=" + durMs);
                 // flush stdout for the caller to receive immediately
                 System.out.flush();
             } catch (Throwable t) {
@@ -138,14 +148,12 @@ public final class AutoExprCli {
             if (!input.isEmpty()) singleShot(mapper, input);
         } catch (IOException ex) {
             logToFile("FATAL IO: " + ex.toString());
+            // ensure the exception is visible on stderr for callers and also recorded in the file log
             ex.printStackTrace(System.err);
-            if (LOG != null) { ex.printStackTrace(LOG); LOG.flush(); }
-            System.exit(1);
-        } catch (Throwable t) {
-            logToFile("FATAL: " + t.toString());
-            t.printStackTrace(System.err);
-            if (LOG != null) { t.printStackTrace(LOG); LOG.flush(); }
-            System.exit(1);
+            if (LOG != null) {
+                ex.printStackTrace(LOG);
+                LOG.flush();
+            }
         }
     }
 }
