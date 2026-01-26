@@ -212,7 +212,7 @@ public class SwerveDriveModule implements DriveModule {
         for (SwerveMotorModule module : driveModules) {
             var i = module.GetSwervePosition().getValue();
             var state = new SwerveModuleState();
-            state.angle = new Rotation2d(module.rotationOffset);
+            state.angle = new Rotation2d(-module.rotationOffset);
             returnStates[i] = state;
         }
         
