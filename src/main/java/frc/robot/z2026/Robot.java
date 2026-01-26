@@ -107,11 +107,16 @@ public class Robot extends TimedRobot {
   SwerveMotorDefinition rightRearDef = new SwerveMotorDefinition(can_drive_rr, enc_drive_rr, can_steer_rr, enc_steer_rr);
   // total length of robot is 32.375", width is 27.5", centerline is 16.1875" from edge.  Drive axle center is 4" from edge - 12.1875" from center which is 309.56mm or 0.30956 meters
   // motor positions are rotated to make the limelight 'forward', this is just labeling.
+  // if motors point inward during rotation, this means the rotation is inverted
+  // 1 - make sure corners are labeled and assigned corectly - if it's wrong, the wheels will turn in opposite direcitons from each other
+  // 2 - make sure rotation is correct (inverted or not) - if it's wrong this will cause inward pointing wheels during rotation and right/left inversion
+  // 3 - make sure coordinate system is correct (x forward, y left)
+  // 4 - make sure rotationoffset is correct for each corner and specified in radians - if this is wrong, the wheels won't point in the right direction in any situation
   SwerveDriveModule swerveDriveModule = new SwerveDriveModule("swerveDrive", m_gyro, m_positioner, Constants.driveSpeed, Constants.driveRatio, Constants.steerMotorSpeed, Constants.floatTolerance
-    , new SwerveMotorModule(SwervePosition.LeftFront, new Translation2d(Constants.motorPosition.getX(), Constants.motorPosition.getY()),leftFrontDef, Constants.steeringEncoderMultiplier, Constants.floatTolerance, true, false, 0)
-    , new SwerveMotorModule(SwervePosition.RightFront, new Translation2d(Constants.motorPosition.getX(), -Constants.motorPosition.getY()), leftRearDef, Constants.steeringEncoderMultiplier, Constants.floatTolerance, true, false, 1.57)
-    , new SwerveMotorModule(SwervePosition.LeftRear, new Translation2d(-Constants.motorPosition.getX(), Constants.motorPosition.getY()), rightFrontDef, Constants.steeringEncoderMultiplier, Constants.floatTolerance, true, false, 4.71)
-    , new SwerveMotorModule(SwervePosition.RightRear, new Translation2d(-Constants.motorPosition.getX(), -Constants.motorPosition.getY()), rightRearDef, Constants.steeringEncoderMultiplier, Constants.floatTolerance, true, false, 3.14)
+    , new SwerveMotorModule(SwervePosition.LeftFront, new Translation2d(Constants.motorPosition.getX(), Constants.motorPosition.getY()), leftFrontDef, Constants.steeringEncoderMultiplier, Constants.floatTolerance, false, false, 0)
+    , new SwerveMotorModule(SwervePosition.RightFront, new Translation2d(Constants.motorPosition.getX(), -Constants.motorPosition.getY()), rightFrontDef, Constants.steeringEncoderMultiplier, Constants.floatTolerance, false, false, 1.57)
+    , new SwerveMotorModule(SwervePosition.LeftRear, new Translation2d(-Constants.motorPosition.getX(), Constants.motorPosition.getY()), leftRearDef, Constants.steeringEncoderMultiplier, Constants.floatTolerance, false, false, 4.71)
+    , new SwerveMotorModule(SwervePosition.RightRear, new Translation2d(-Constants.motorPosition.getX(), -Constants.motorPosition.getY()), rightRearDef, Constants.steeringEncoderMultiplier, Constants.floatTolerance, false, false, 3.14)
   );
 
   ModuleController modules;
