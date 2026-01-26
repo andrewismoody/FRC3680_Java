@@ -8,5 +8,7 @@ DONE -- When any part of a node is selected, the selection details should be pop
 Go through building a file from scratch and verify all functionality
 DONE -- Slow loading sometimes, but really fast others - why?
 DONE -- in events, pose should be drop down box not text box
-Add save button to menu to force a save
-Make selection details and debugoutput collapsable
+DONE -- Add save button to menu to force a save
+DONE -- Make selection details and debugoutput collapsable
+User preferences - save between execution instances and reload on startup.
+

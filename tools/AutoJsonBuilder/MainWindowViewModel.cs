@@ -29,6 +29,7 @@ public sealed class MainWindowViewModel : NotifyBase
 
     public ICommand NewCommand { get; }
     public ICommand OpenCommand { get; }
+    public ICommand SaveCommand { get; }    // <-- new
     public ICommand SaveAsCommand { get; }
 
     private string _debugLog = "";
@@ -117,6 +118,7 @@ public sealed class MainWindowViewModel : NotifyBase
     {
         NewCommand = new RelayCommand(() => NewSeason());
         OpenCommand = new RelayCommand(async () => await OpenJsonAsync());
+        SaveCommand = new RelayCommand(async () => await SaveJsonAsync()); // <-- new
         SaveAsCommand = new RelayCommand(async () => await SaveAsJsonAsync());
 
         Log("MainWindowViewModel ctor reached.");
@@ -438,6 +440,27 @@ public sealed class MainWindowViewModel : NotifyBase
         await RebuildTreeAsync(); // update root label
 
         Log($"SaveAsJson: wrote '{dlg.FileName}'.");
+    }
+
+    // Save to current path if present, otherwise fall back to Save As.
+    private async Task SaveJsonAsync()
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(CurrentJsonPath))
+            {
+                await SaveAsJsonAsync();
+                return;
+            }
+
+            // write current document to current path
+            await SaveToPathAsync(CurrentJsonPath);
+            Log($"Save: saved to '{CurrentJsonPath}'.");
+        }
+        catch (Exception ex)
+        {
+            Log($"Save failed: {ex.Message}");
+        }
     }
 
     // ----- Tree helpers -----

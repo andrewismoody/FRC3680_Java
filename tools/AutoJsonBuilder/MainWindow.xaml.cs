@@ -1,224 +1,290 @@
 using System;
 using System.Windows;
-using System.Windows.Controls; // <-- ensure TextBox type available
+using System.Windows.Controls;
 using System.Windows.Input;
-using Microsoft.Win32;
-using System.Windows.Data; // for Binding.TargetUpdatedEvent
+using System.Windows.Data;
 using System.Windows.Media;
-using AutoJsonBuilder.Helpers; // added for VisualTreeHelper
+using System.Windows.Media.Imaging;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using AutoJsonBuilder.Helpers;
 
-namespace AutoJsonBuilder;
-
-// NOTE: ensure MainWindow.xaml has: xmlns:local="clr-namespace:AutoJsonBuilder"
-
-public partial class MainWindow : Window
+namespace AutoJsonBuilder
 {
-    private readonly MainWindowViewModel _vm = new();
-
-    // Tracks caption TextBoxes that are actively committing a pose rename so the global
-    // LostKeyboardFocus handler can skip its save prompt and avoid a double prompt.
-    private readonly HashSet<TextBox> _captionHandled = new();
-    private readonly object _captionHandledLock = new();
-
-    // Remember last observed binding value per editor control so we ignore the initial
-    // target-update that fires when controls are (re)bound. Only trigger save when the
-    // observed value actually changes.
-    private readonly Dictionary<FrameworkElement, object?> _lastBindingValues = new();
-    private readonly object _lastBindingValuesLock = new();
-
-    public MainWindow()
+    public partial class MainWindow : Window
     {
-        InitializeComponent();
-        DataContext = _vm;
+        private readonly MainWindowViewModel _vm = new();
 
-        // QUICK WARM-UP: force WPF/DirectWrite/D3D init and warm any lazy JIT/resource work.
-        // Keeps UI hidden work cheap; helps avoid many small pauses during the first visible rebuild.
-        _ = Task.Run(() =>
+        // helpers to avoid double-handling of caption commits and to detect real value changes
+        private readonly HashSet<TextBox> _captionHandled = new();
+        private readonly object _captionHandledLock = new();
+        private readonly Dictionary<FrameworkElement, object?> _lastBindingValues = new();
+        private readonly object _lastBindingValuesLock = new();
+
+        // Layout tuning
+        private const double PaneMinContentHeight = 120.0;   // minimum visible content when expander is expanded
+        private const double PaneHeaderEstimate = 32.0;      // fallback header estimate (px) used when collapsed
+        private const double DefaultPlotMinRatio = 0.5;      // default: plot should occupy at least 50% of right area
+        private double _defaultPlotMin = 0.0;                // computed from RightGrid.ActualHeight
+        private bool _plotRowLockedToPixel = false;          // set when we temporarily force a pixel height
+
+        // Helper: prefer ScrollViewer viewport height (visible area) if present, otherwise fall back to RightGrid.ActualHeight.
+        private double GetRightViewportHeight()
         {
             try
             {
-                // 1) Force a tiny render on UI thread to warm DirectX/text rendering paths.
-                if (Application.Current?.Dispatcher != null)
+                if (RightScrollViewer != null && RightScrollViewer.ViewportHeight > 0)
+                    return RightScrollViewer.ViewportHeight;
+            }
+            catch { }
+            return RightGrid?.ActualHeight ?? 0.0;
+        }
+
+        public MainWindow()
+        {
+            InitializeComponent();
+            DataContext = _vm;
+
+            // ensure plot area constraints updated on resize
+            this.SizeChanged += MainWindow_SizeChanged;
+            // initialize default plot min (use visible viewport if possible)
+            try { _defaultPlotMin = Math.Max(0, GetRightViewportHeight() * DefaultPlotMinRatio); PlotRow.MinHeight = _defaultPlotMin; } catch { _defaultPlotMin = 0; }
+
+            // initialize expander rows to header-only if collapsed (designer-safe)
+            try
+            {
+                ExpanderRow1.Height = SelectionExpander.IsExpanded ? new GridLength(1, GridUnitType.Star) : GridLength.Auto;
+                ExpanderRow2.Height = DebugExpander.IsExpanded ? new GridLength(1, GridUnitType.Star) : GridLength.Auto;
+            }
+            catch { }
+
+            // small warm-up to reduce first-visible stalls (best-effort)
+            _ = Task.Run(() =>
+            {
+                try
                 {
-                    Application.Current.Dispatcher.Invoke(() =>
+                    if (Application.Current?.Dispatcher != null)
                     {
-                        try
+                        Application.Current.Dispatcher.Invoke(() =>
                         {
-                            var dv = new System.Windows.Media.DrawingVisual();
-                            var rtb = new System.Windows.Media.Imaging.RenderTargetBitmap(1, 1, 96, 96, System.Windows.Media.PixelFormats.Pbgra32);
-                            rtb.Render(dv);
-                        }
-                        catch { /* best-effort */ }
-                    });
+                            try
+                            {
+                                var dv = new DrawingVisual();
+                                var rtb = new RenderTargetBitmap(1, 1, 96, 96, PixelFormats.Pbgra32);
+                                rtb.Render(dv);
+                            }
+                            catch { }
+                        });
+                    }
+                    try { _ = _vm.RebuildTreeAsync(); } catch { }
                 }
-
-                // 2) Warm VM tree-building on a background thread (does not touch UI collections).
-                try { _ = _vm.RebuildTreeAsync(); } catch { }
-            }
-            catch { /* swallow */ }
-        });
-
-        CommandBindings.Add(new CommandBinding(ApplicationCommands.Close, (_, __) => Close()));
-
-        // Listen for lost keyboard focus anywhere in this window (catches TextBoxes inside DataTemplates/Setters)
-        AddHandler(Keyboard.LostKeyboardFocusEvent, new KeyboardFocusChangedEventHandler(Editor_LostKeyboardFocus), handledEventsToo: true);
-
-        // Track when a TextBox gains keyboard focus so we can compare before/after text
-        AddHandler(Keyboard.GotKeyboardFocusEvent, new KeyboardFocusChangedEventHandler(Editor_GotKeyboardFocus), handledEventsToo: true);
-
-        // Listen for binding target updates (fires when NotifyOnTargetUpdated=True)
-        AddHandler(Binding.TargetUpdatedEvent, new RoutedEventHandler(OnBindingTargetUpdated), handledEventsToo: true);
-    }
-
-    private void TreeView_SelectedItemChanged(object sender, RoutedPropertyChangedEventArgs<object> e)
-    {
-        _vm.SetSelectedTreeItem(e.NewValue as TreeItemVm);
-    }
-
-    // Caption TextBox LostFocus: commit pose caption edits (VM handles validation/rename).
-    private async void TreeItemCaption_LostFocus(object? sender, RoutedEventArgs e)
-    {
-        if (sender is not TextBox tb) return;
-        if (tb.DataContext is not TreeItemVm item) return;
-        if (DataContext is not MainWindowViewModel vm) return;
-
-        // Mark this TextBox as handled so the global LostKeyboardFocus handler will skip prompting.
-        lock (_captionHandledLock)
-        {
-            _captionHandled.Add(tb);
-        }
-
-        try
-        {
-            await vm.CommitPoseCaptionAsync(item);
-        }
-        catch
-        {
-            // swallow to avoid crashing UI; VM logs errors
-        }
-        finally
-        {
-            // Ensure the mark is removed eventually if the global handler didn't see it.
-            _ = Task.Run(async () =>
-            {
-                await Task.Delay(1500).ConfigureAwait(false);
-                lock (_captionHandledLock)
-                {
-                    _captionHandled.Remove(tb);
-                }
+                catch { }
             });
-        }
-    }
 
-    // Optional: remember original text when focusing an editor (not strictly required).
-    private void Editor_GotKeyboardFocus(object? sender, KeyboardFocusChangedEventArgs e)
-    {
-        try
+            CommandBindings.Add(new CommandBinding(ApplicationCommands.Close, (_, __) => Close()));
+
+            // global handlers for focus and binding updates
+            AddHandler(Keyboard.LostKeyboardFocusEvent, new KeyboardFocusChangedEventHandler(Editor_LostKeyboardFocus), handledEventsToo: true);
+            AddHandler(Keyboard.GotKeyboardFocusEvent, new KeyboardFocusChangedEventHandler(Editor_GotKeyboardFocus), handledEventsToo: true);
+            AddHandler(Binding.TargetUpdatedEvent, new RoutedEventHandler(OnBindingTargetUpdated), handledEventsToo: true);
+        }
+
+        private void TreeView_SelectedItemChanged(object sender, RoutedPropertyChangedEventArgs<object> e)
         {
-            // e.NewFocus is the element that just received keyboard focus.
-            if (e.NewFocus is FrameworkElement fe && fe.DataContext is TreeItemVm tivm)
+            _vm.SetSelectedTreeItem(e.NewValue as TreeItemVm);
+        }
+
+        // Caption TextBox LostFocus: commit pose caption edits (VM handles validation/rename).
+        private async void TreeItemCaption_LostFocus(object? sender, RoutedEventArgs e)
+        {
+            if (sender is not TextBox tb) return;
+            if (tb.DataContext is not TreeItemVm item) return;
+
+            lock (_captionHandledLock) { _captionHandled.Add(tb); }
+            try
             {
-                // Update selection details to match the focused editor's node
-                _vm.SetSelectedTreeItem(tivm);
+                await _vm.CommitPoseCaptionAsync(item);
+            }
+            catch { }
+            finally
+            {
+                // remove mark after a short delay in case global handler didn't see it
+                _ = Task.Run(async () =>
+                {
+                    await Task.Delay(1500).ConfigureAwait(false);
+                    lock (_captionHandledLock) { _captionHandled.Remove(tb); }
+                });
             }
         }
-        catch
+
+        // When an editor receives focus update selection details to that node
+        private void Editor_GotKeyboardFocus(object? sender, KeyboardFocusChangedEventArgs e)
         {
-            // swallow to avoid focus-time exceptions breaking UI
-        }
-    }
-
-    // Binding target updated: can be used to react when a ComboBox/TextBox binding propagates value.
-    private void OnBindingTargetUpdated(object? sender, RoutedEventArgs e)
-    {
-        // Only trigger for Field nodes to avoid duplicate saves for structural changes.
-        try
-        {
-            if (DataContext is not MainWindowViewModel vm) return;
-            if (e.OriginalSource is not FrameworkElement fe) return;
-            if (fe.DataContext is not TreeItemVm tivm) return;
-            if (tivm.Kind != TreeItemKind.Field) return;
-
-            // Use the TreeItemVm.Value as the canonical value (may be string, bool, int, ...)
-            var current = tivm.Value;
-
-            lock (_lastBindingValuesLock)
+            try
             {
-                if (!_lastBindingValues.TryGetValue(fe, out var prev))
+                if (e.NewFocus is FrameworkElement fe && fe.DataContext is TreeItemVm tivm)
+                    _vm.SetSelectedTreeItem(tivm);
+            }
+            catch { }
+        }
+
+        // Binding target updated (NotifyOnTargetUpdated = true): detect real value changes and trigger save/autosave
+        private void OnBindingTargetUpdated(object? sender, RoutedEventArgs e)
+        {
+            try
+            {
+                if (e.OriginalSource is not FrameworkElement fe) return;
+                if (fe.DataContext is not TreeItemVm tivm) return;
+                if (tivm.Kind != TreeItemKind.Field) return;
+
+                var current = tivm.Value;
+
+                lock (_lastBindingValuesLock)
                 {
-                    // First time we see this editor instance: record and do not trigger a save.
+                    if (!_lastBindingValues.TryGetValue(fe, out var prev))
+                    {
+                        _lastBindingValues[fe] = CloneForComparison(current);
+                        return;
+                    }
+                    if (AreEqualForSave(prev, current)) return;
                     _lastBindingValues[fe] = CloneForComparison(current);
-                    return;
                 }
 
-                // Compare using object.Equals on the canonical values (null-safe).
-                if (AreEqualForSave(prev, current))
-                {
-                    // No real change — ignore.
-                    return;
-                }
-
-                // Value changed: update stored value and trigger save.
-                _lastBindingValues[fe] = CloneForComparison(current);
+                _ = _vm.SavePromptOrAutoSaveAsync();
             }
-
-            // fire-and-forget; VM has a guard to avoid double prompts
-            _ = vm.SavePromptOrAutoSaveAsync();
+            catch { }
         }
-        catch
-        {
-            // swallow: don't let UI binding notifications crash the app
-        }
-    }
 
-    // Global lost-keyboard-focus handler: delegates to VM save/prompt logic but skips caption-controlled TextBoxes.
-    private async void Editor_LostKeyboardFocus(object? sender, KeyboardFocusChangedEventArgs e)
-    {
-        // Only react when the focus left a TextBox (avoid unrelated focus changes)
-        if (e.OriginalSource is not TextBox tb) return;
-
-        // If the caption handler already handled this particular TextBox LostFocus, skip global save.
-        lock (_captionHandledLock)
+        // Global lost-keyboard-focus handler: delegate to VM save/prompt except when caption handler ran
+        private async void Editor_LostKeyboardFocus(object? sender, KeyboardFocusChangedEventArgs e)
         {
-            if (_captionHandled.Remove(tb))
+            if (e.OriginalSource is not TextBox tb) return;
+
+            lock (_captionHandledLock)
             {
-                _vm.Log("Skipped global auto-save because caption handler already committed the edit.");
-                return;
+                if (_captionHandled.Remove(tb))
+                {
+                    _vm.Log("Skipped global auto-save because caption handler already committed the edit.");
+                    return;
+                }
+            }
+
+            if (tb.DataContext is not TreeItemVm) return;
+
+            try
+            {
+                await _vm.SavePromptOrAutoSaveAsync();
+            }
+            catch (Exception ex)
+            {
+                _vm.Log($"Save on edit failed: {ex.Message}");
+                try { MessageBox.Show(this, $"Failed to save edits: {ex.Message}", "Save error", MessageBoxButton.OK, MessageBoxImage.Error); } catch { }
             }
         }
 
-        // Only handle TextBoxes that belong to the tree (bound to a TreeItemVm)
-        if (tb.DataContext is not TreeItemVm) return;
-        if (DataContext is not MainWindowViewModel vm) return;
+        private static object? CloneForComparison(object? v) => v;
 
-        try
+        private static bool AreEqualForSave(object? a, object? b)
         {
-            // Delegate to VM; VM contains a re-entrancy guard so multiple concurrent calls won't prompt twice.
-            await vm.SavePromptOrAutoSaveAsync();
+            if (a is null && b is null) return true;
+            if (a is null || b is null) return false;
+            return a.Equals(b);
         }
-        catch (Exception ex)
+
+        // Ensure expanders have at least their minimum visible height. If there's not enough room,
+        // temporarily reduce the plot row (to a pixel height) to make space. Restore star-sizing
+        // when available space is sufficient again.
+        private void EnsureSpaceForExpanders()
         {
-            _vm.Log($"Save on edit failed: {ex.Message}");
-            try { MessageBox.Show(this, $"Failed to save edits: {ex.Message}", "Save error", MessageBoxButton.OK, MessageBoxImage.Error); } catch { }
+            try
+            {
+                // compute required bottom area for expanders (including internal splitter heights)
+                double req = 0.0;
+                // top expander
+                req += SelectionExpander.IsExpanded ? (PaneHeaderEstimate + PaneMinContentHeight) : PaneHeaderEstimate;
+                // internal splitter between two expanders
+                req += 6.0;
+                // bottom expander
+                req += DebugExpander.IsExpanded ? (PaneHeaderEstimate + PaneMinContentHeight) : PaneHeaderEstimate;
+
+                // include outer splitter between plot and expanders (height = 6)
+                req += 6.0;
+
+                var available = GetRightViewportHeight();
+
+                // desired plot min based on current right-grid size
+                _defaultPlotMin = Math.Max(0, GetRightViewportHeight() * DefaultPlotMinRatio);
+
+                // If not enough room for plot's default min + required expanders, reduce plot to make room.
+                if (available < _defaultPlotMin + req)
+                {
+                    // compute new pixel height for plot row that leaves 'req' for bottom area
+                    double newPlotPx = Math.Max(24.0, available - req); // never force to 0; keep small visible area
+                    PlotRow.Height = new GridLength(newPlotPx, GridUnitType.Pixel);
+                    _plotRowLockedToPixel = true;
+                    // allow expanders to size to at least their min
+                    ExpanderRow1.MinHeight = SelectionExpander.IsExpanded ? (PaneHeaderEstimate + PaneMinContentHeight) : PaneHeaderEstimate;
+                    ExpanderRow2.MinHeight = DebugExpander.IsExpanded ? (PaneHeaderEstimate + PaneMinContentHeight) : PaneHeaderEstimate;
+                }
+                else
+                {
+                    // there is enough room: restore star sizing and default plot min
+                    if (_plotRowLockedToPixel)
+                    {
+                        PlotRow.Height = new GridLength(3, GridUnitType.Star); // restore proportional sizing
+                        _plotRowLockedToPixel = false;
+                    }
+                    PlotRow.MinHeight = _defaultPlotMin;
+                    // set expander min heights so expanded panes show minimum content
+                    ExpanderRow1.MinHeight = SelectionExpander.IsExpanded ? (PaneHeaderEstimate + PaneMinContentHeight) : PaneHeaderEstimate;
+                    ExpanderRow2.MinHeight = DebugExpander.IsExpanded ? (PaneHeaderEstimate + PaneMinContentHeight) : PaneHeaderEstimate;
+                }
+            }
+            catch
+            {
+                // best effort
+            }
         }
-    }
 
-    // Helper: normalize/clone values for safe comparison (avoid reference-equality surprises)
-    private static object? CloneForComparison(object? v)
-    {
-        if (v == null) return null;
-        // For common mutable types used here (string, bool, int, double) Equals is fine.
-        // If the VM uses complex objects for Value, you can extend this to produce an immutable representation.
-        return v;
-    }
+        // Expander handlers: toggle corresponding row between Auto (header-only) and Star (shareable)
+        private void Expander_Expanded(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                if (sender == SelectionExpander) ExpanderRow1.Height = new GridLength(1, GridUnitType.Star);
+                else if (sender == DebugExpander) ExpanderRow2.Height = new GridLength(1, GridUnitType.Star);
+                // ensure enough room to show minimum pane content
+                EnsureSpaceForExpanders();
+            }
+            catch { }
+        }
 
-    private static bool AreEqualForSave(object? a, object? b)
-    {
-        if (a is null && b is null) return true;
-        if (a is null || b is null) return false;
-        // Strings and boxed primitives compare correctly with Equals
-        return a.Equals(b);
+        private void Expander_Collapsed(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                if (sender == SelectionExpander) ExpanderRow1.Height = GridLength.Auto;
+                else if (sender == DebugExpander) ExpanderRow2.Height = GridLength.Auto;
+                // collapsed -> recompute layout constraints and potentially restore plot sizing
+                EnsureSpaceForExpanders();
+            }
+            catch { }
+        }
+
+        private void MainWindow_SizeChanged(object? sender, SizeChangedEventArgs e)
+        {
+            try
+            {
+                // recompute default plot min and ensure expanders can get their minimum if needed
+                _defaultPlotMin = Math.Max(0, GetRightViewportHeight() * DefaultPlotMinRatio);
+                // only enforce as MinHeight (can be temporarily overridden when expanders need space)
+                if (!_plotRowLockedToPixel) PlotRow.MinHeight = _defaultPlotMin;
+                EnsureSpaceForExpanders();
+            }
+            catch
+            {
+                // best-effort only
+            }
+        }
     }
 }
