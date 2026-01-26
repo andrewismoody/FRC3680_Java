@@ -1068,10 +1068,29 @@ public sealed class MainWindowViewModel : NotifyBase
             {
                 var originalKey = kvp.Key;
                 var originalVal = kvp.Value;
+                // Make array-backed params editable like scalars: allow renaming the param key via the caption
                 var node = new TreeItemVm(kvp.Key, TreeItemKind.Object)
                 {
                     HasRemove = true,
-                    Model = kvp
+                    Model = kvp,
+                    IsCaptionEditable = true
+                };
+                // Commit caption edits with the same validation/rename flow used for scalar params
+                node.PropertyChanged += async (_, e) =>
+                {
+                    if (e.PropertyName != nameof(TreeItemVm.Title)) return;
+                    var newKey = node.Title?.Trim() ?? "";
+                    if (string.IsNullOrWhiteSpace(newKey) || newKey == originalKey)
+                    {
+                        node.Title = originalKey;
+                        return;
+                    }
+                    if (_doc.Params.ContainsKey(newKey))
+                    {
+                        node.Title = originalKey; // revert on collision
+                        return;
+                    }
+                    await RenameParamAsync(originalKey, newKey);
                 };
                 node.RemoveCommand = new RelayCommand(() => { _doc.Params.Remove(originalKey); _ = RebuildTreeAsync(); TreeHelper.TriggerModelChangedImmediate(); });
 
@@ -1397,11 +1416,33 @@ public sealed class MainWindowViewModel : NotifyBase
 
         foreach (var ev in _doc.Events)
         {
+            // Make event caption editable so users can rename events directly from the tree.
+            var originalTitle = ev.Name;
             var node = new TreeItemVm(ev.Name, TreeItemKind.Object)
             {
                 HasRemove = true,
                 RemoveCommand = new RelayCommand(() => { _doc.Events.Remove(ev); _ = RebuildTreeAsync(); }),
-                Model = ev
+                Model = ev,
+                IsCaptionEditable = true
+            };
+            // Commit caption edits: validate, avoid collisions, and rename via helper
+            node.PropertyChanged += async (_, e) =>
+            {
+                if (e.PropertyName != nameof(TreeItemVm.Title)) return;
+                var newTitle = node.Title?.Trim() ?? "";
+                var oldName = originalTitle ?? "";
+                if (string.IsNullOrWhiteSpace(newTitle))
+                {
+                    node.Title = oldName; // revert invalid
+                    return;
+                }
+                if (string.Equals(newTitle, oldName, StringComparison.OrdinalIgnoreCase)) return;
+                if (_doc.Events.Any(x => string.Equals(x.Name, newTitle, StringComparison.OrdinalIgnoreCase)))
+                {
+                    node.Title = oldName; // collision -> revert
+                    return;
+                }
+                await RenameEventAsync(oldName, newTitle);
             };
 
             // type (await|time)
@@ -1431,13 +1472,19 @@ public sealed class MainWindowViewModel : NotifyBase
             };
             node.Children.Add(parallel);
 
-            // pose (required for await)
-            var poseField = new TreeItemVm("pose", TreeItemKind.Field) { Editor = TreeEditorKind.Text, Value = ev.Pose ?? "", Model = ev };
+            // pose (dropdown of existing pose names). Include an empty option to allow "no pose" selection.
+            var poseField = new TreeItemVm("pose", TreeItemKind.Field) { Editor = TreeEditorKind.Enum, Value = ev.Pose ?? "", Model = ev };
+            poseField.Options.Clear();
+            // first option is empty meaning "no pose"
+            poseField.Options.Add("");
+            foreach (var pName in _doc.Poses.Select(p => p.Name ?? ""))
+                poseField.Options.Add(pName);
             poseField.PropertyChanged += (_, e) =>
             {
                 if (e.PropertyName == nameof(TreeItemVm.Value))
                 {
-                    ev.Pose = poseField.Value?.ToString();
+                    var sel = poseField.Value?.ToString() ?? "";
+                    ev.Pose = string.IsNullOrWhiteSpace(sel) ? null : sel;
                     TreeHelper.TriggerModelChangedImmediate();
                 }
             };
@@ -1482,13 +1529,17 @@ public sealed class MainWindowViewModel : NotifyBase
             };
             node.Children.Add(tv);
 
-            // triggerModule (string, nullable)
-            var tm = new TreeItemVm("triggerModule", TreeItemKind.Field) { Editor = TreeEditorKind.Text, Value = ev.TriggerModule ?? "", Model = ev };
+            // triggerModule (dropdown of modules; first option is empty => "no module")
+            var tm = new TreeItemVm("triggerModule", TreeItemKind.Field) { Editor = TreeEditorKind.Enum, Value = ev.TriggerModule ?? "", Model = ev };
+            tm.Options.Clear();
+            tm.Options.Add(""); // empty = no module
+            foreach (var m in _doc.Modules) tm.Options.Add(m ?? "");
             tm.PropertyChanged += (_, e) =>
             {
                 if (e.PropertyName == nameof(TreeItemVm.Value))
                 {
-                    ev.TriggerModule = string.IsNullOrWhiteSpace(tm.Value?.ToString()) ? null : tm.Value?.ToString();
+                    var sel = tm.Value?.ToString() ?? "";
+                    ev.TriggerModule = string.IsNullOrWhiteSpace(sel) ? null : sel;
                     TreeHelper.TriggerModelChangedImmediate();
                 }
             };
@@ -1554,7 +1605,11 @@ public sealed class MainWindowViewModel : NotifyBase
         var sec = new TreeItemVm("sequences", TreeItemKind.Section) { HasAdd = true };
         sec.AddCommand = new RelayCommand(() =>
         {
-            _doc.Sequences.Add(new SequenceModel { Name = $"seq{_doc.Sequences.Count + 1}", Events = new() { _doc.Events.First().Name } });
+            _doc.Sequences.Add(new SequenceModel {
+                Name = $"seq{_doc.Sequences.Count + 1}",
+                Events = new() { _doc.Events.FirstOrDefault()?.Name ?? "" },
+                Start1 = new(), Start2 = new(), Start3 = new()
+            });
             _ = RebuildTreeAsync();
             TreeHelper.TriggerModelChangedImmediate();
             TreeHelper.FocusNewUnder(TreeRootItems, "sequences");
@@ -1562,12 +1617,111 @@ public sealed class MainWindowViewModel : NotifyBase
 
         foreach (var s in _doc.Sequences)
         {
+            var originalName = s.Name;
             var node = new TreeItemVm(s.Name, TreeItemKind.Object)
             {
                 HasRemove = true,
                 RemoveCommand = new RelayCommand(() => { _doc.Sequences.Remove(s); _ = RebuildTreeAsync(); TreeHelper.TriggerModelChangedImmediate(); }),
-                Model = s
+                Model = s,
+                IsCaptionEditable = true
             };
+            // Caption rename handler (existing rename flow)
+            node.PropertyChanged += async (_, e) =>
+            {
+                if (e.PropertyName != nameof(TreeItemVm.Title)) return;
+                var newName = node.Title?.Trim() ?? "";
+                var oldName = originalName ?? "";
+                if (string.IsNullOrWhiteSpace(newName))
+                {
+                    node.Title = oldName; // revert invalid
+                    return;
+                }
+                if (string.Equals(newName, oldName, StringComparison.OrdinalIgnoreCase)) return;
+                if (_doc.Sequences.Any(x => string.Equals(x.Name, newName, StringComparison.OrdinalIgnoreCase)))
+                {
+                    node.Title = oldName; // collision -> revert
+                    return;
+                }
+                await RenameSequenceAsync(oldName, newName);
+            };
+
+            // Ensure arrays exist so UI code can safely enumerate / modify
+            s.Events ??= new System.Collections.Generic.List<string>();
+            s.Start1 ??= new System.Collections.Generic.List<string>();
+            s.Start2 ??= new System.Collections.Generic.List<string>();
+            s.Start3 ??= new System.Collections.Generic.List<string>();
+
+            // events list (one child node named "events" per schema) — options come from current event names
+            var eventOptions = _doc.Events.Select(ev => ev.Name ?? "").Where(n => !string.IsNullOrWhiteSpace(n)).ToList();
+
+            var eventsNode = new TreeItemVm("events", TreeItemKind.Object)
+            {
+                Model = s.Events,
+                HasAdd = true
+            };
+            eventsNode.AddCommand = new RelayCommand(() =>
+            {
+                var defaultEvent = eventOptions.FirstOrDefault() ?? "";
+                s.Events.Add(defaultEvent);
+                _ = RebuildTreeAsync();
+                TreeHelper.TriggerModelChangedImmediate();
+                TreeHelper.FocusNewUnder(TreeRootItems, "sequences", s.Name);
+            });
+            for (int i = 0; i < s.Events.Count; i++)
+            {
+                var idx = i;
+                var field = TreeHelper.CreateListField("", s.Events, () => s.Events[idx], v => s.Events[idx] = v, eventOptions);
+                field.IsCaptionEditable = false;
+                field.HasRemove = true;
+                field.Model = s.Events;
+                field.RemoveCommand = new RelayCommand(() =>
+                {
+                    if (idx >= 0 && idx < s.Events.Count) s.Events.RemoveAt(idx);
+                    _ = RebuildTreeAsync();
+                    TreeHelper.TriggerModelChangedImmediate();
+                });
+                eventsNode.Children.Add(field);
+            }
+            node.Children.Add(eventsNode);
+
+            // start1 / start2 / start3 arrays: same pattern as events
+            void AddStartArrayNode(string title, System.Collections.Generic.List<string> list)
+            {
+                var arrNode = new TreeItemVm(title, TreeItemKind.Object)
+                {
+                    Model = list,
+                    HasAdd = true
+                };
+                arrNode.AddCommand = new RelayCommand(() =>
+                {
+                    var defaultEvent = eventOptions.FirstOrDefault() ?? "";
+                    list.Add(defaultEvent);
+                    _ = RebuildTreeAsync();
+                    TreeHelper.TriggerModelChangedImmediate();
+                    TreeHelper.FocusNewUnder(TreeRootItems, "sequences", s.Name);
+                });
+                for (int i = 0; i < list.Count; i++)
+                {
+                    var idx = i;
+                    var field = TreeHelper.CreateListField("", list, () => list[idx], v => list[idx] = v, eventOptions);
+                    field.IsCaptionEditable = false;
+                    field.HasRemove = true;
+                    field.Model = list;
+                    field.RemoveCommand = new RelayCommand(() =>
+                    {
+                        if (idx >= 0 && idx < list.Count) list.RemoveAt(idx);
+                        _ = RebuildTreeAsync();
+                        TreeHelper.TriggerModelChangedImmediate();
+                    });
+                    arrNode.Children.Add(field);
+                }
+                node.Children.Add(arrNode);
+            }
+
+            AddStartArrayNode("start1", s.Start1);
+            AddStartArrayNode("start2", s.Start2);
+            AddStartArrayNode("start3", s.Start3);
+
             sec.Children.Add(node);
         }
         return sec;
@@ -1577,7 +1731,8 @@ public sealed class MainWindowViewModel : NotifyBase
     {
         var node = new TreeItemVm($"{f.Type}:{f.Index}", TreeItemKind.Object)
         {
-            IsCaptionEditable = true,
+            // fixture captions should not be editable
+            IsCaptionEditable = false,
             Model = f,
             HasRemove = true
         };
@@ -1756,7 +1911,7 @@ public sealed class MainWindowViewModel : NotifyBase
         positionField.PropertyChanged += (_, e) => { if (e.PropertyName == nameof(TreeItemVm.Value)) UpdateTitle(); };
         actionField.PropertyChanged += (_, e) => { if (e.PropertyName == nameof(TreeItemVm.Value)) UpdateTitle(); };
         // kind/fixture changes also affect label
-        kindField.PropertyChanged += (_, e) => { if (e.PropertyName == nameof(TreeItemVm.Value)) { UpdateTitle(); /* rebuild child area handled elsewhere */ } };
+        kindField.PropertyChanged += (_, e) => { if (e.PropertyName == nameof(TreeItemVm.Value)) UpdateTitle(); };
 
         // initial computed title
         UpdateTitle();
@@ -1846,6 +2001,82 @@ public sealed class MainWindowViewModel : NotifyBase
         await RebuildTreeAsync();
         TreeHelper.FocusNewUnder(TreeRootItems, "poses", newName);
         Log($"RenamePose: completed '{oldName}' -> '{newName}'");
+    }
+
+    // Add this helper near other private helpers in the class
+    private async Task RenameEventAsync(string oldName, string newName)
+    {
+        if (string.IsNullOrWhiteSpace(oldName) || string.IsNullOrWhiteSpace(newName) || oldName == newName) return;
+        var ev = _doc.Events.FirstOrDefault(e => string.Equals(e.Name, oldName, StringComparison.OrdinalIgnoreCase));
+        if (ev is null)
+        {
+            Log($"RenameEvent: old event '{oldName}' not found.");
+            return;
+        }
+        if (_doc.Events.Any(e => string.Equals(e.Name, newName, StringComparison.OrdinalIgnoreCase)))
+        {
+            Log($"RenameEvent: target name '{newName}' already exists — abort.");
+            return;
+        }
+
+        Log($"RenameEvent: renaming '{oldName}' -> '{newName}'");
+        // update the event name
+        ev.Name = newName;
+
+        // Update any sequence references to the event name (events + start1/2/3)
+        foreach (var seq in _doc.Sequences)
+        {
+            void ReplaceInList(System.Collections.Generic.List<string>? list)
+            {
+                if (list == null) return;
+                for (int i = 0; i < list.Count; i++)
+                {
+                    if (string.Equals(list[i], oldName, StringComparison.OrdinalIgnoreCase))
+                        list[i] = newName;
+                }
+            }
+
+            ReplaceInList(seq.Events);
+            ReplaceInList(seq.Start1);
+            ReplaceInList(seq.Start2);
+            ReplaceInList(seq.Start3);
+        }
+
+        // trigger immediate save for the rename
+        TreeHelper.TriggerModelChangedImmediate();
+
+        // rebuild and focus renamed event
+        await RebuildTreeAsync();
+        TreeHelper.FocusNewUnder(TreeRootItems, "events", newName);
+        Log($"RenameEvent: completed '{oldName}' -> '{newName}'");
+    }
+
+    // Add this helper near other private helpers in the class
+    private async Task RenameSequenceAsync(string oldName, string newName)
+    {
+        if (string.IsNullOrWhiteSpace(oldName) || string.IsNullOrWhiteSpace(newName) || oldName == newName) return;
+        var seq = _doc.Sequences.FirstOrDefault(s => string.Equals(s.Name, oldName, StringComparison.OrdinalIgnoreCase));
+        if (seq is null)
+        {
+            Log($"RenameSequence: old sequence '{oldName}' not found.");
+            return;
+        }
+        if (_doc.Sequences.Any(s => string.Equals(s.Name, newName, StringComparison.OrdinalIgnoreCase)))
+        {
+            Log($"RenameSequence: target name '{newName}' already exists — abort.");
+            return;
+        }
+
+        Log($"RenameSequence: renaming '{oldName}' -> '{newName}'");
+        seq.Name = newName;
+
+        // trigger immediate save for the rename
+        TreeHelper.TriggerModelChangedImmediate();
+
+        // rebuild and focus renamed sequence
+        await RebuildTreeAsync();
+        TreeHelper.FocusNewUnder(TreeRootItems, "sequences", newName);
+        Log($"RenameSequence: completed '{oldName}' -> '{newName}'");
     }
 
     // Autosave helper: write current _doc to CurrentJsonPath if set (fire-and-forget from notifier).
