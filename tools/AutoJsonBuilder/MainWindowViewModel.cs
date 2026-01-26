@@ -880,7 +880,9 @@ public sealed class MainWindowViewModel : NotifyBase
             // ensure stable unique names after adding (moved)
             PoseHelper.EnsurePoseNames(_doc);
 
+            // Rebuild UI and notify model-changed so autosave/prompt runs for this user action.
             _ = RebuildTreeAsync();
+            TreeHelper.TriggerModelChangedImmediate();
             TreeHelper.FocusNewUnder(TreeRootItems, "poses");
         });
 
@@ -955,6 +957,7 @@ public sealed class MainWindowViewModel : NotifyBase
             };
             _doc.Events.Add(ev);
             _ = RebuildTreeAsync();
+            TreeHelper.TriggerModelChangedImmediate();
             TreeHelper.FocusNewUnder(TreeRootItems, "events");
         });
 
@@ -1084,6 +1087,8 @@ public sealed class MainWindowViewModel : NotifyBase
             var f = new FixtureSchemaModel { Type = "fixture", Index = _doc.Fixtures.Count };
             _doc.Fixtures.Add(f);
             AddFixtureVm(sec, f);
+            // Notify model-changed so autosave/prompt will run for this user action.
+            TreeHelper.TriggerModelChangedImmediate();
         });
 
         foreach (var f in _doc.Fixtures)
@@ -1100,6 +1105,8 @@ public sealed class MainWindowViewModel : NotifyBase
             var t = new TargetSchemaModel { Module = $"module{_doc.Targets.Count + 1}" };
             _doc.Targets.Add(t);
             AddTargetVm(sec, t);
+            // Notify model-changed so autosave/prompt will run for this user action.
+            TreeHelper.TriggerModelChangedImmediate();
         });
 
         foreach (var t in _doc.Targets)
@@ -1115,6 +1122,7 @@ public sealed class MainWindowViewModel : NotifyBase
         {
             _doc.Sequences.Add(new SequenceModel { Name = $"seq{_doc.Sequences.Count + 1}", Events = new() { _doc.Events.First().Name } });
             _ = RebuildTreeAsync();
+            TreeHelper.TriggerModelChangedImmediate();
             TreeHelper.FocusNewUnder(TreeRootItems, "sequences");
         });
 

@@ -3,7 +3,7 @@ Plot all targets per module in its own layer
 Review autotarget implementation - lookat, position, rotation, etc, etc to ensure all available options are included in schema/editor/evaluator
 Default/Required Params - enforce params that are required for minimal functionality
 DONE -- target label processing - the target labels should be renderable regardless of target selections
-adding a pose to the poses section doesn't trigger an autosave
+DONE -- adding a pose to the poses section doesn't trigger an autosave
 DONE -- When any part of a node is selected, the selection details should be populated with the whole node
 Go through building a file from scratch and verify all functionality
 DONE -- Slow loading sometimes, but really fast others - why?
