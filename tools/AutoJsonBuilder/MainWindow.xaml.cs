@@ -12,6 +12,8 @@ using AutoJsonBuilder.Helpers;
 using OxyPlot;            // <-- added: provide PlotModel, OxyRect, etc.
 using OxyPlot.Axes;      // <-- added: provides AxisPosition, Axis types used in diagnostics
 using OxyPlot.Wpf; // ensure OxyPlot.Wpf is available in the UI project
+using System.Linq;
+using System.Collections;
 
 namespace AutoJsonBuilder
 {
@@ -38,6 +40,9 @@ namespace AutoJsonBuilder
         // throttle logging so mouse-move diagnostics aren't too chatty
         private DateTime _lastMouseDiag = DateTime.MinValue;
         private readonly TimeSpan _mouseDiagInterval = TimeSpan.FromMilliseconds(250);
+
+        // keep track of attached handlers so we can detach cleanly
+        private readonly List<INotifyPropertyChanged> _attachedSeriesFilters = new();
 
         // Helper: prefer ScrollViewer viewport height (visible area) if present, otherwise fall back to RightGrid.ActualHeight.
         private double GetRightViewportHeight()
@@ -599,6 +604,144 @@ namespace AutoJsonBuilder
                 return list?.Count ?? 0;
             }
             catch { return 0; }
+        }
+
+        // Helper to set all series filter checkboxes
+        private void SetAllSeriesFilters(bool value)
+        {
+            try
+            {
+                if (_vm == null) return;
+                foreach (var it in _vm.SeriesFilters)
+                {
+                    it.IsChecked = value;
+                }
+                // request redraw (handlers on SeriesFilterItem will also request redraw)
+                try { _fieldPlotView?.InvalidatePlot(false); } catch { _vm.FieldPlotModel?.InvalidatePlot(false); }
+            }
+            catch { /* best-effort */ }
+        }
+
+        // Popup opened: set SelectAll checkbox state (all / none / indeterminate)
+        private void SeriesFilterPopup_Opened(object? sender, EventArgs e)
+        {
+            AttachSeriesFilterHandlers();
+            UpdateSelectAllCheckState();
+        }
+
+        private void SeriesFilterPopup_Closed(object? sender, EventArgs e)
+        {
+            DetachSeriesFilterHandlers();
+        }
+
+        private void SelectAllSeriesCheck_Click(object? sender, RoutedEventArgs e)
+        {
+            // Determine current state from the underlying items (do not rely on SelectAllSeriesCheck's internal toggled state).
+            var seriesEnumerable = (DataContext as dynamic)?.SeriesFilters as IEnumerable;
+            if (seriesEnumerable == null) return;
+
+            bool allCurrentlyChecked = true;
+            bool hasAny = false;
+            foreach (var item in seriesEnumerable)
+            {
+                hasAny = true;
+                var prop = item.GetType().GetProperty("IsChecked");
+                if (prop == null)
+                {
+                    allCurrentlyChecked = false;
+                    continue;
+                }
+                var val = prop.GetValue(item);
+                if (!(val is bool b) || !b) allCurrentlyChecked = false;
+            }
+
+            // If all currently checked -> uncheck all. Otherwise check all.
+            bool setChecked = !allCurrentlyChecked;
+            foreach (var item in seriesEnumerable)
+            {
+                var prop = item.GetType().GetProperty("IsChecked");
+                if (prop != null)
+                {
+                    prop.SetValue(item, setChecked);
+                }
+            }
+
+            // Reflect the deterministic state in the SelectAll checkbox (no indeterminate).
+            var selectAll = GetSelectAllCheckBox();
+            if (selectAll != null)
+                selectAll.IsChecked = setChecked && hasAny;
+        }
+
+        private void AttachSeriesFilterHandlers()
+        {
+            var seriesEnumerable = (DataContext as dynamic)?.SeriesFilters as IEnumerable;
+            if (seriesEnumerable == null) return;
+
+            foreach (var item in seriesEnumerable)
+            {
+                if (item is INotifyPropertyChanged inpc && !_attachedSeriesFilters.Contains(inpc))
+                {
+                    inpc.PropertyChanged += SeriesFilterItem_PropertyChanged;
+                    _attachedSeriesFilters.Add(inpc);
+                }
+            }
+        }
+
+        private void DetachSeriesFilterHandlers()
+        {
+            foreach (var inpc in _attachedSeriesFilters)
+            {
+                inpc.PropertyChanged -= SeriesFilterItem_PropertyChanged;
+            }
+            _attachedSeriesFilters.Clear();
+        }
+
+        private void SeriesFilterItem_PropertyChanged(object sender, PropertyChangedEventArgs e)
+        {
+            if (e.PropertyName == "IsChecked")
+            {
+                Dispatcher.Invoke(UpdateSelectAllCheckState);
+            }
+        }
+
+        private void UpdateSelectAllCheckState()
+        {
+            var seriesEnumerable = (DataContext as dynamic)?.SeriesFilters as IEnumerable;
+            var selectAll = GetSelectAllCheckBox();
+
+            if (seriesEnumerable == null)
+            {
+                if (selectAll != null) selectAll.IsChecked = false;
+                return;
+            }
+
+            bool hasAny = false;
+            bool allChecked = true;
+            foreach (var item in seriesEnumerable)
+            {
+                hasAny = true;
+                var prop = item.GetType().GetProperty("IsChecked");
+                if (prop == null)
+                {
+                    allChecked = false;
+                    continue;
+                }
+                var val = prop.GetValue(item);
+                if (!(val is bool b) || !b) allChecked = false;
+            }
+
+            // Only checked when all present items are checked; otherwise unchecked. No indeterminate state.
+            if (selectAll != null) selectAll.IsChecked = allChecked && hasAny;
+        }
+
+        // helper to safely find the SelectAll checkbox at runtime (avoids compile-time field dependency)
+        private CheckBox? GetSelectAllCheckBox()
+        {
+            try
+            {
+                return this.FindName("SelectAllSeriesCheck") as CheckBox;
+            }
+            catch { return null; }
         }
     }
 }

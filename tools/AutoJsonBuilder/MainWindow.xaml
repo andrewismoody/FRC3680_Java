@@ -270,18 +270,27 @@
           <DockPanel Grid.Row="0" Grid.Column="0" LastChildFill="True" Margin="12,12,0,0"
                      HorizontalAlignment="Left" VerticalAlignment="Top" Panel.ZIndex="100">
             <ToggleButton x:Name="SeriesFilterToggle" Content="Series ▾" Width="90" Margin="4,0,6,0" />
-            <Popup PlacementTarget="{Binding ElementName=SeriesFilterToggle}" Placement="Bottom"
+            <Popup x:Name="SeriesFilterPopup" PlacementTarget="{Binding ElementName=SeriesFilterToggle}" Placement="Bottom"
                   IsOpen="{Binding IsChecked, ElementName=SeriesFilterToggle, Mode=TwoWay}"
-                  StaysOpen="False" AllowsTransparency="True">
+                  StaysOpen="False" AllowsTransparency="True"
+                  Opened="SeriesFilterPopup_Opened" Closed="SeriesFilterPopup_Closed">
               <Border Background="White" BorderBrush="Gray" BorderThickness="1" Padding="6">
                 <ScrollViewer MaxHeight="260" Width="240">
-                  <ItemsControl ItemsSource="{Binding SeriesFilters}">
-                    <ItemsControl.ItemTemplate>
-                      <DataTemplate>
-                        <CheckBox Content="{Binding Title}" IsChecked="{Binding IsChecked, Mode=TwoWay}" />
-                      </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                  </ItemsControl>
+                  <StackPanel>
+                    <!-- Select all checkbox -->
+                    <CheckBox x:Name="SelectAllSeriesCheck"
+                              Content="Select all"
+                              Margin="0,0,0,6"
+                              Click="SelectAllSeriesCheck_Click"
+                              IsThreeState="False" />
+                    <ItemsControl ItemsSource="{Binding SeriesFilters}">
+                      <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                          <CheckBox Content="{Binding Title}" IsChecked="{Binding IsChecked, Mode=TwoWay}" />
+                        </DataTemplate>
+                      </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                  </StackPanel>
                 </ScrollViewer>
               </Border>
             </Popup>
