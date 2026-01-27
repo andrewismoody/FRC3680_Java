@@ -1,9 +1,10 @@
-DONE -- Plot should contain a legend to identify which colors belong to which layer in a floating fly-out that can be collapsed and dragged around to allow viewing underneath
-DONE -- Legend should allow filtering visible layers - each fixture type, each module, etc.
 Review autotarget implementation - lookat, position, rotation, etc, etc to ensure all available options are included in schema/editor/evaluator
 User preferences - save between execution instances and reload on startup.
 Default/Required Params - enforce params that are required for minimal functionality
 Go through building a file from scratch and verify all functionality
+DONE -- The plot area doesn't seem to be square - y axis is compressed?  set 0,0 to lower left and include 9 meters along the x axis by default.
+DONE -- Plot should contain a legend to identify which colors belong to which layer in a floating fly-out that can be collapsed and dragged around to allow viewing underneath
+DONE -- Legend should allow filtering visible layers - each fixture type, each module, etc.
 DONE -- Break up mainwindowviewmodel into helpers to reduce file size and complexity.  Tree manipulations should go to tree helpers, plot manipulations should go to plot helpers, split out json functions to json helper classes, split out file operations to file helper classes, etc.
 DONE -- Plot all fixtures in one layer per type
 DONE -- Plot all targets per module in its own layer

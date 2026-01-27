@@ -42,6 +42,17 @@ public static class PlotHelper
 	// per-PlotModel mapping: Series -> its ArrowAnnotations (for hide/show)
 	private static readonly Dictionary<PlotModel, Dictionary<Series, List<ArrowAnnotation>>> s_seriesArrows = new();
 
+	// per-PlotModel mapping used to apply the desired initial view once (avoids OxyPlot autoscale clobbering)
+	private static readonly Dictionary<PlotModel, (double xMin, double xMax, double yMin, double yMax)> s_initialViews
+		= new();
+
+	// mark which PlotModels already had their initial view applied
+	private static readonly HashSet<PlotModel> s_initialViewApplied = new();
+
+	// Preserve last-applied axis ranges so we can detect which axis the user changed.
+	private static readonly Dictionary<PlotModel, (double xMin, double xMax, double yMin, double yMax)> s_prevRanges
+		= new();
+
 	// Show (or move) a circular indicator at the PlotView-relative screen point.
 	// screenX/screenY should be coordinates returned by e.GetPosition(plotView) (PlotView-relative).
 	// radiusPx is the radius in pixels to draw.
@@ -187,8 +198,24 @@ public static class PlotHelper
 			// keep a runtime copy of the logger so mouse-time helpers can emit diagnostic lines
 			s_log = log;
 			var pm = new PlotModel { Title = "Field fixtures & targets" };
-			pm.Axes.Add(new LinearAxis { Position = AxisPosition.Bottom, Title = "X" });
-			pm.Axes.Add(new LinearAxis { Position = AxisPosition.Left, Title = "Y" });
+			 // Default view: origin at lower-left and X axis spans 0..9 meters (make X authoritative)
+			// Set AbsoluteMinimum/AbsoluteMaximum so OxyPlot autoscale won't override the X span.
+			var xAxis = new LinearAxis
+			{
+				Position = AxisPosition.Bottom,
+				Title = "X",
+				Minimum = 0,
+				Maximum = 9 // initial default view; do NOT set AbsoluteMinimum/AbsoluteMaximum so user can zoom out past 9
+			};
+			var yAxis = new LinearAxis
+			{
+				Position = AxisPosition.Left,
+				Title = "Y",
+				Minimum = 0,
+				Maximum = 9 // initial guess; the Updated handler will compute the isotropic Y range and apply it
+			}; // initial square view; Updated handler will adjust to preserve aspect
+			pm.Axes.Add(xAxis);
+			pm.Axes.Add(yAxis);
 
 			 // Apply the common legend style (floating inside the plot, semi-transparent background, compact padding).
 			 // Note: the built-in legend does not support rounded corners or user-drag out of the box.
@@ -425,6 +452,40 @@ public static class PlotHelper
 			foreach (var ms in moduleSeries.Values)
 				if (ms.Points.Count > 0) pm.Series.Add(ms);
 
+			 // Compute plotted data extents so we can choose a sensible initial view.
+			// Default requirement: origin at lower-left and X span should show 9 meters.
+			double dataMinX = double.PositiveInfinity, dataMaxX = double.NegativeInfinity;
+			double dataMinY = double.PositiveInfinity, dataMaxY = double.NegativeInfinity;
+			foreach (var ss in pm.Series.OfType<ScatterSeries>())
+			{
+				foreach (var p in ss.Points)
+				{
+					if (double.IsNaN(p.X) || double.IsNaN(p.Y)) continue;
+					dataMinX = Math.Min(dataMinX, p.X);
+					dataMaxX = Math.Max(dataMaxX, p.X);
+					dataMinY = Math.Min(dataMinY, p.Y);
+					dataMaxY = Math.Max(dataMaxY, p.Y);
+				}
+			}
+
+			// If no data found, default to 0..9 both axes.
+			if (double.IsInfinity(dataMinX))
+			{
+				dataMinX = 0; dataMaxX = 9;
+				dataMinY = 0; dataMaxY = 9;
+			}
+
+			// Ensure the visible X range includes 0..9 (origin lower-left by default).
+			var xMin = Math.Min(0.0, dataMinX);
+			var xMax = Math.Max(9.0, dataMaxX);
+			var yMin = Math.Min(0.0, dataMinY);
+			var yMax = Math.Max(9.0, dataMaxY);
+
+			 // Defer applying the initial zoom until the first Updated callback so OxyPlot's
+			 // internal autoscale won't immediately override our requested view.
+			 // Store desired view and the Updated handler will apply it once.
+			s_initialViews[pm] = (xMin, xMax, yMin, yMax);
+
 			// Add all collected arrows to the PlotModel annotations and persist mapping for runtime hide/show
 			if (localSeriesArrows.Count > 0)
 			{
@@ -444,7 +505,7 @@ public static class PlotHelper
 			 // Build a guaranteed-visible annotation legend (fallback in case built-in legend doesn't show).
 			TryAddAnnotationLegend(pm);
 
-			// Updated handler to rescale arrow heads
+			// Updated handler to lock X and Y scales together
 			pm.Updated += (s, e) =>
 			{
 				try
@@ -453,13 +514,64 @@ public static class PlotHelper
 					var yAxis = pm.Axes.FirstOrDefault(a => a.Position == AxisPosition.Left) ?? pm.Axes.Skip(1).FirstOrDefault() ?? xAxis;
 					var plotArea = pm.PlotArea;
 					if (xAxis == null || yAxis == null || plotArea.Width <= 0 || plotArea.Height <= 0) return;
-					double xRange = xAxis.ActualMaximum - xAxis.ActualMinimum;
-					double yRange = yAxis.ActualMaximum - yAxis.ActualMinimum;
+
+					// Apply the initial view once
+					if (!s_initialViewApplied.Contains(pm) && s_initialViews.TryGetValue(pm, out var initial))
+					{
+						try
+						{
+							var desiredXMin = initial.xMin;
+							var desiredXMax = initial.xMax;
+							var desiredXRange = Math.Max(1e-6, desiredXMax - desiredXMin);
+
+							// Compute the corresponding Y range for isotropic scaling
+							var desiredYRange = desiredXRange * (plotArea.Height / Math.Max(1.0, plotArea.Width));
+							var desiredYMin = 0.0;
+							var desiredYMax = desiredYMin + desiredYRange;
+
+							xAxis.Zoom(desiredXMin, desiredXMax);
+							yAxis.Zoom(desiredYMin, desiredYMax);
+
+							s_initialViewApplied.Add(pm);
+							s_initialViews.Remove(pm);
+							s_log?.Invoke($"Applied initial view X={desiredXMin:F3}..{desiredXMax:F3}, Y={desiredYMin:F3}..{desiredYMax:F3}");
+						}
+						catch { /* best-effort */ }
+					}
+
+					// Get current axis ranges
+					double curXMin = xAxis.ActualMinimum, curXMax = xAxis.ActualMaximum;
+					double curYMin = yAxis.ActualMinimum, curYMax = yAxis.ActualMaximum;
+					double xRange = curXMax - curXMin;
+					double yRange = curYMax - curYMin;
 					if (xRange <= 0 || yRange <= 0) return;
 
+					 // Compute pixels-per-unit for both axes
 					double pxPerUnitX = plotArea.Width / xRange;
 					double pxPerUnitY = plotArea.Height / yRange;
 
+					// Adjust the axis with the smaller px/unit to match the other
+					if (Math.Abs(pxPerUnitX - pxPerUnitY) > 1e-3)
+					{
+						if (pxPerUnitX > pxPerUnitY)
+						{
+							// X is "zoomed out" more — adjust Y to match X scale
+							double newYRange = xRange * (plotArea.Height / plotArea.Width);
+							double yCenter = (curYMax + curYMin) * 0.5;
+							yAxis.Zoom(yCenter - newYRange * 0.5, yCenter + newYRange * 0.5);
+							s_log?.Invoke($"Adjusted Y to match X scale: Y={yCenter - newYRange * 0.5:F3}..{yCenter + newYRange * 0.5:F3}");
+						}
+						else
+						{
+							// Y is "zoomed out" more — adjust X to match Y scale
+							double newXRange = yRange * (plotArea.Width / plotArea.Height);
+							double xCenter = (curXMax + curXMin) * 0.5;
+							xAxis.Zoom(xCenter - newXRange * 0.5, xCenter + newXRange * 0.5);
+							s_log?.Invoke($"Adjusted X to match Y scale: X={xCenter - newXRange * 0.5:F3}..{xCenter + newXRange * 0.5:F3}");
+						}
+					}
+
+					// Resize arrow heads to match current pixel scaling
 					foreach (var ann in pm.Annotations.OfType<ArrowAnnotation>())
 					{
 						try
