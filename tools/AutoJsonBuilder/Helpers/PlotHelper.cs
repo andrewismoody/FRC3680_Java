@@ -6,6 +6,8 @@ using OxyPlot.Series;
 using OxyPlot.Annotations;
 using OxyPlot.Axes;
 using AutoJsonBuilder.Models;
+using System.Threading.Tasks;
+using System.Windows; // used for Application.Current.Dispatcher
 
 namespace AutoJsonBuilder.Helpers;
 
@@ -341,7 +343,7 @@ public static class PlotHelper
 								var theta = pos.rot.Value * Math.PI / 180.0;
 								var ex = pos.x + Math.Cos(theta) * arrowLengthMeters;
 								var ey = pos.y + Math.Sin(theta) * arrowLengthMeters;
-								var a = new ArrowAnnotation { StartPoint = new DataPoint(pos.x, pos.y), EndPoint = new DataPoint(ex, ey), Color = color, HeadLength = 12, HeadWidth = 8 };
+								var a = new ArrowAnnotation { StartPoint = new DataPoint(pos.x, pos.y), EndPoint = new DataPoint(ex, ey), Color = color, HeadLength = 0.4, HeadWidth = 0.3 };
 								// stash arrow under this series (do not add to pm.Annotations yet)
 								if (!localSeriesArrows.TryGetValue(scatter, out var list)) { list = new List<ArrowAnnotation>(); localSeriesArrows[scatter] = list; }
 								list.Add(a);
@@ -441,7 +443,7 @@ public static class PlotHelper
 						var ex = tx + Math.Cos(theta) * arrowLengthMeters;
 						var ey = ty + Math.Sin(theta) * arrowLengthMeters;
 						var color = moduleColors.TryGetValue(moduleName, out var c) ? c : OxyPlot.OxyColors.Black;
-						var a = new ArrowAnnotation { StartPoint = new DataPoint(tx, ty), EndPoint = new DataPoint(ex, ey), Color = color, HeadLength = 12, HeadWidth = 8 };
+						var a = new ArrowAnnotation { StartPoint = new DataPoint(tx, ty), EndPoint = new DataPoint(ex, ey), Color = color, HeadLength = 4, HeadWidth = 3 };
 						if (!localSeriesArrows.TryGetValue(s, out var list)) { list = new List<ArrowAnnotation>(); localSeriesArrows[s] = list; }
 						list.Add(a);
 					}
@@ -515,6 +517,13 @@ public static class PlotHelper
 					var plotArea = pm.PlotArea;
 					if (xAxis == null || yAxis == null || plotArea.Width <= 0 || plotArea.Height <= 0) return;
 
+					 // Diagnostic: report plot area & axes extents early for debugging pixel math
+					try
+					{
+						s_log?.Invoke($"Updated:start plotArea={plotArea.Width:F1}x{plotArea.Height:F1} LeftTop={plotArea.Left:F1},{plotArea.Top:F1} axesCount={pm.Axes.Count}");
+					}
+					catch { }
+
 					// Apply the initial view once
 					if (!s_initialViewApplied.Contains(pm) && s_initialViews.TryGetValue(pm, out var initial))
 					{
@@ -532,9 +541,47 @@ public static class PlotHelper
 							xAxis.Zoom(desiredXMin, desiredXMax);
 							yAxis.Zoom(desiredYMin, desiredYMax);
 
+							// Schedule a tiny imperceptible nudge asynchronously on the UI dispatcher.
+							// Doing this after a short delay avoids racing with OxyPlot's internal layout
+							// passes; the follow-up Updated will run with stable ActualMinimum/Maximum.
+							try
+							{
+								var eps = Math.Max(1e-12, desiredXRange * 1e-6); // tiny fraction of X range
+								// fire-and-forget delayed nudge
+								_ = Task.Run(async () =>
+								{
+									try
+									{
+										await Task.Delay(50).ConfigureAwait(false); // small delay to let layout settle
+                                                                                    // marshal back to UI thread to call Axis.Zoom / InvalidatePlot
+                                        (Application.Current?.Dispatcher)?.Invoke(() =>
+                                            {
+                                                try
+                                                {
+                                                    // nudge then restore
+                                                    xAxis.Zoom(desiredXMin + eps, desiredXMax + eps);
+                                                    xAxis.Zoom(desiredXMin, desiredXMax);
+                                                    // force a full update (updateData = true) so transforms/layout are recomputed
+                                                    // — this matches the effect of a real mouse interaction which forces OxyPlot
+                                                    // to run its update pass and produce stable ActualMinimum/Maximum values.
+                                                    pm.InvalidatePlot(true);
+                                                }
+                                                catch { /* best-effort */ }
+                                            });
+                                    }
+									catch { /* best-effort */ }
+								});
+							}
+							catch { /* best-effort nudge - ignore failures */ }
+
+							// mark applied and remove stored desired view
 							s_initialViewApplied.Add(pm);
 							s_initialViews.Remove(pm);
-							s_log?.Invoke($"Applied initial view X={desiredXMin:F3}..{desiredXMax:F3}, Y={desiredYMin:F3}..{desiredYMax:F3}");
+							s_log?.Invoke($"Applied isotropic initial view X={desiredXMin:F3}..{desiredXMax:F3}, Y={desiredYMin:F3}..{desiredYMax:F3} (nudge applied)");
+
+							// Bail out of this Updated invocation so subsequent Updated (triggered by the Zoom/nudge)
+							// sees stable axis ActualMinimum/Maximum and arrow sizing can run safely.
+							return;
 						}
 						catch { /* best-effort */ }
 					}
@@ -549,6 +596,13 @@ public static class PlotHelper
 					 // Compute pixels-per-unit for both axes
 					double pxPerUnitX = plotArea.Width / xRange;
 					double pxPerUnitY = plotArea.Height / yRange;
+
+					 // Diagnostic: report computed px/unit and axis ranges
+					try
+					{
+						s_log?.Invoke($"Updated: xRange={xRange:F3} yRange={yRange:F3} pxPerUnitX={pxPerUnitX:F3} pxPerUnitY={pxPerUnitY:F3}");
+					}
+					catch { }
 
 					// Adjust the axis with the smaller px/unit to match the other
 					if (Math.Abs(pxPerUnitX - pxPerUnitY) > 1e-3)
@@ -572,15 +626,44 @@ public static class PlotHelper
 					}
 
 					// Resize arrow heads to match current pixel scaling
+					{
+						// Recompute px/unit in case a Zoom above changed ranges
+						xRange = xAxis.ActualMaximum - xAxis.ActualMinimum;
+						yRange = yAxis.ActualMaximum - yAxis.ActualMinimum;
+						pxPerUnitX = plotArea.Width / Math.Max(1e-9, xRange);
+						pxPerUnitY = plotArea.Height / Math.Max(1e-9, yRange);
+					}
+
+					int logLimit = 5;
+					int logged = 0;
 					foreach (var ann in pm.Annotations.OfType<ArrowAnnotation>())
 					{
 						try
 						{
-							var dx = ann.EndPoint.X - ann.StartPoint.X;
-							var dy = ann.EndPoint.Y - ann.StartPoint.Y;
-							var pixelLen = Math.Sqrt((dx * pxPerUnitX) * (dx * pxPerUnitX) + (dy * pxPerUnitY) * (dy * pxPerUnitY));
-							var newHeadLength = Math.Max(6, pixelLen * 0.35);
-							var newHeadWidth = Math.Max(4, pixelLen * 0.25);
+							// Transform start/end data points to PlotView-relative pixels (use plotArea offset + axis.Transform).
+							var p1x = plotArea.Left + xAxis.Transform(ann.StartPoint.X);
+							var p1y = plotArea.Top  + yAxis.Transform(ann.StartPoint.Y);
+							var p2x = plotArea.Left + xAxis.Transform(ann.EndPoint.X);
+							var p2y = plotArea.Top  + yAxis.Transform(ann.EndPoint.Y);
+							var pixelDx = p2x - p1x;
+							var pixelDy = p2y - p1y;
+							var pixelLen = Math.Sqrt(pixelDx * pixelDx + pixelDy * pixelDy);
+
+							 // Diagnostic: log first few arrow pixel transforms / lengths
+							if (logged < logLimit)
+							{
+								try
+								{
+									s_log?.Invoke($"Arrow[{logged}] data start=({ann.StartPoint.X:F3},{ann.StartPoint.Y:F3}) end=({ann.EndPoint.X:F3},{ann.EndPoint.Y:F3}) px start=({p1x:F1},{p1y:F1}) end=({p2x:F1},{p2y:F1}) lenPx={pixelLen:F1}");
+								}
+								catch { }
+								logged++;
+							}
+
+							// scale arrow heads down to ~1/3 of previous visual size (adjustable factors)
+							var newHeadLength = Math.Max(3.0, pixelLen * 0.12);
+							var newHeadWidth  = Math.Max(2.0, pixelLen * 0.08);
+
 							if (Math.Abs(ann.HeadLength - newHeadLength) > 0.5 || Math.Abs(ann.HeadWidth - newHeadWidth) > 0.5)
 							{
 								ann.HeadLength = newHeadLength;
@@ -665,7 +748,7 @@ public static class PlotHelper
 			var ta = new TextAnnotation
 			{
 				Text = "__legend_marker__" + it.Title,
-				FontWeight = FontWeights.Bold,
+				FontWeight = OxyPlot.FontWeights.Bold,
 				Layer = AnnotationLayer.AboveSeries,
 				Background = OxyColors.Undefined,   // ensure no boxed background
 				TextColor = OxyColors.Black,        // explicit color for contrast against bg
@@ -790,7 +873,7 @@ public static class PlotHelper
 						// Transform returns coordinates relative to the plot area; convert to PlotView-relative screen coords
 						entry.ScreenRect = new OxyRect(sx + plotArea.Left, sy + plotArea.Top, swPix, shPix);
 
-						// diagnostic: log each legend item's computed screen rect
+						 // diagnostic: log each legend item's computed screen rect
 						s_log?.Invoke($"LegendEntry[{i}] Title='{items[i].Title}' ScreenRect={entry.ScreenRect.Left:F1},{entry.ScreenRect.Top:F1} {entry.ScreenRect.Width:F1}x{entry.ScreenRect.Height:F1}");
 					}
 					catch

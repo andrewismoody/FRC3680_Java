@@ -7,6 +7,7 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using System.ComponentModel; // <-- added for PropertyChangedEventArgs
 using AutoJsonBuilder.Helpers;
 using OxyPlot;            // <-- added: provide PlotModel, OxyRect, etc.
 using OxyPlot.Axes;      // <-- added: provides AxisPosition, Axis types used in diagnostics
@@ -17,6 +18,9 @@ namespace AutoJsonBuilder
     public partial class MainWindow : Window
     {
         private readonly MainWindowViewModel _vm = new();
+
+        // Keep a reference to the PlotView control so we can force a full update (InvalidatePlot(true)).
+        private OxyPlot.Wpf.PlotView? _fieldPlotView;
 
         // helpers to avoid double-handling of caption commits and to detect real value changes
         private readonly HashSet<TextBox> _captionHandled = new();
@@ -51,6 +55,12 @@ namespace AutoJsonBuilder
         {
             InitializeComponent();
             DataContext = _vm;
+
+            // grab named PlotView (if present) so we can force a full update later
+            try { _fieldPlotView = this.FindName("FieldPlotView") as OxyPlot.Wpf.PlotView; } catch { _fieldPlotView = null; }
+
+            // Listen for FieldPlotModel assignments on the VM; when it changes, trigger a delayed full invalidate
+            _vm.PropertyChanged += Vm_PropertyChanged;
 
             // ensure plot area constraints updated on resize
             this.SizeChanged += MainWindow_SizeChanged;
@@ -101,6 +111,47 @@ namespace AutoJsonBuilder
             // Try again after Loaded when visual tree is guaranteed; useful if HookPlotViewMouse ran too early.
             this.Loaded -= MainWindow_Loaded;
             this.Loaded += MainWindow_Loaded;
+        }
+
+        // When FieldPlotModel changes, schedule a short delayed call to PlotView.InvalidatePlot(true)
+        // to force OxyPlot to recompute layout/transforms (same effect as a real mouse interaction).
+        private void Vm_PropertyChanged(object? sender, PropertyChangedEventArgs e)
+        {
+            try
+            {
+                if (e.PropertyName != nameof(MainWindowViewModel.FieldPlotModel)) return;
+                // fire-and-forget delayed nudge on UI thread
+                _ = Task.Run(async () =>
+                {
+                    try
+                    {
+                        await Task.Delay(60).ConfigureAwait(false); // let initial layout settle
+                        var disp = Application.Current?.Dispatcher;
+                        if (disp != null)
+                        {
+                            disp.Invoke(() =>
+                            {
+                                try
+                                {
+                                    // prefer calling the PlotView.InvalidatePlot(true) to force a full update
+                                    if (_fieldPlotView != null)
+                                    {
+                                        _fieldPlotView.InvalidatePlot(true);
+                                    }
+                                    else
+                                    {
+                                        // fallback: try model-level full invalidate
+                                        try { _vm.FieldPlotModel?.InvalidatePlot(true); } catch { }
+                                    }
+                                }
+                                catch { /* best-effort */ }
+                            });
+                        }
+                    }
+                    catch { /* best-effort */ }
+                });
+            }
+            catch { /* best-effort */ }
         }
 
         private void MainWindow_Loaded(object? sender, RoutedEventArgs e)
@@ -333,6 +384,8 @@ namespace AutoJsonBuilder
                 if (pv != null)
                 {
                     _vm.Log($"HookPlotViewMouse: found PlotView (Name='{pv.Name ?? "(unnamed)"}').");
+                    // keep reference so we can force view-level invalidation later
+                    _fieldPlotView = pv;
                     try { if (pv.Background == null) _vm.Log("HookPlotViewMouse: PlotView.Background is null — consider setting Background=\"Transparent\" to receive clicks."); } catch { }
                 }
                 else

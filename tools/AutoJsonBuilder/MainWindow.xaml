@@ -290,7 +290,8 @@
           </DockPanel>
 
           <Border x:Name="PlotBorder" Grid.Row="0" Margin="10" Background="{DynamicResource AppControlBackgroundBrush}" BorderBrush="{DynamicResource AppBorderBrush}" BorderThickness="1" CornerRadius="6">
-            <oxy:PlotView Model="{Binding FieldPlotModel}" />
+            <!-- Named so code-behind can call InvalidatePlot(true) on the view -->
+            <oxy:PlotView x:Name="FieldPlotView" Model="{Binding FieldPlotModel}" />
           </Border>
 
           <!-- Horizontal splitter between plot and the expanders area -->
