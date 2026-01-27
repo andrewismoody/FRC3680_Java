@@ -160,23 +160,41 @@ public sealed class MainWindowViewModel : NotifyBase
         return false;
     }
 
-    // No-op ResolveFixturePositions: resolution is performed by the external Java resolver (EvaluateAllExpressions).
-    // Keep this method so callers (UpdatePlotModel) can call it safely without duplicating logic in C#.
-    private void ResolveFixturePositions()
+    // New helpers: unit conversion and rotation normalization used for plotting translations.
+    private static double ConvertLengthToMeters(double value, string? units)
     {
-        // intentionally empty — _resolvedFixturePositions is populated by EvaluateAllExpressions via FixtureResolverInterop.Resolve.
+        if (string.IsNullOrWhiteSpace(units)) return value * 0.0254; // default inches -> meters
+        var u = units.Trim().ToLowerInvariant();
+        if (u == "m" || u == "meter" || u == "meters" || u == "metre" || u == "metres") return value;
+        if (u == "in" || u == "inch" || u == "inches") return value * 0.0254;
+        if (u == "ft" || u == "foot" || u == "feet") return value * 0.3048;
+        // unknown => treat as inches for backwards compatibility
+        return value * 0.0254;
     }
 
-    // Rebuild the PlotModel from current _doc fixtures. Groups fixtures by Type and plots XY points.
+    private static double? NormalizeRotationToDegrees(double? value, string? units)
+    {
+        if (value == null) return null;
+        if (string.IsNullOrWhiteSpace(units)) return value * 180.0 / Math.PI; // assume radians if not specified
+        var u = units.Trim().ToLowerInvariant();
+        if (u.Contains("deg")) return value;
+        // otherwise assume radians
+        return value * 180.0 / Math.PI;
+    }
+
+    // Rebuild the PlotModel from current _doc fixtures and targets. Groups fixtures by Type and plots XY points.
     private void UpdatePlotModel()
     {
         try
         {
+            // Ensure evaluated params/local lookup is fresh for any NumberOrParam translation values.
+            try { EvaluateParamsOnly(); } catch { /* best-effort */ }
+
             // ensure fixture resolution is up-to-date before plotting.
-            // Do NOT evaluate expressions here; the Java resolver performs expression evaluation.
+            // Do NOT evaluate expressions here; the Java resolver performs expression evaluation for fixtures.
             try { ResolveFixturesOnly(); } catch { /* best-effort */ }
 
-            var pm = new PlotModel { Title = "Field fixtures" };
+            var pm = new PlotModel { Title = "Field fixtures & targets" };
 
             // Simple pan/zoom axes (X = horizontal, Y = vertical)
             pm.Axes.Add(new LinearAxis { Position = AxisPosition.Bottom, Title = "X" });
@@ -185,7 +203,7 @@ public sealed class MainWindowViewModel : NotifyBase
             // Ensure we have resolved positions (lookup) available as a fast-path (optional)
             ResolveFixturePositions();
 
-            // Group fixtures by type
+            // --- Plot fixtures (existing behavior) ---
             var groups = _doc.Fixtures
                 .Where(f => f != null)
                 .GroupBy(f => f.Type ?? "(none)")
@@ -193,9 +211,9 @@ public sealed class MainWindowViewModel : NotifyBase
 
             var colorIdx = 0;
             var totalFixtures = _doc.Fixtures.Count;
-            var plottedCount = 0;
+            var plottedFixtures = 0;
 
-            // collect arrow annotations so we can size them after the PlotModel has axes/transforms computed
+            // collect arrow annotations for fixtures/targets so we can size them after the PlotModel has axes/transforms computed
             var collectedArrows = new List<ArrowAnnotation>();
 
             foreach (var g in groups)
@@ -204,7 +222,6 @@ public sealed class MainWindowViewModel : NotifyBase
                 var color = _palette[colorIdx % _palette.Length];
                 colorIdx++;
 
-                // Scatter series for the fixture points
                 var scatter = new ScatterSeries
                 {
                     MarkerType = MarkerType.Circle,
@@ -213,20 +230,16 @@ public sealed class MainWindowViewModel : NotifyBase
                     Title = type
                 };
 
-                // Optional arrow annotations for rotation (collect per-group)
-                var arrows = new List<ArrowAnnotation>();
-
                 foreach (var f in g)
                 {
                     if (TryGetFixturePosition(f, out var fx, out var fy, out var fz, out var frot))
                     {
                         scatter.Points.Add(new ScatterPoint(fx, fy));
-                        plottedCount++;
+                        plottedFixtures++;
                         if (frot.HasValue)
                         {
                             var theta = frot.Value * Math.PI / 180.0;
-                            // Use ~12 inches in meters for arrow length so it matches field units (resolver emits meters)
-                            var arrowLengthMeters = 12.0 * 0.0254; // 12 in = 0.3048 m
+                            var arrowLengthMeters = 12.0 * 0.0254;
                             var ex = fx + Math.Cos(theta) * arrowLengthMeters;
                             var ey = fy + Math.Sin(theta) * arrowLengthMeters;
 
@@ -235,29 +248,148 @@ public sealed class MainWindowViewModel : NotifyBase
                                 StartPoint = new DataPoint(fx, fy),
                                 EndPoint = new DataPoint(ex, ey),
                                 Color = color,
-                                // placeholder head sizes; will be resized after pm.Update(...)
                                 HeadLength = 12,
                                 HeadWidth = 8
                             };
-                            arrows.Add(ann);
                             collectedArrows.Add(ann);
                         }
                     }
                     else
                     {
-                        // skip but log minimally for diagnostics
                         Log($"UpdatePlotModel: skipped fixture {f.Type}:{f.Index} (no resolved position)");
                     }
                 }
 
-                if (scatter.Points.Count > 0)
-                {
-                    pm.Series.Add(scatter);
-                    // do not add arrows yet; we'll size them after Update
-                }
+                if (scatter.Points.Count > 0) pm.Series.Add(scatter);
             }
 
-            // Add collected arrows to the model now; sizes will be kept in sync by the Updated handler below.
+            // --- Plot targets per-module (new) ---
+            // Prepare module -> color mapping (reuse palette)
+            var moduleColors = new Dictionary<string, OxyColor>(StringComparer.OrdinalIgnoreCase);
+            var moduleSeries = new Dictionary<string, ScatterSeries>(StringComparer.OrdinalIgnoreCase);
+            int modIdx = 0;
+            foreach (var m in _doc.Modules)
+            {
+                var name = string.IsNullOrWhiteSpace(m) ? "(no-module)" : m;
+                var color = _palette[modIdx % _palette.Length];
+                moduleColors[name] = color;
+                var ss = new ScatterSeries
+                {
+                    MarkerType = MarkerType.Diamond,
+                    MarkerFill = color,
+                    MarkerSize = 7,
+                    Title = name
+                };
+                moduleSeries[name] = ss;
+                modIdx++;
+            }
+
+            // fallback series for modules not listed in _doc.Modules
+            ScatterSeries GetOrCreateModuleSeries(string module)
+            {
+                if (moduleSeries.TryGetValue(module, out var s)) return s;
+                var idx = moduleSeries.Count;
+                var color = _palette[idx % _palette.Length];
+                s = new ScatterSeries { MarkerType = MarkerType.Diamond, MarkerFill = color, MarkerSize = 7, Title = module };
+                moduleSeries[module] = s;
+                return s;
+            }
+
+            var plottedTargets = 0;
+            foreach (var t in _doc.Targets)
+            {
+                // Determine the module layer
+                var moduleName = string.IsNullOrWhiteSpace(t.Module) ? "(no-module)" : t.Module;
+                var series = GetOrCreateModuleSeries(moduleName);
+
+                // Try fixture-ref first (external resolver); then translation (local resolution + unit conversion)
+                bool added = false;
+                double tx = 0, ty = 0, tz = 0;
+                double? trot = null;
+
+                if (t.Fixture != null)
+                {
+                    try
+                    {
+                        var key = $"{t.Fixture.Type}:{t.Fixture.Index}";
+                        if (_resolvedFixturePositions.TryGetValue(key, out var pos))
+                        {
+                            tx = pos.x; ty = pos.y; tz = pos.z; trot = pos.rot;
+                            added = true;
+                        }
+                    }
+                    catch { /* best-effort */ }
+                }
+
+                if (!added && t.Translation != null)
+                {
+                    try
+                    {
+                        var tr = t.Translation;
+                        if (tr.Position != null && tr.Position.Count >= 2)
+                        {
+                            if (TryResolveDoubleFromObject(tr.Position[0], out var rx) && TryResolveDoubleFromObject(tr.Position[1], out var ry))
+                            {
+                                // convert inferred units to meters for consistent plotting (fixtures supplied in meters)
+                                var units = tr.PositionUnits;
+                                tx = ConvertLengthToMeters(rx, units);
+                                ty = ConvertLengthToMeters(ry, units);
+
+                                // optional Z
+                                if (tr.Position.Count >= 3 && TryResolveDoubleFromObject(tr.Position[2], out var rz))
+                                    tz = ConvertLengthToMeters(rz, units);
+                                else
+                                    tz = 0.0;
+
+                                // rotation if present
+                                if (tr.Rotation != null)
+                                {
+                                    // tr.Rotation may be a numeric type; attempt to coerce
+                                    if (TryResolveDoubleFromObject(tr.Rotation, out var rrot))
+                                        trot = NormalizeRotationToDegrees(rrot, tr.RotationUnits);
+                                }
+
+                                added = true;
+                            }
+                        }
+                    }
+                    catch { /* best-effort */ }
+                }
+
+                if (added)
+                {
+                    series.Points.Add(new ScatterPoint(tx, ty));
+                    plottedTargets++;
+
+                    if (trot.HasValue)
+                    {
+                        var theta = trot.Value * Math.PI / 180.0;
+                        var arrowLengthMeters = 12.0 * 0.0254;
+                        var ex = tx + Math.Cos(theta) * arrowLengthMeters;
+                        var ey = ty + Math.Sin(theta) * arrowLengthMeters;
+
+                        var ann = new ArrowAnnotation
+                        {
+                            StartPoint = new DataPoint(tx, ty),
+                            EndPoint = new DataPoint(ex, ey),
+                            Color = moduleColors.TryGetValue(moduleName, out var c) ? c : OxyColors.Black,
+                            HeadLength = 12,
+                            HeadWidth = 8
+                        };
+                        collectedArrows.Add(ann);
+                    }
+                }
+                // else: do not plot targets without a resolved field position
+            }
+
+            // Add fixture arrows first (they are already in collectedArrows), then add module series.
+            foreach (var ms in moduleSeries.Values)
+            {
+                if (ms.Points.Count > 0)
+                    pm.Series.Add(ms);
+            }
+
+            // Add collected arrows after series so they can be sized by the Updated handler
             foreach (var ann in collectedArrows) pm.Annotations.Add(ann);
 
             // Recompute arrow head sizes on every PlotModel update so heads scale with zoom/pan.
@@ -286,7 +418,6 @@ public sealed class MainWindowViewModel : NotifyBase
                             var pixelLen = Math.Sqrt((dx * pxPerUnitX) * (dx * pxPerUnitX) + (dy * pxPerUnitY) * (dy * pxPerUnitY));
                             var newHeadLength = Math.Max(6, pixelLen * 0.35);
                             var newHeadWidth = Math.Max(4, pixelLen * 0.25);
-                            // avoid tiny updates that thrash rendering
                             if (Math.Abs(a.HeadLength - newHeadLength) > 0.5 || Math.Abs(a.HeadWidth - newHeadWidth) > 0.5)
                             {
                                 a.HeadLength = newHeadLength;
@@ -299,15 +430,21 @@ public sealed class MainWindowViewModel : NotifyBase
                 catch { /* best-effort */ }
             };
 
-            // Small legend
             pm.IsLegendVisible = true;
             FieldPlotModel = pm;
-            Log($"UpdatePlotModel: plotted {plottedCount}/{totalFixtures} fixtures");
+            Log($"UpdatePlotModel: plotted fixtures {plottedFixtures}/{totalFixtures}, targets {plottedTargets}");
         }
         catch (Exception ex)
         {
             Log($"UpdatePlotModel failed: {ex.Message}");
         }
+    }
+
+    // No-op ResolveFixturePositions: resolution is performed by the external Java resolver (EvaluateAllExpressions).
+    // Keep this method so callers (UpdatePlotModel) can call it safely without duplicating logic in C#.
+    private void ResolveFixturePositions()
+    {
+        // intentionally empty — _resolvedFixturePositions is populated by EvaluateAllExpressions via FixtureResolverInterop.Resolve.
     }
 
     // Populate _evaluatedLookup from _doc.Params (best-effort, local conversion).
@@ -1883,7 +2020,7 @@ public sealed class MainWindowViewModel : NotifyBase
         // Helper: compute a concise descriptive title for the target (module + pose or fixture summary)
         void UpdateTitle()
         {
-            string modulePart = string.IsNullOrWhiteSpace(t.Module) ? "(no-module)" : t.Module;
+            // Build body only from configured values (no "?" placeholders).
             string body;
             if (t.Fixture != null)
             {
@@ -1893,14 +2030,48 @@ public sealed class MainWindowViewModel : NotifyBase
             }
             else
             {
-                var g = string.IsNullOrWhiteSpace(t.Group) ? "?" : t.Group;
-                var loc = string.IsNullOrWhiteSpace(t.Location) ? "?" : t.Location;
-                var idx = t.Index.HasValue ? t.Index.Value.ToString() : "?";
-                var pos = string.IsNullOrWhiteSpace(t.Position) ? "?" : t.Position;
-                var act = string.IsNullOrWhiteSpace(t.Action) ? "?" : t.Action;
-                body = $"{g}/{loc}[{idx}] {pos} {act}";
+                var parts = new System.Collections.Generic.List<string>();
+
+                // group/location combined (group/location[index])
+                if (!string.IsNullOrWhiteSpace(t.Group))
+                    parts.Add(t.Group);
+
+                if (!string.IsNullOrWhiteSpace(t.Location))
+                {
+                    if (parts.Count > 0)
+                        parts[parts.Count - 1] = parts.Last() + "/" + t.Location;
+                    else
+                        parts.Add(t.Location);
+                }
+
+                if (t.Index.HasValue)
+                {
+                    var idxText = t.Index.Value.ToString();
+                    if (parts.Count > 0)
+                        parts[parts.Count - 1] = parts.Last() + $"[{idxText}]";
+                    else
+                        parts.Add($"[{idxText}]");
+                }
+
+                if (!string.IsNullOrWhiteSpace(t.Position))
+                    parts.Add(t.Position);
+
+                if (!string.IsNullOrWhiteSpace(t.Action))
+                    parts.Add(t.Action);
+
+                body = string.Join(" ", parts);
             }
-            node.Title = $"{modulePart} · {body}";
+
+            // Compose title: include module only when configured; include body only when non-empty.
+            var modulePart = string.IsNullOrWhiteSpace(t.Module) ? null : t.Module;
+            if (string.IsNullOrWhiteSpace(modulePart) && string.IsNullOrWhiteSpace(body))
+                node.Title = ""; // nothing configured
+            else if (string.IsNullOrWhiteSpace(modulePart))
+                node.Title = body;
+            else if (string.IsNullOrWhiteSpace(body))
+                node.Title = modulePart;
+            else
+                node.Title = $"{modulePart} · {body}";
         }
 
         // Wire up children so updates refresh the computed title.
