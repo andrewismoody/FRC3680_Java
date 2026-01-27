@@ -59,6 +59,9 @@ public sealed class MainWindowViewModel : NotifyBase
     // When > 0, SavePromptOrAutoSaveAsync will be a no-op.
     private int _suppressAutoSaveDuringLoad = 0;
 
+    // Helper used by save/prompt flow to check whether autosave is suppressed (e.g. during OpenJson).
+    private bool IsAutosaveSuppressed => Thread.VolatileRead(ref _suppressAutoSaveDuringLoad) > 0;
+
     // In-memory buffer for log lines while disk writes are suppressed during load.
     private readonly List<string> _deferredLogLines = new();
     private readonly object _deferredLogLock = new();
@@ -191,248 +194,11 @@ public sealed class MainWindowViewModel : NotifyBase
             try { EvaluateParamsOnly(); } catch { /* best-effort */ }
 
             // ensure fixture resolution is up-to-date before plotting.
-            // Do NOT evaluate expressions here; the Java resolver performs expression evaluation for fixtures.
             try { ResolveFixturesOnly(); } catch { /* best-effort */ }
 
-            var pm = new PlotModel { Title = "Field fixtures & targets" };
-
-            // Simple pan/zoom axes (X = horizontal, Y = vertical)
-            pm.Axes.Add(new LinearAxis { Position = AxisPosition.Bottom, Title = "X" });
-            pm.Axes.Add(new LinearAxis { Position = AxisPosition.Left, Title = "Y" });
-
-            // Ensure we have resolved positions (lookup) available as a fast-path (optional)
-            ResolveFixturePositions();
-
-            // --- Plot fixtures (existing behavior) ---
-            var groups = _doc.Fixtures
-                .Where(f => f != null)
-                .GroupBy(f => f.Type ?? "(none)")
-                .ToList();
-
-            var colorIdx = 0;
-            var totalFixtures = _doc.Fixtures.Count;
-            var plottedFixtures = 0;
-
-            // collect arrow annotations for fixtures/targets so we can size them after the PlotModel has axes/transforms computed
-            var collectedArrows = new List<ArrowAnnotation>();
-
-            foreach (var g in groups)
-            {
-                var type = g.Key;
-                var color = _palette[colorIdx % _palette.Length];
-                colorIdx++;
-
-                var scatter = new ScatterSeries
-                {
-                    MarkerType = MarkerType.Circle,
-                    MarkerFill = color,
-                    MarkerSize = 6,
-                    Title = type
-                };
-
-                foreach (var f in g)
-                {
-                    if (TryGetFixturePosition(f, out var fx, out var fy, out var fz, out var frot))
-                    {
-                        scatter.Points.Add(new ScatterPoint(fx, fy));
-                        plottedFixtures++;
-                        if (frot.HasValue)
-                        {
-                            var theta = frot.Value * Math.PI / 180.0;
-                            var arrowLengthMeters = 12.0 * 0.0254;
-                            var ex = fx + Math.Cos(theta) * arrowLengthMeters;
-                            var ey = fy + Math.Sin(theta) * arrowLengthMeters;
-
-                            var ann = new ArrowAnnotation
-                            {
-                                StartPoint = new DataPoint(fx, fy),
-                                EndPoint = new DataPoint(ex, ey),
-                                Color = color,
-                                HeadLength = 12,
-                                HeadWidth = 8
-                            };
-                            collectedArrows.Add(ann);
-                        }
-                    }
-                    else
-                    {
-                        Log($"UpdatePlotModel: skipped fixture {f.Type}:{f.Index} (no resolved position)");
-                    }
-                }
-
-                if (scatter.Points.Count > 0) pm.Series.Add(scatter);
-            }
-
-            // --- Plot targets per-module (new) ---
-            // Prepare module -> color mapping (reuse palette)
-            var moduleColors = new Dictionary<string, OxyColor>(StringComparer.OrdinalIgnoreCase);
-            var moduleSeries = new Dictionary<string, ScatterSeries>(StringComparer.OrdinalIgnoreCase);
-            int modIdx = 0;
-            foreach (var m in _doc.Modules)
-            {
-                var name = string.IsNullOrWhiteSpace(m) ? "(no-module)" : m;
-                var color = _palette[modIdx % _palette.Length];
-                moduleColors[name] = color;
-                var ss = new ScatterSeries
-                {
-                    MarkerType = MarkerType.Diamond,
-                    MarkerFill = color,
-                    MarkerSize = 7,
-                    Title = name
-                };
-                moduleSeries[name] = ss;
-                modIdx++;
-            }
-
-            // fallback series for modules not listed in _doc.Modules
-            ScatterSeries GetOrCreateModuleSeries(string module)
-            {
-                if (moduleSeries.TryGetValue(module, out var s)) return s;
-                var idx = moduleSeries.Count;
-                var color = _palette[idx % _palette.Length];
-                s = new ScatterSeries { MarkerType = MarkerType.Diamond, MarkerFill = color, MarkerSize = 7, Title = module };
-                moduleSeries[module] = s;
-                return s;
-            }
-
-            var plottedTargets = 0;
-            foreach (var t in _doc.Targets)
-            {
-                // Determine the module layer
-                var moduleName = string.IsNullOrWhiteSpace(t.Module) ? "(no-module)" : t.Module;
-                var series = GetOrCreateModuleSeries(moduleName);
-
-                // Try fixture-ref first (external resolver); then translation (local resolution + unit conversion)
-                bool added = false;
-                double tx = 0, ty = 0, tz = 0;
-                double? trot = null;
-
-                if (t.Fixture != null)
-                {
-                    try
-                    {
-                        var key = $"{t.Fixture.Type}:{t.Fixture.Index}";
-                        if (_resolvedFixturePositions.TryGetValue(key, out var pos))
-                        {
-                            tx = pos.x; ty = pos.y; tz = pos.z; trot = pos.rot;
-                            added = true;
-                        }
-                    }
-                    catch { /* best-effort */ }
-                }
-
-                if (!added && t.Translation != null)
-                {
-                    try
-                    {
-                        var tr = t.Translation;
-                        if (tr.Position != null && tr.Position.Count >= 2)
-                        {
-                            if (TryResolveDoubleFromObject(tr.Position[0], out var rx) && TryResolveDoubleFromObject(tr.Position[1], out var ry))
-                            {
-                                // convert inferred units to meters for consistent plotting (fixtures supplied in meters)
-                                var units = tr.PositionUnits;
-                                tx = ConvertLengthToMeters(rx, units);
-                                ty = ConvertLengthToMeters(ry, units);
-
-                                // optional Z
-                                if (tr.Position.Count >= 3 && TryResolveDoubleFromObject(tr.Position[2], out var rz))
-                                    tz = ConvertLengthToMeters(rz, units);
-                                else
-                                    tz = 0.0;
-
-                                // rotation if present
-                                if (tr.Rotation != null)
-                                {
-                                    // tr.Rotation may be a numeric type; attempt to coerce
-                                    if (TryResolveDoubleFromObject(tr.Rotation, out var rrot))
-                                        trot = NormalizeRotationToDegrees(rrot, tr.RotationUnits);
-                                }
-
-                                added = true;
-                            }
-                        }
-                    }
-                    catch { /* best-effort */ }
-                }
-
-                if (added)
-                {
-                    series.Points.Add(new ScatterPoint(tx, ty));
-                    plottedTargets++;
-
-                    if (trot.HasValue)
-                    {
-                        var theta = trot.Value * Math.PI / 180.0;
-                        var arrowLengthMeters = 12.0 * 0.0254;
-                        var ex = tx + Math.Cos(theta) * arrowLengthMeters;
-                        var ey = ty + Math.Sin(theta) * arrowLengthMeters;
-
-                        var ann = new ArrowAnnotation
-                        {
-                            StartPoint = new DataPoint(tx, ty),
-                            EndPoint = new DataPoint(ex, ey),
-                            Color = moduleColors.TryGetValue(moduleName, out var c) ? c : OxyColors.Black,
-                            HeadLength = 12,
-                            HeadWidth = 8
-                        };
-                        collectedArrows.Add(ann);
-                    }
-                }
-                // else: do not plot targets without a resolved field position
-            }
-
-            // Add fixture arrows first (they are already in collectedArrows), then add module series.
-            foreach (var ms in moduleSeries.Values)
-            {
-                if (ms.Points.Count > 0)
-                    pm.Series.Add(ms);
-            }
-
-            // Add collected arrows after series so they can be sized by the Updated handler
-            foreach (var ann in collectedArrows) pm.Annotations.Add(ann);
-
-            // Recompute arrow head sizes on every PlotModel update so heads scale with zoom/pan.
-            pm.Updated += (sender, ev) =>
-            {
-                try
-                {
-                    var xAxis = pm.Axes.FirstOrDefault(a => a.Position == AxisPosition.Bottom) ?? pm.Axes.FirstOrDefault();
-                    var yAxis = pm.Axes.FirstOrDefault(a => a.Position == AxisPosition.Left) ?? pm.Axes.Skip(1).FirstOrDefault() ?? xAxis;
-                    var plotArea = pm.PlotArea;
-                    if (xAxis == null || yAxis == null || plotArea.Width <= 0 || plotArea.Height <= 0) return;
-
-                    double xRange = xAxis.ActualMaximum - xAxis.ActualMinimum;
-                    double yRange = yAxis.ActualMaximum - yAxis.ActualMinimum;
-                    if (xRange <= 0 || yRange <= 0) return;
-
-                    double pxPerUnitX = plotArea.Width / xRange;
-                    double pxPerUnitY = plotArea.Height / yRange;
-
-                    foreach (var a in pm.Annotations.OfType<ArrowAnnotation>())
-                    {
-                        try
-                        {
-                            var dx = a.EndPoint.X - a.StartPoint.X;
-                            var dy = a.EndPoint.Y - a.StartPoint.Y;
-                            var pixelLen = Math.Sqrt((dx * pxPerUnitX) * (dx * pxPerUnitX) + (dy * pxPerUnitY) * (dy * pxPerUnitY));
-                            var newHeadLength = Math.Max(6, pixelLen * 0.35);
-                            var newHeadWidth = Math.Max(4, pixelLen * 0.25);
-                            if (Math.Abs(a.HeadLength - newHeadLength) > 0.5 || Math.Abs(a.HeadWidth - newHeadWidth) > 0.5)
-                            {
-                                a.HeadLength = newHeadLength;
-                                a.HeadWidth = newHeadWidth;
-                            }
-                        }
-                        catch { /* per-annotation best-effort */ }
-                    }
-                }
-                catch { /* best-effort */ }
-            };
-
-            pm.IsLegendVisible = true;
+            // Delegate to helper that constructs the full PlotModel. Helper returns a PlotModel and accepts a log callback.
+            var pm = PlotHelper.BuildFieldPlot(_doc, _evaluatedLookup, _resolvedFixturePositions, _palette, Log);
             FieldPlotModel = pm;
-            Log($"UpdatePlotModel: plotted fixtures {plottedFixtures}/{totalFixtures}, targets {plottedTargets}");
         }
         catch (Exception ex)
         {
@@ -530,7 +296,8 @@ public sealed class MainWindowViewModel : NotifyBase
             // Fallback: send in-memory JSON (used for unsaved docs or if ResolveFromFile failed)
             if (string.IsNullOrWhiteSpace(outputJson))
             {
-                var docJson = JsonSerializer.Serialize(_doc, JsonOptionsCamel);
+                // use helper to produce camel-case JSON
+                var docJson = JsonHelper.SerializeCamel(_doc);
                 outputJson = FixtureResolverInterop.Resolve(docJson);
             }
             if (string.IsNullOrWhiteSpace(outputJson)) return;
@@ -872,6 +639,8 @@ public sealed class MainWindowViewModel : NotifyBase
         _doc.Fixtures.Add(new FixtureSchemaModel { Type = "fixture", Index = 0, Translation = new TranslationModel { Position = new() { 0d, 0d, 0d }, PositionUnits = "inches", Rotation = 0d, RotationUnits = "degrees" } });
         _doc.Targets.Add(new TargetSchemaModel { Module = module, Translation = new TranslationModel { Position = new() { 0d, 0d, 0d }, PositionUnits = "inches" } });
 
+        // Ensure sequences backing lists exist
+        TreeHelper.EnsureSequenceBackingLists(_doc);
         _doc.Sequences.Add(new SequenceModel { Name = "seq1", Events = new() { "event1" } });
 
         // ensure names exist (moved)
@@ -899,8 +668,8 @@ public sealed class MainWindowViewModel : NotifyBase
 
     public async Task SaveToPathAsync(string path)
     {
-        var json = JsonSerializer.Serialize(_doc, JsonOptionsCamelIndented);
-        await File.WriteAllTextAsync(path, json);
+        // delegate serialization + write to FileHelper
+        await FileHelper.WriteAutoJsonAsync(path, _doc);
         CurrentJsonPath = path;
 
         // update root label etc.
@@ -911,13 +680,9 @@ public sealed class MainWindowViewModel : NotifyBase
 
     private async Task OpenJsonAsync()
     {
-        var dlg = new OpenFileDialog
-        {
-            Title = "Open auto JSON",
-            Filter = "JSON files (*.json)|*.json|All files (*.*)|*.*",
-            CheckFileExists = true
-        };
-        if (dlg.ShowDialog() != true) return;
+        // Use FileHelper to prompt and read
+        var chosen = FileHelper.PromptOpenAutoJsonPath();
+        if (chosen == null) return;
 
         // Clear previous debug output when opening a file so the log reflects the new load.
         DebugLog = "";
@@ -925,7 +690,7 @@ public sealed class MainWindowViewModel : NotifyBase
         Interlocked.Increment(ref _suppressAutoSaveDuringLoad);
         try
         {
-            var json = await File.ReadAllTextAsync(dlg.FileName);
+            var json = await FileHelper.ReadAllTextAsync(chosen);
 
             // Parse once to extract the heterogeneous params map (preserve arrays/strings/expressions)
             using (var doc = JsonDocument.Parse(json))
@@ -956,55 +721,40 @@ public sealed class MainWindowViewModel : NotifyBase
             // ensure pose names are consistent after load
             PoseHelper.EnsurePoseNames(_doc);
 
+            // Ensure sequences have their backing lists (events/start1/2/3)
+            TreeHelper.EnsureSequenceBackingLists(_doc);
+
             // If deserialization produced different params representation, ensure _paramsMap is at least populated from _doc
             if (_paramsMap.Count == 0) UpdateParamsMap();
 
-            CurrentJsonPath = dlg.FileName;
+            CurrentJsonPath = chosen;
             await RebuildTreeAsync();
 
             // note: do NOT perform autosave or disk writes while suppression is active.
-            Log($"OpenJson: loaded (in-memory) '{dlg.FileName}'.");
+            Log($"OpenJson: loaded (in-memory) '{chosen}'.");
         }
         finally
         {
             // always clear suppression so subsequent model-changed callbacks will perform autosave/prompt
             Interlocked.Decrement(ref _suppressAutoSaveDuringLoad);
 
-            // Do NOT perform disk operations automatically after load to avoid intermittent blocking (AV, FS hooks).
-            // Instead, apply buffered logs to the in-memory DebugLog in one UI update (cheap).
-            try
-            {
-                ApplyBufferedLogsToUi();
-            }
-            catch
-            {
-                // best-effort only
-            }
+            // apply buffered logs to the in-memory DebugLog in one UI update (cheap).
+            try { ApplyBufferedLogsToUi(); } catch { /* best-effort only */ }
         }
     }
 
-    // When suppression is active the global callback should be a no-op; this check is used by SavePromptOrAutoSaveAsync.
-    private bool IsAutosaveSuppressed => Thread.VolatileRead(ref _suppressAutoSaveDuringLoad) > 0;
-
     private async Task SaveAsJsonAsync()
     {
-        var dlg = new SaveFileDialog
-        {
-            Title = "Save auto JSON",
-            Filter = "JSON files (*.json)|*.json|All files (*.*)|*.*",
-            FileName = Path.GetFileName(CurrentJsonPath) ?? "auto.json",
-            OverwritePrompt = true,
-            InitialDirectory = FileHelper.GetDefaultDeployFolder() ?? Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments)
-        };
-        if (dlg.ShowDialog() != true) return;
+        var suggested = Path.GetFileName(CurrentJsonPath) ?? "auto.json";
+        var chosen = FileHelper.PromptSaveAutoJsonPath(suggested);
+        if (chosen == null) return;
 
-        var json = JsonSerializer.Serialize(_doc, JsonOptionsCamelIndented);
-        await File.WriteAllTextAsync(dlg.FileName, json);
-        CurrentJsonPath = dlg.FileName;
+        await FileHelper.WriteAutoJsonAsync(chosen, _doc);
+        CurrentJsonPath = chosen;
 
         await RebuildTreeAsync(); // update root label
 
-        Log($"SaveAsJson: wrote '{dlg.FileName}'.");
+        Log($"SaveAsJson: wrote '{chosen}'.");
     }
 
     // Save to current path if present, otherwise fall back to Save As.
@@ -1030,40 +780,31 @@ public sealed class MainWindowViewModel : NotifyBase
 
     // ----- Tree helpers -----
 
-    // NEW: build the entire tree into a root TreeItemVm but do not mutate ObservableCollection.
+    // NEW: delegate to TreeBuildHelper to construct the tree root (keeps VM small)
     private TreeItemVm BuildTreeRoot()
     {
         // ensure evaluated lookup is fresh for this document
         try { EvaluateParamsOnly(); } catch { /* best-effort */ }
 
-        Log("BuildTreeRoot()");
-        // local copies / ensure any prep needed
-        var rootTitle = Path.GetFileName(CurrentJsonPath) ?? "(unsaved)";
-        var root = new TreeItemVm(rootTitle, TreeItemKind.Root) { IsExpanded = true };
-
-        // required scalars
-        root.Children.Add(TreeHelper.CreateField("season", _doc, () => _doc.Season, v => _doc.Season = v));
-        root.Children.Add(TreeHelper.CreateField("version", _doc, () => _doc.Version, v => _doc.Version = v));
-        root.Children.Add(TreeHelper.CreateField("description", _doc, () => _doc.Description, v => _doc.Description = v));
-
-        // sections (these Create* helpers create TreeItemVm instances, which is the bulk of the work)
-        root.Children.Add(BuildParamsSection());
-        // add modules section (editable list of module labels)
-        root.Children.Add(BuildStringListSection("modules", _doc.Modules));
-        root.Children.Add(BuildStringListSection("groups", _doc.Groups));
-        root.Children.Add(BuildStringListSection("travelGroups", _doc.TravelGroups, _doc.Groups));
-        root.Children.Add(BuildStringListSection("locations", _doc.Locations));
-        root.Children.Add(BuildStringListSection("positions", _doc.Positions));
-        root.Children.Add(BuildStringListSection("actions", _doc.Actions));
-        root.Children.Add(BuildPosesSection());
-        root.Children.Add(BuildEventsSection());
-        root.Children.Add(BuildFixturesSection());
-        root.Children.Add(BuildTargetsSection());
-        root.Children.Add(BuildSequencesSection());
-
-        // Make sure options are computed for nodes that rely on ParamKeys etc.
-        // (RefreshAllOptions will be invoked after the root is attached to the ObservableCollection.)
-        return root;
+        // Delegate actual construction to helper and supply delegates for VM-specific actions
+        return TreeBuildHelper.BuildTreeRoot(
+            _doc,
+            ParamKeys,
+            _paramsMap,
+            // rebuildAsync
+            async () => { await RebuildTreeAsync().ConfigureAwait(false); },
+            // triggerModelChangedImmediate
+            () => TreeHelper.TriggerModelChangedImmediate(),
+            // focusNewUnder: (section, child) => TreeHelper.FocusNewUnder(TreeRootItems, section, child)
+            (section, child) => TreeHelper.FocusNewUnder(TreeRootItems, section, child),
+            // rename delegates
+            async (oldKey, newKey) => await RenameParamAsync(oldKey, newKey).ConfigureAwait(false),
+            async (oldName, newName) => await RenamePoseAsync(oldName, newName).ConfigureAwait(false),
+            async (oldName, newName) => await RenameEventAsync(oldName, newName).ConfigureAwait(false),
+            async (oldName, newName) => await RenameSequenceAsync(oldName, newName).ConfigureAwait(false),
+            // commit pose caption
+            async (node) => await CommitPoseCaptionAsync(node).ConfigureAwait(false)
+        );
     }
 
     // RebuildTree now simply constructs and installs the tree synchronously (kept for compatibility).
@@ -1183,326 +924,6 @@ public sealed class MainWindowViewModel : NotifyBase
         }
     }
 
-    private TreeItemVm BuildParamsSection()
-    {
-        var sec = new TreeItemVm("params", TreeItemKind.Section) { HasAdd = true };
-        sec.AddCommand = new RelayCommand(() =>
-        {
-            var key = $"param{_doc.Params.Count + 1}";
-            // new ParamValue wrapper for a numeric 0 default
-            _doc.Params[key] = new AutoJsonBuilder.Models.ParamValue(0d);
-            _ = RebuildTreeAsync(); // command handler stays sync, rebuild asynchronously
-            TreeHelper.TriggerModelChangedImmediate();
-            TreeHelper.FocusNewUnder(TreeRootItems, "params", key);
-        });
-
-        foreach (var kvp in _doc.Params.OrderBy(k => k.Key))
-        {
-            var raw = kvp.Value?.Raw;
-
-            // If param is an array (preserved as List<object>), create an object node with one child per element.
-            if (raw is IList<object> list)
-            {
-                var originalKey = kvp.Key;
-                var originalVal = kvp.Value;
-                // Make array-backed params editable like scalars: allow renaming the param key via the caption
-                var node = new TreeItemVm(kvp.Key, TreeItemKind.Object)
-                {
-                    HasRemove = true,
-                    Model = kvp,
-                    IsCaptionEditable = true
-                };
-                // Commit caption edits with the same validation/rename flow used for scalar params
-                node.PropertyChanged += async (_, e) =>
-                {
-                    if (e.PropertyName != nameof(TreeItemVm.Title)) return;
-                    var newKey = node.Title?.Trim() ?? "";
-                    if (string.IsNullOrWhiteSpace(newKey) || newKey == originalKey)
-                    {
-                        node.Title = originalKey;
-                        return;
-                    }
-                    if (_doc.Params.ContainsKey(newKey))
-                    {
-                        node.Title = originalKey; // revert on collision
-                        return;
-                    }
-                    await RenameParamAsync(originalKey, newKey);
-                };
-                node.RemoveCommand = new RelayCommand(() => { _doc.Params.Remove(originalKey); _ = RebuildTreeAsync(); TreeHelper.TriggerModelChangedImmediate(); });
-
-                // Add command to append a new element, only if < 3 elements
-                node.HasAdd = list.Count < 3;
-                node.AddCommand = new RelayCommand(() =>
-                {
-                    if (list.Count >= 3) return;
-                    list.Add(0d);
-                    _ = RebuildTreeAsync();
-                    TreeHelper.TriggerModelChangedImmediate();
-                    TreeHelper.FocusNewUnder(TreeRootItems, "params", originalKey);
-                });
-
-                for (var i = 0; i < list.Count; i++)
-                {
-                    var index = i;
-                    // create per-element editor using TreeHelper so it gets the same NumberOrParam behavior/hints
-                    var child = TreeHelper.CreateNumberOrParamField(
-                        TreeHelper.GetArrayIndexLabel(index),
-                        kvp.Value!,                     // model (ParamValue)
-                        () => list[index],              // getter returns element
-                        v => { list[index] = v; },      // setter updates element in-place
-                        _paramsMap,                     // params map for previews/options
-                        captionEditable: true           // allow editing element title if desired (keeps parity)
-                    );
-
-                    // Param array elements should be plain text editors (no combobox of param names)
-                    child.Editor = TreeEditorKind.Text;
-                    child.Options.Clear();
-
-                    // Only expose a remove icon on the last element (when array length is 2 or 3).
-                    // If removing the last element when the array has 2 elements, convert the param back to a scalar.
-                    if (list.Count >= 2 && index == list.Count - 1)
-                    {
-                        child.HasRemove = true;
-                        var idx = index; // capture for lambda
-                        child.RemoveCommand = new RelayCommand(() =>
-                        {
-                            // refresh local references in case of closure
-                            var key = originalKey;
-                            var valWrapper = originalVal;
-
-                            if (list.Count == 2)
-                            {
-                                // convert to scalar: keep first element as the scalar value
-                                var first = list.Count > 0 ? list[0] : 0d;
-                                valWrapper.Raw = first!;
-                                _doc.Params[key] = valWrapper!;
-                            }
-                            else
-                            {
-                                // list.Count == 3 (or >2) -> remove the last element
-                                if (idx >= 0 && idx < list.Count) list.RemoveAt(idx);
-                            }
-
-                            UpdateParamsMap();
-                            _ = RebuildTreeAsync();
-                            TreeHelper.TriggerModelChangedImmediate();
-                            TreeHelper.FocusNewUnder(TreeRootItems, "params", key);
-                        });
-                    }
-
-                    node.Children.Add(child);
-                }
-
-                sec.Children.Add(node);
-            }
-            else
-            {
-                var originalKey = kvp.Key;
-                var originalVal = kvp.Value;
-
-                // Represent scalar param as an OBJECT node so its Title is editable in the TreeView.
-                var node = new TreeItemVm(originalKey, TreeItemKind.Object)
-                {
-                    HasRemove = true,
-                    Model = kvp
-                };
-                node.RemoveCommand = new RelayCommand(() => { _doc.Params.Remove(originalKey); _ = RebuildTreeAsync(); TreeHelper.TriggerModelChangedImmediate(); });
-
-                // Allow renaming the param key via editable caption on the parent object node
-                node.IsCaptionEditable = true;
-                node.PropertyChanged += async (_, e) =>
-                {
-                    if (e.PropertyName != nameof(TreeItemVm.Title)) return;
-                    var newKey = node.Title?.Trim() ?? "";
-                    if (string.IsNullOrWhiteSpace(newKey) || newKey == originalKey)
-                    {
-                        node.Title = originalKey;
-                        return;
-                    }
-                    if (_doc.Params.ContainsKey(newKey))
-                    {
-                        node.Title = originalKey; // revert on collision
-                        return;
-                    }
-                    await RenameParamAsync(originalKey, newKey);
-                };
-
-                // Add button converts scalar -> array (initial element is current scalar), only allowed if conversion makes sense
-                node.HasAdd = true;
-                node.AddCommand = new RelayCommand(() =>
-                {
-                    // convert scalar Raw to list: keep current scalar as first element and add one extra default element
-                    var rawVal = originalVal?.Raw;
-                    if (rawVal is IList<object>) return; // already an array
-                    var newList = new List<object>();
-                    newList.Add(rawVal ?? 0d); // preserve existing value as first element
-                    newList.Add(0d);           // add an extra element so UI shows a change
-                    originalVal.Raw = newList;
-                    _doc.Params[originalKey] = originalVal!;
-                    UpdateParamsMap();
-                    _ = RebuildTreeAsync();
-                    TreeHelper.TriggerModelChangedImmediate();
-                    TreeHelper.FocusNewUnder(TreeRootItems, "params", originalKey);
-                });
-
-                // Child "value" field holds the actual scalar value/expression (plain text editor)
-                var child = TreeHelper.CreateNumberOrParamField(
-                    "value",
-                    kvp.Value!,                      // model (ParamValue)
-                    () => kvp.Value?.Raw,            // getter: raw value
-                    v => { kvp.Value.Raw = v; },     // setter: update raw
-                    _paramsMap,                      // params map for previews/options
-                    captionEditable: false
-                );
-                child.Editor = TreeEditorKind.Text;
-                child.Options.Clear();
-                child.Model = kvp;
-
-                node.Children.Add(child);
-                sec.Children.Add(node);
-            }
-        }
-
-        // Refresh ParamKeys observable so other UI pieces can use current names
-        ParamKeys.Clear();
-        foreach (var k in _doc.Params.Keys.OrderBy(x => x)) ParamKeys.Add(k);
-
-        return sec;
-    }
-
-    private TreeItemVm BuildStringListSection(string name, IList<string> list, IList<string>? optionsSource = null)
-    {
-        var sec = new TreeItemVm(name, TreeItemKind.Section) { HasAdd = true };
-
-        // Add behavior: if optionsSource supplied, new entry defaults to first option (or empty)
-        sec.AddCommand = new RelayCommand(() =>
-        {
-            var baseName = GetSingularName(name);
-            var newVal = optionsSource != null && optionsSource.Count > 0 ? optionsSource[0] : $"{baseName}{list.Count + 1}";
-            list.Add(newVal);
-            _ = RebuildTreeAsync();           // guarantees dropdowns are rebuilt with fresh Options
-            TreeHelper.TriggerModelChangedImmediate();
-            TreeHelper.FocusNewUnder(TreeRootItems, name, list.Last());
-        });
-
-        for (var i = 0; i < list.Count; i++)
-        {
-            var index = i;
-            if (optionsSource != null)
-            {
-                // Render as a dropdown-only field (no caption). Use empty label and disable caption editing.
-                var field = TreeHelper.CreateListField("", list, () => list[index], v => list[index] = v, optionsSource);
-                field.IsCaptionEditable = false;
-                field.HasRemove = true;
-                field.Model = list;
-                field.RemoveCommand = new RelayCommand(() =>
-                {
-                    if (index >= 0 && index < list.Count) list.RemoveAt(index);
-                    _ = RebuildTreeAsync();
-                    TreeHelper.TriggerModelChangedImmediate();
-                });
-                sec.Children.Add(field);
-            }
-            else
-            {
-                // Legacy behavior: editable caption object node
-                var node = new TreeItemVm(list[index], TreeItemKind.Object)
-                {
-                    IsCaptionEditable = true,
-                    Editor = TreeEditorKind.None,
-                    HasRemove = true
-                };
-
-                node.PropertyChanged += (_, e) =>
-                {
-                    if (e.PropertyName != nameof(TreeItemVm.Title)) return;
-                    var newValue = node.Title?.Trim() ?? "";
-                    if (string.IsNullOrWhiteSpace(newValue)) return;
-
-                    list[index] = newValue;
-                    _ = RebuildTreeAsync();       // guarantees pose dropdowns are rebuilt with fresh Options
-                };
-
-                node.RemoveCommand = new RelayCommand(() =>
-                {
-                    list.RemoveAt(index);
-                    _ = RebuildTreeAsync();       // guarantees pose dropdowns are rebuilt with fresh Options
-                    TreeHelper.TriggerModelChangedImmediate();
-                });
-
-                sec.Children.Add(node);
-            }
-        }
-
-        return sec;
-    }
-
-    // Simple singularization for generated names: "categories" -> "category", "groups" -> "group"
-    private static string GetSingularName(string plural)
-    {
-        if (string.IsNullOrWhiteSpace(plural)) return plural ?? "";
-        if (plural.EndsWith("ies", StringComparison.OrdinalIgnoreCase) && plural.Length > 3)
-            return plural.Substring(0, plural.Length - 3) + "y";
-        if (plural.EndsWith("s", StringComparison.OrdinalIgnoreCase) && plural.Length > 1)
-            return plural.Substring(0, plural.Length - 1);
-        return plural;
-    }
-
-    private TreeItemVm BuildPosesSection()
-    {
-        Log($"BuildPosesSection: groups={_doc.Groups.Count}, locations={_doc.Locations.Count}, positions={_doc.Positions.Count}, actions={_doc.Actions.Count}");
-
-        var sec = new TreeItemVm("poses", TreeItemKind.Section) { HasAdd = true };
-        sec.AddCommand = new RelayCommand(() =>
-        {
-            var newPose = new PoseModel
-            {
-                Group = _doc.Groups.FirstOrDefault() ?? "",
-                Location = _doc.Locations.FirstOrDefault() ?? "",
-                Index = 0,
-                Position = _doc.Positions.FirstOrDefault() ?? "",
-                Action = _doc.Actions.FirstOrDefault() ?? ""
-            };
-
-            _doc.Poses.Add(newPose);
-
-            // ensure stable unique names after adding (moved)
-            PoseHelper.EnsurePoseNames(_doc);
-
-            // Rebuild UI and notify model-changed so autosave/prompt runs for this user action.
-            _ = RebuildTreeAsync();
-            TreeHelper.TriggerModelChangedImmediate();
-            TreeHelper.FocusNewUnder(TreeRootItems, "poses");
-        });
-
-        foreach (var p in _doc.Poses)
-        {
-            var originalTitle = p.Name ?? $"pose[{p.Group},{p.Location},{p.Index}]";
-			var node = new TreeItemVm(originalTitle, TreeItemKind.Object)
-			{
-				HasRemove = true,
-				RemoveCommand = new RelayCommand(() => { _doc.Poses.Remove(p); PoseHelper.EnsurePoseNames(_doc); _ = RebuildTreeAsync(); TreeHelper.TriggerModelChangedImmediate(); }),
-				Model = p,
-				// allow editing the pose label; do NOT react to Title changes here.
-				IsCaptionEditable = true
-			};
-			// NOTE: do not handle Title PropertyChanged here. The view should call CommitPoseCaptionAsync(node)
-			// from the caption TextBox LostFocus handler so renames only commit on LostFocus.
-
-            // fixed label: use "group" not "group_TEST"
-            node.Children.Add(TreeHelper.CreatePoseDropdown("group", p, () => p.Group, v => p.Group = v, _doc.Groups));
-            node.Children.Add(TreeHelper.CreatePoseDropdown("location", p, () => p.Location, v => p.Location = v, _doc.Locations));
-            node.Children.Add(TreeHelper.CreateIntField("index", p, () => p.Index, v => p.Index = v));
-            node.Children.Add(TreeHelper.CreatePoseDropdown("position", p, () => p.Position, v => p.Position = v, _doc.Positions));
-            node.Children.Add(TreeHelper.CreatePoseDropdown("action", p, () => p.Action, v => p.Action = v, _doc.Actions));
-
-            sec.Children.Add(node);
-        }
-
-        return sec;
-    }
-
 	// Public helper: commit pose caption edit (call this from the caption TextBox LostFocus)
 	public async Task CommitPoseCaptionAsync(TreeItemVm? node)
 	{
@@ -1527,579 +948,6 @@ public sealed class MainWindowViewModel : NotifyBase
 		// ensure immediate save
 		TreeHelper.TriggerModelChangedImmediate();
 	}
-
-    private TreeItemVm BuildEventsSection()
-    {
-        var sec = new TreeItemVm("events", TreeItemKind.Section) { HasAdd = true };
-        sec.AddCommand = new RelayCommand(() =>
-        {
-            var poseName = _doc.Poses.FirstOrDefault()?.Name ?? "pose1";
-            var ev = new EventModel
-            {
-                Name = $"event{_doc.Events.Count + 1}",
-                Type = "await",
-                Parallel = false,
-                Pose = poseName,
-                TriggerType = "none",
-                TriggerValue = false,
-                TriggerModule = null,
-                TriggerInvert = false
-            };
-            _doc.Events.Add(ev);
-            _ = RebuildTreeAsync();
-            TreeHelper.TriggerModelChangedImmediate();
-            TreeHelper.FocusNewUnder(TreeRootItems, "events");
-        });
-
-        foreach (var ev in _doc.Events)
-        {
-            // Make event caption editable so users can rename events directly from the tree.
-            var originalTitle = ev.Name;
-            var node = new TreeItemVm(ev.Name, TreeItemKind.Object)
-            {
-                HasRemove = true,
-                RemoveCommand = new RelayCommand(() => { _doc.Events.Remove(ev); _ = RebuildTreeAsync(); }),
-                Model = ev,
-                IsCaptionEditable = true
-            };
-            // Commit caption edits: validate, avoid collisions, and rename via helper
-            node.PropertyChanged += async (_, e) =>
-            {
-                if (e.PropertyName != nameof(TreeItemVm.Title)) return;
-                var newTitle = node.Title?.Trim() ?? "";
-                var oldName = originalTitle ?? "";
-                if (string.IsNullOrWhiteSpace(newTitle))
-                {
-                    node.Title = oldName; // revert invalid
-                    return;
-                }
-                if (string.Equals(newTitle, oldName, StringComparison.OrdinalIgnoreCase)) return;
-                if (_doc.Events.Any(x => string.Equals(x.Name, newTitle, StringComparison.OrdinalIgnoreCase)))
-                {
-                    node.Title = oldName; // collision -> revert
-                    return;
-                }
-                await RenameEventAsync(oldName, newTitle);
-            };
-
-            // type (await|time)
-            var type = new TreeItemVm("type", TreeItemKind.Field) { Editor = TreeEditorKind.Enum, Value = ev.Type, Model = ev };
-            type.Options.Add("await"); type.Options.Add("time");
-            type.PropertyChanged += (_, e) =>
-            {
-                if (e.PropertyName == nameof(TreeItemVm.Value))
-                {
-                    ev.Type = type.Value?.ToString() ?? "await";
-                    TreeHelper.TriggerModelChangedImmediate();
-                }
-            };
-            node.Children.Add(type);
-
-            // parallel (dropdown true/false)
-            var parallel = new TreeItemVm("parallel", TreeItemKind.Field) { Editor = TreeEditorKind.Enum, Value = ev.Parallel ? "true" : "false", Model = ev };
-            parallel.Options.Add("true"); parallel.Options.Add("false");
-            parallel.PropertyChanged += (_, e) =>
-            {
-                if (e.PropertyName == nameof(TreeItemVm.Value))
-                {
-                    var s = parallel.Value?.ToString();
-                    ev.Parallel = string.Equals(s, "true", StringComparison.OrdinalIgnoreCase);
-                    TreeHelper.TriggerModelChangedImmediate();
-                }
-            };
-            node.Children.Add(parallel);
-
-            // pose (dropdown of existing pose names). Include an empty option to allow "no pose" selection.
-            var poseField = new TreeItemVm("pose", TreeItemKind.Field) { Editor = TreeEditorKind.Enum, Value = ev.Pose ?? "", Model = ev };
-            poseField.Options.Clear();
-            // first option is empty meaning "no pose"
-            poseField.Options.Add("");
-            foreach (var pName in _doc.Poses.Select(p => p.Name ?? ""))
-                poseField.Options.Add(pName);
-            poseField.PropertyChanged += (_, e) =>
-            {
-                if (e.PropertyName == nameof(TreeItemVm.Value))
-                {
-                    var sel = poseField.Value?.ToString() ?? "";
-                    ev.Pose = string.IsNullOrWhiteSpace(sel) ? null : sel;
-                    TreeHelper.TriggerModelChangedImmediate();
-                }
-            };
-            node.Children.Add(poseField);
-
-            // milliseconds
-            var ms = new TreeItemVm("milliseconds", TreeItemKind.Field) { Editor = TreeEditorKind.NumberOrParam, Value = ev.Milliseconds ?? 0, Model = ev };
-            ms.PropertyChanged += (_, e) =>
-            {
-                if (e.PropertyName == nameof(TreeItemVm.Value))
-                {
-                    ev.Milliseconds = Convert.ToInt32(ms.Value ?? 0);
-                    TreeHelper.TriggerModelChangedImmediate();
-                }
-            };
-            node.Children.Add(ms);
-
-            // triggerType (enum: boolean | none)
-            var tt = new TreeItemVm("triggerType", TreeItemKind.Field) { Editor = TreeEditorKind.Enum, Value = ev.TriggerType ?? "none", Model = ev };
-            tt.Options.Add("boolean"); tt.Options.Add("none");
-            tt.PropertyChanged += (_, e) =>
-            {
-                if (e.PropertyName == nameof(TreeItemVm.Value))
-                {
-                    ev.TriggerType = tt.Value?.ToString();
-                    TreeHelper.TriggerModelChangedImmediate();
-                }
-            };
-            node.Children.Add(tt);
-
-            // triggerValue (dropdown true/false)
-            var tv = new TreeItemVm("triggerValue", TreeItemKind.Field) { Editor = TreeEditorKind.Enum, Value = ev.TriggerValue, Model = ev };
-            tv.Options.Add("true"); tv.Options.Add("false");
-            tv.PropertyChanged += (_, e) =>
-            {
-                if (e.PropertyName == nameof(TreeItemVm.Value))
-                {
-                    var s = tv.Value?.ToString();
-                    ev.TriggerValue = string.Equals(s, "true", StringComparison.OrdinalIgnoreCase);
-                    TreeHelper.TriggerModelChangedImmediate();
-                }
-            };
-            node.Children.Add(tv);
-
-            // triggerModule (dropdown of modules; first option is empty => "no module")
-            var tm = new TreeItemVm("triggerModule", TreeItemKind.Field) { Editor = TreeEditorKind.Enum, Value = ev.TriggerModule ?? "", Model = ev };
-            tm.Options.Clear();
-            tm.Options.Add(""); // empty = no module
-            foreach (var m in _doc.Modules) tm.Options.Add(m ?? "");
-            tm.PropertyChanged += (_, e) =>
-            {
-                if (e.PropertyName == nameof(TreeItemVm.Value))
-                {
-                    var sel = tm.Value?.ToString() ?? "";
-                    ev.TriggerModule = string.IsNullOrWhiteSpace(sel) ? null : sel;
-                    TreeHelper.TriggerModelChangedImmediate();
-                }
-            };
-            node.Children.Add(tm);
-
-            // triggerInvert (dropdown true/false)
-            var ti = new TreeItemVm("triggerInvert", TreeItemKind.Field) { Editor = TreeEditorKind.Enum, Value = ev.TriggerInvert ? "true" : "false", Model = ev };
-            ti.Options.Add("true"); ti.Options.Add("false");
-            ti.PropertyChanged += (_, e) =>
-            {
-                if (e.PropertyName == nameof(TreeItemVm.Value))
-                {
-                    var s = ti.Value?.ToString();
-                    ev.TriggerInvert = string.Equals(s, "true", StringComparison.OrdinalIgnoreCase);
-                    TreeHelper.TriggerModelChangedImmediate();
-                }
-            };
-            node.Children.Add(ti);
-
-            sec.Children.Add(node);
-        }
-        return sec;
-    }
-
-    private TreeItemVm BuildFixturesSection()
-    {
-        var sec = new TreeItemVm("fixtures", TreeItemKind.Section) { HasAdd = true };
-        sec.AddCommand = new RelayCommand(() =>
-        {
-            var f = new FixtureSchemaModel { Type = "fixture", Index = _doc.Fixtures.Count };
-            _doc.Fixtures.Add(f);
-            AddFixtureVm(sec, f);
-            // Notify model-changed so autosave/prompt will run for this user action.
-            TreeHelper.TriggerModelChangedImmediate();
-        });
-
-        foreach (var f in _doc.Fixtures)
-            AddFixtureVm(sec, f); // builds vms (also selects last; you can remove that behavior if undesired)
-
-        return sec;
-    }
-
-    private TreeItemVm BuildTargetsSection()
-    {
-        var sec = new TreeItemVm("targets", TreeItemKind.Section) { HasAdd = true };
-        sec.AddCommand = new RelayCommand(() =>
-        {
-            var t = new TargetSchemaModel { Module = $"module{_doc.Targets.Count + 1}" };
-            _doc.Targets.Add(t);
-            AddTargetVm(sec, t);
-            // Notify model-changed so autosave/prompt will run for this user action.
-            TreeHelper.TriggerModelChangedImmediate();
-        });
-
-        foreach (var t in _doc.Targets)
-            AddTargetVm(sec, t);
-
-        return sec;
-    }
-
-    private TreeItemVm BuildSequencesSection()
-    {
-        var sec = new TreeItemVm("sequences", TreeItemKind.Section) { HasAdd = true };
-        sec.AddCommand = new RelayCommand(() =>
-        {
-            _doc.Sequences.Add(new SequenceModel {
-                Name = $"seq{_doc.Sequences.Count + 1}",
-                Events = new() { _doc.Events.FirstOrDefault()?.Name ?? "" },
-                Start1 = new(), Start2 = new(), Start3 = new()
-            });
-            _ = RebuildTreeAsync();
-            TreeHelper.TriggerModelChangedImmediate();
-            TreeHelper.FocusNewUnder(TreeRootItems, "sequences");
-        });
-
-        foreach (var s in _doc.Sequences)
-        {
-            var originalName = s.Name;
-            var node = new TreeItemVm(s.Name, TreeItemKind.Object)
-            {
-                HasRemove = true,
-                RemoveCommand = new RelayCommand(() => { _doc.Sequences.Remove(s); _ = RebuildTreeAsync(); TreeHelper.TriggerModelChangedImmediate(); }),
-                Model = s,
-                IsCaptionEditable = true
-            };
-            // Caption rename handler (existing rename flow)
-            node.PropertyChanged += async (_, e) =>
-            {
-                if (e.PropertyName != nameof(TreeItemVm.Title)) return;
-                var newName = node.Title?.Trim() ?? "";
-                var oldName = originalName ?? "";
-                if (string.IsNullOrWhiteSpace(newName))
-                {
-                    node.Title = oldName; // revert invalid
-                    return;
-                }
-                if (string.Equals(newName, oldName, StringComparison.OrdinalIgnoreCase)) return;
-                if (_doc.Sequences.Any(x => string.Equals(x.Name, newName, StringComparison.OrdinalIgnoreCase)))
-                {
-                    node.Title = oldName; // collision -> revert
-                    return;
-                }
-                await RenameSequenceAsync(oldName, newName);
-            };
-
-            // Ensure arrays exist so UI code can safely enumerate / modify
-            s.Events ??= new System.Collections.Generic.List<string>();
-            s.Start1 ??= new System.Collections.Generic.List<string>();
-            s.Start2 ??= new System.Collections.Generic.List<string>();
-            s.Start3 ??= new System.Collections.Generic.List<string>();
-
-            // events list (one child node named "events" per schema) — options come from current event names
-            var eventOptions = _doc.Events.Select(ev => ev.Name ?? "").Where(n => !string.IsNullOrWhiteSpace(n)).ToList();
-
-            var eventsNode = new TreeItemVm("events", TreeItemKind.Object)
-            {
-                Model = s.Events,
-                HasAdd = true
-            };
-            eventsNode.AddCommand = new RelayCommand(() =>
-            {
-                var defaultEvent = eventOptions.FirstOrDefault() ?? "";
-                s.Events.Add(defaultEvent);
-                _ = RebuildTreeAsync();
-                TreeHelper.TriggerModelChangedImmediate();
-                TreeHelper.FocusNewUnder(TreeRootItems, "sequences", s.Name);
-            });
-            for (int i = 0; i < s.Events.Count; i++)
-            {
-                var idx = i;
-                var field = TreeHelper.CreateListField("", s.Events, () => s.Events[idx], v => s.Events[idx] = v, eventOptions);
-                field.IsCaptionEditable = false;
-                field.HasRemove = true;
-                field.Model = s.Events;
-                field.RemoveCommand = new RelayCommand(() =>
-                {
-                    if (idx >= 0 && idx < s.Events.Count) s.Events.RemoveAt(idx);
-                    _ = RebuildTreeAsync();
-                    TreeHelper.TriggerModelChangedImmediate();
-                });
-                eventsNode.Children.Add(field);
-            }
-            node.Children.Add(eventsNode);
-
-            // start1 / start2 / start3 arrays: same pattern as events
-            void AddStartArrayNode(string title, System.Collections.Generic.List<string> list)
-            {
-                var arrNode = new TreeItemVm(title, TreeItemKind.Object)
-                {
-                    Model = list,
-                    HasAdd = true
-                };
-                arrNode.AddCommand = new RelayCommand(() =>
-                {
-                    var defaultEvent = eventOptions.FirstOrDefault() ?? "";
-                    list.Add(defaultEvent);
-                    _ = RebuildTreeAsync();
-                    TreeHelper.TriggerModelChangedImmediate();
-                    TreeHelper.FocusNewUnder(TreeRootItems, "sequences", s.Name);
-                });
-                for (int i = 0; i < list.Count; i++)
-                {
-                    var idx = i;
-                    var field = TreeHelper.CreateListField("", list, () => list[idx], v => list[idx] = v, eventOptions);
-                    field.IsCaptionEditable = false;
-                    field.HasRemove = true;
-                    field.Model = list;
-                    field.RemoveCommand = new RelayCommand(() =>
-                    {
-                        if (idx >= 0 && idx < list.Count) list.RemoveAt(idx);
-                        _ = RebuildTreeAsync();
-                        TreeHelper.TriggerModelChangedImmediate();
-                    });
-                    arrNode.Children.Add(field);
-                }
-                node.Children.Add(arrNode);
-            }
-
-            AddStartArrayNode("start1", s.Start1);
-            AddStartArrayNode("start2", s.Start2);
-            AddStartArrayNode("start3", s.Start3);
-
-            sec.Children.Add(node);
-        }
-        return sec;
-    }
-
-    private void AddFixtureVm(TreeItemVm fixturesSection, FixtureSchemaModel f)
-    {
-        var node = new TreeItemVm($"{f.Type}:{f.Index}", TreeItemKind.Object)
-        {
-            // fixture captions should not be editable
-            IsCaptionEditable = false,
-            Model = f,
-            HasRemove = true
-        };
-        node.RemoveCommand = new RelayCommand(() =>
-        {
-            _doc.Fixtures.Remove(f);
-            fixturesSection.Children.Remove(node);
-            TreeHelper.TriggerModelChangedImmediate();
-        });
-
-        // Editable header fields (type + index) — fixture definitions are direct editable entries.
-        node.Children.Add(TreeHelper.CreateTextField("type", f, () => f.Type, v => f.Type = v));
-        node.Children.Add(TreeHelper.CreateIntField("index", f, () => f.Index, v => f.Index = v));
-
-        // Build a provider of existing fixture "type:index" strings for fixture refs inside derivedFrom editors.
-        // Exclude the fixture being edited (f) to avoid creating a direct circular reference.
-        var fixtureOptionsProvider = new Func<IEnumerable<string>>(() =>
-            _doc.Fixtures
-                .Where(x => !object.ReferenceEquals(x, f))
-                .Select(x => $"{x.Type}:{x.Index}")
-                .Distinct());
-
-        // Source selector: choose whether this fixture uses translation or derivedFrom
-        var source = new TreeItemVm("source", TreeItemKind.Field) { Editor = TreeEditorKind.Enum, Model = f };
-        source.Options.Add("translation");
-        source.Options.Add("derivedFrom");
-        source.Value = f.DerivedFrom != null ? "derivedFrom" : "translation";
-        node.Children.Add(source);
-
-        // helper to add the active child (translation or derivedFrom)
-        void AddActiveChild()
-        {
-            // remove any existing translation/derivedFrom child
-            var existing = node.Children.FirstOrDefault(c => c.Title == "translation" || c.Title == "derivedFrom");
-            if (existing != null) node.Children.Remove(existing);
-
-            if (string.Equals(source.Value?.ToString(), "derivedFrom", StringComparison.OrdinalIgnoreCase))
-            {
-                // ensure derivedFrom model exists
-                if (f.DerivedFrom == null)
-                    f.DerivedFrom = new DerivedFromModel();
-                // add derivedFrom editor (recursive) and pass fixtureOptionsProvider so nested fixture refs become dropdowns
-                node.Children.Add(TreeHelper.CreateDerivedFromNode(f.DerivedFrom!, ParamKeys, fixtureOptionsProvider));
-                // remove translation to satisfy oneOf
-                f.Translation = null;
-            }
-            else
-            {
-                // ensure translation model exists
-                f.Translation ??= new TranslationModel { Position = new() { 0d, 0d, 0d }, PositionUnits = "inches", RotationUnits = "degrees" };
-                node.Children.Add(TreeHelper.CreateTranslationNode(f.Translation!, ParamKeys));
-                // remove derivedFrom to satisfy oneOf
-                f.DerivedFrom = null;
-            }
-        }
-
-        // initial child build
-        AddActiveChild();
-
-        // when user switches source, swap model children and persist
-        source.PropertyChanged += async (_, e) =>
-        {
-            if (e.PropertyName != nameof(TreeItemVm.Value)) return;
-            AddActiveChild();
-            TreeHelper.TriggerModelChangedImmediate();
-            await RebuildTreeAsync();
-        };
-
-        fixturesSection.Children.Add(node);
-        fixturesSection.IsExpanded = true;
-        node.IsSelected = true;
-    }
-
-    private void AddTargetVm(TreeItemVm targetsSection, TargetSchemaModel t)
-    {
-        // Target caption should NOT be an editable textbox; compute a descriptive label instead.
-        var node = new TreeItemVm("", TreeItemKind.Object)
-        {
-            IsCaptionEditable = false,
-            Model = t,
-            HasRemove = true
-        };
-        node.RemoveCommand = new RelayCommand(() =>
-        {
-            _doc.Targets.Remove(t);
-            targetsSection.Children.Remove(node);
-            TreeHelper.TriggerModelChangedImmediate();
-        });
-
-        // Editable header fields (keep references so we can update the non-editable caption when values change)
-        var moduleField = TreeHelper.CreateListField("module", t, () => t.Module ?? "", v => t.Module = string.IsNullOrWhiteSpace(v) ? null : v, _doc.Modules);
-        var groupField = TreeHelper.CreatePoseDropdown("group", t, () => t.Group ?? "", v => t.Group = v, _doc.Groups);
-        var locationField = TreeHelper.CreatePoseDropdown("location", t, () => t.Location ?? "", v => t.Location = v, _doc.Locations);
-        var indexField = TreeHelper.CreateIntField("index", t, () => t.Index ?? -1, v => t.Index = v);
-        var positionField = TreeHelper.CreatePoseDropdown("position", t, () => t.Position ?? "", v => t.Position = v, _doc.Positions);
-        var actionField = TreeHelper.CreatePoseDropdown("action", t, () => t.Action ?? "", v => t.Action = v, _doc.Actions);
-
-        node.Children.Add(moduleField);
-        node.Children.Add(groupField);
-        node.Children.Add(locationField);
-        node.Children.Add(indexField);
-        node.Children.Add(positionField);
-        node.Children.Add(actionField);
-
-        // fixture options provider (list of "type:index") for fixture refs inside targets
-        var fixtureOptionsProvider = new Func<IEnumerable<string>>(() =>
-            _doc.Fixtures.Select(x => $"{x.Type}:{x.Index}").Distinct());
-
-        // kind selector: translation | fixture
-        var kindField = new TreeItemVm("kind", TreeItemKind.Field) { Editor = TreeEditorKind.Enum, Model = t };
-        kindField.Options.Add("translation"); kindField.Options.Add("fixture");
-        kindField.Value = t.Fixture != null ? "fixture" : "translation";
-        node.Children.Add(kindField);
-
-        // helper to add active child based on kind
-        void AddActiveChild()
-        {
-            var existing = node.Children.FirstOrDefault(c => c.Title == "translation" || c.Title == "fixture");
-            if (existing != null) node.Children.Remove(existing);
-
-            if (string.Equals(kindField.Value?.ToString(), "fixture", StringComparison.OrdinalIgnoreCase))
-            {
-                // ensure fixture ref exists on model
-                t.Fixture ??= new FixtureRefModel();
-                // add fixture-ref editor (dropdown of known fixtures)
-                node.Children.Add(TreeHelper.CreateFixtureRefNode("fixture", t.Fixture,
-                    () => t.Fixture?.Type ?? "",
-                    v => t.Fixture!.Type = v,
-                    () => t.Fixture?.Index ?? 0,
-                    v => t.Fixture!.Index = v,
-                    fixtureOptionsProvider));
-                // clear translation to respect oneOf
-                t.Translation = null;
-            }
-            else
-            {
-                // ensure translation exists
-                t.Translation ??= new TranslationModel { Position = new() { 0d, 0d, 0d }, PositionUnits = "inches", RotationUnits = "degrees" };
-                node.Children.Add(TreeHelper.CreateTranslationNode(t.Translation, ParamKeys));
-                // clear fixture ref to respect oneOf
-                t.Fixture = null;
-            }
-        }
-
-        // initial child
-        AddActiveChild();
-
-        // Helper: compute a concise descriptive title for the target (module + pose or fixture summary)
-        void UpdateTitle()
-        {
-            // Build body only from configured values (no "?" placeholders).
-            string body;
-            if (t.Fixture != null)
-            {
-                var ft = t.Fixture.Type ?? "(type)";
-                var fi = t.Fixture.Index;
-                body = $"fixture {ft}:{fi}";
-            }
-            else
-            {
-                var parts = new System.Collections.Generic.List<string>();
-
-                // group/location combined (group/location[index])
-                if (!string.IsNullOrWhiteSpace(t.Group))
-                    parts.Add(t.Group);
-
-                if (!string.IsNullOrWhiteSpace(t.Location))
-                {
-                    if (parts.Count > 0)
-                        parts[parts.Count - 1] = parts.Last() + "/" + t.Location;
-                    else
-                        parts.Add(t.Location);
-                }
-
-                if (t.Index.HasValue)
-                {
-                    var idxText = t.Index.Value.ToString();
-                    if (parts.Count > 0)
-                        parts[parts.Count - 1] = parts.Last() + $"[{idxText}]";
-                    else
-                        parts.Add($"[{idxText}]");
-                }
-
-                if (!string.IsNullOrWhiteSpace(t.Position))
-                    parts.Add(t.Position);
-
-                if (!string.IsNullOrWhiteSpace(t.Action))
-                    parts.Add(t.Action);
-
-                body = string.Join(" ", parts);
-            }
-
-            // Compose title: include module only when configured; include body only when non-empty.
-            var modulePart = string.IsNullOrWhiteSpace(t.Module) ? null : t.Module;
-            if (string.IsNullOrWhiteSpace(modulePart) && string.IsNullOrWhiteSpace(body))
-                node.Title = ""; // nothing configured
-            else if (string.IsNullOrWhiteSpace(modulePart))
-                node.Title = body;
-            else if (string.IsNullOrWhiteSpace(body))
-                node.Title = modulePart;
-            else
-                node.Title = $"{modulePart} · {body}";
-        }
-
-        // Wire up children so updates refresh the computed title.
-        moduleField.PropertyChanged += (_, e) => { if (e.PropertyName == nameof(TreeItemVm.Value)) UpdateTitle(); };
-        groupField.PropertyChanged += (_, e) => { if (e.PropertyName == nameof(TreeItemVm.Value)) UpdateTitle(); };
-        locationField.PropertyChanged += (_, e) => { if (e.PropertyName == nameof(TreeItemVm.Value)) UpdateTitle(); };
-        indexField.PropertyChanged += (_, e) => { if (e.PropertyName == nameof(TreeItemVm.Value)) UpdateTitle(); };
-        positionField.PropertyChanged += (_, e) => { if (e.PropertyName == nameof(TreeItemVm.Value)) UpdateTitle(); };
-        actionField.PropertyChanged += (_, e) => { if (e.PropertyName == nameof(TreeItemVm.Value)) UpdateTitle(); };
-        // kind/fixture changes also affect label
-        kindField.PropertyChanged += (_, e) => { if (e.PropertyName == nameof(TreeItemVm.Value)) UpdateTitle(); };
-
-        // initial computed title
-        UpdateTitle();
-
-        // when user switches kind, swap child and persist
-        kindField.PropertyChanged += async (_, e) =>
-        {
-            if (e.PropertyName != nameof(TreeItemVm.Value)) return;
-            AddActiveChild();
-            TreeHelper.TriggerModelChangedImmediate();
-            await RebuildTreeAsync();
-        };
-
-        targetsSection.Children.Add(node);
-        targetsSection.IsExpanded = true;
-        node.IsSelected = true;
-    }
 
     // Add this helper near other private helpers in the class
     private async Task RenameParamAsync(string oldKey, string newKey)
@@ -2257,8 +1105,7 @@ public sealed class MainWindowViewModel : NotifyBase
         {
             var path = CurrentJsonPath;
             if (string.IsNullOrWhiteSpace(path)) return;
-            var json = JsonSerializer.Serialize(_doc, JsonOptionsCamelIndented);
-            await File.WriteAllTextAsync(path, json);
+            await FileHelper.WriteAutoJsonAsync(path, _doc);
             Log($"AutoSave: wrote '{path}'.");
         }
         catch (System.Exception ex)

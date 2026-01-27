@@ -1,19 +1,19 @@
-DONE -- Plot all fixtures in one layer per type
-DONE -- Plot all targets per module in its own layer
 Plot should contain a legend to identify which colors belong to which layer in a floating fly-out that can be collapsed and dragged around to allow viewing underneath
 Legend should allow filtering visible layers - each fixture type, each module, etc.
 Review autotarget implementation - lookat, position, rotation, etc, etc to ensure all available options are included in schema/editor/evaluator
+User preferences - save between execution instances and reload on startup.
 Default/Required Params - enforce params that are required for minimal functionality
+Go through building a file from scratch and verify all functionality
+DONE -- Break up mainwindowviewmodel into helpers to reduce file size and complexity.  Tree manipulations should go to tree helpers, plot manipulations should go to plot helpers, split out json functions to json helper classes, split out file operations to file helper classes, etc.
+DONE -- Plot all fixtures in one layer per type
+DONE -- Plot all targets per module in its own layer
 DONE -- target label processing - the target labels should be renderable regardless of target selections
 DONE -- adding a pose to the poses section doesn't trigger an autosave
 DONE -- When any part of a node is selected, the selection details should be populated with the whole node
-Go through building a file from scratch and verify all functionality
 DONE -- Slow loading sometimes, but really fast others - why?
 DONE -- in events, pose should be drop down box not text box
 DONE -- Add save button to menu to force a save
 DONE -- Make selection details and debugoutput collapsable
-User preferences - save between execution instances and reload on startup.
-Break up mainwindowviewmodel into helpers to reduce file size and complexity.
 
 Find out why edits got reverted and restore from previous commits
   DONE -- Params captions editable for arrays
@@ -27,4 +27,4 @@ Find out why edits got reverted and restore from previous commits
   DONE -- Sequence names should not be explicitly shown, but the editable sequence caption should map to the name
   DONE -- each of the sequence fields should be its own array in the tree view - consult the schema.
   DONE -- add the other missing array fields to sequences
-  remove question mark placeholders from target captions, only provide configured values.
+  DONE -- remove question mark placeholders from target captions, only provide configured values.

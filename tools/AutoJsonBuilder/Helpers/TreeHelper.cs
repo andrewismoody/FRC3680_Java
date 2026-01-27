@@ -721,4 +721,29 @@ internal static class TreeHelper
 		}
 		return null;
 	}
+
+	// Ensure every SequenceModel in the document has non-null lists for Events, Start1, Start2, Start3.
+	public static void EnsureSequenceBackingLists(AutoDefinitionModel doc)
+	{
+		if (doc == null) return;
+		doc.Sequences ??= new List<SequenceModel>();
+		foreach (var s in doc.Sequences)
+		{
+			if (s == null) continue;
+			s.Events ??= new List<string>();
+			s.Start1 ??= new List<string>();
+			s.Start2 ??= new List<string>();
+			s.Start3 ??= new List<string>();
+		}
+	}
+
+	// Ensure a single SequenceModel's lists exist.
+	public static void EnsureSequenceLists(SequenceModel s)
+	{
+		if (s == null) return;
+		s.Events ??= new List<string>();
+		s.Start1 ??= new List<string>();
+		s.Start2 ??= new List<string>();
+		s.Start3 ??= new List<string>();
+	}
 }
