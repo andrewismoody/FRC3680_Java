@@ -30,10 +30,10 @@ public static class TreeBuildHelper
 		RenameDelegate renameSequenceAsync,
 		CommitPoseCaptionDelegate commitPoseCaptionAsync)
 	{
-		// Keep same high-level structure as original BuildTreeRoot
-		var rootTitle = System.IO.Path.GetFileName((doc as object) == null ? null : null) ?? "(unsaved)"; // placeholder; VM will set proper root later/override
-		// Prefer to let VM supply file name via CurrentJsonPath; the VM wrapper already called EvaluateParamsOnly before calling here.
-		var root = new TreeItemVm("(root)", TreeItemKind.Root) { IsExpanded = true };
+		// Keep same high-level structure as original BuildTreeRoot.
+		// Use a consistent unsaved root title here; the VM wrapper will replace/label the root in the UI if needed.
+		var rootTitle = "(unsaved)";
+		var root = new TreeItemVm(rootTitle, TreeItemKind.Root) { IsExpanded = true };
 
 		// required scalars (use TreeHelper factory methods)
 		root.Children.Add(TreeHelper.CreateField("season", doc, () => doc.Season ?? "", v => doc.Season = v));

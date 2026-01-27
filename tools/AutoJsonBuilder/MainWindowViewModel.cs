@@ -16,6 +16,8 @@ using OxyPlot.Annotations;
 using OxyPlot.Axes;
 using System.Runtime.CompilerServices; // add near other usings
 using System.Text; // <-- added for StringBuilder / Encoding
+using System.ComponentModel; // <-- add near other usings
+using System.Collections.ObjectModel; // ensure present (already used for TreeRootItems)
 
 namespace AutoJsonBuilder;
 
@@ -83,6 +85,34 @@ public sealed class MainWindowViewModel : NotifyBase
     // resolved fixture positions keyed by "type:index" -> (x,y,z,rotation?)
     private readonly Dictionary<string, (double x, double y, double z, double? rot)> _resolvedFixturePositions
         = new(StringComparer.OrdinalIgnoreCase);
+
+    // Series filter collection bound to the UI dropdown
+    public ObservableCollection<SeriesFilterItem> SeriesFilters { get; } = new();
+
+    // Small helper VM for each series checkbox
+    public sealed class SeriesFilterItem : INotifyPropertyChanged
+    {
+        public string Title { get; }
+        public OxyPlot.Series.Series SeriesRef { get; }
+        private bool _isChecked;
+        public bool IsChecked
+        {
+            get => _isChecked;
+            set
+            {
+                if (_isChecked == value) return;
+                _isChecked = value;
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsChecked)));
+            }
+        }
+        public SeriesFilterItem(string title, OxyPlot.Series.Series series, bool isChecked = true)
+        {
+            Title = title;
+            SeriesRef = series;
+            _isChecked = isChecked;
+        }
+        public event PropertyChangedEventHandler? PropertyChanged;
+    }
 
     // Try to resolve an arbitrary "raw" value into a double.
     // Accepts numbers, boxed numeric types, numeric strings, or parameter name strings that exist in _evaluatedLookup.
@@ -199,6 +229,9 @@ public sealed class MainWindowViewModel : NotifyBase
             // Delegate to helper that constructs the full PlotModel. Helper returns a PlotModel and accepts a log callback.
             var pm = PlotHelper.BuildFieldPlot(_doc, _evaluatedLookup, _resolvedFixturePositions, _palette, Log);
             FieldPlotModel = pm;
+
+            // Refresh the SeriesFilters UI so user can show/hide series
+            RefreshSeriesFilters(pm);
         }
         catch (Exception ex)
         {
@@ -1170,4 +1203,92 @@ public sealed class MainWindowViewModel : NotifyBase
         return TreeHelper.CreateTranslationNode(tr, ParamKeys);
     }
 
+    // Add these small helpers so the view can forward mouse clicks to the legend hit-test.
+    // Call with mouse coordinates relative to the PlotView (e.GetPosition(plotView)).
+    public bool HandlePlotMouseDown(System.Windows.Point plotViewPoint)
+        => HandlePlotMouseDown(plotViewPoint.X, plotViewPoint.Y);
+
+    public bool HandlePlotMouseDown(double plotViewX, double plotViewY)
+    {
+        // Legend interaction disabled: no-op and return false to indicate not handled.
+        return false;
+    }
+
+	// Mouse move: show a small indicator where the mouse is (plotView-relative coords).
+	// Returns true if indicator was shown (caller should call InvalidatePlot on the PlotView's Model if needed).
+	public bool HandlePlotMouseMove(System.Windows.Point plotViewPoint, double radiusPx = 8)
+		=> HandlePlotMouseMove(plotViewPoint.X, plotViewPoint.Y, radiusPx);
+
+	public bool HandlePlotMouseMove(double plotViewX, double plotViewY, double radiusPx = 8)
+	{
+		if (FieldPlotModel == null) return false;
+		try
+		{
+			 // Production: show a single cursor indicator using the chosen mapping
+			PlotHelper.ShowCursorIndicator(FieldPlotModel, plotViewX, plotViewY, radiusPx);
+			// caller (view) will InvalidatePlot; we return true to indicate we updated indicator.
+			return true;
+		}
+		catch { return false; }
+	}
+
+	// Optional helper to clear indicator (e.g. on mouse leave)
+	public void HandlePlotMouseLeave()
+	{
+		if (FieldPlotModel == null) return;
+		PlotHelper.ClearCursorIndicator(FieldPlotModel);
+		try { FieldPlotModel.InvalidatePlot(false); } catch { }
+	}
+
+    // Build or refresh the SeriesFilters list from the PlotModel
+    private void RefreshSeriesFilters(PlotModel? pm)
+    {
+        SeriesFilters.Clear();
+        if (pm == null) return;
+
+        int idx = 0;
+        foreach (var s in pm.Series)
+        {
+            var title = string.IsNullOrWhiteSpace(s.Title) ? $"series{idx}" : s.Title;
+            // prefer Series.IsVisible if available; assume visible by default otherwise
+            bool isVisible = true;
+            try
+            {
+                var prop = s.GetType().GetProperty("IsVisible");
+                if (prop != null && prop.GetValue(s) is bool b) isVisible = b;
+            }
+            catch { }
+            var item = new SeriesFilterItem(title, s, isVisible);
+            // when IsChecked changes toggle the underlying series visibility and refresh plot
+            item.PropertyChanged += (_, e) =>
+            {
+                if (e.PropertyName != nameof(SeriesFilterItem.IsChecked)) return;
+                try
+                {
+                    // set Series.IsVisible if present (cross-version safe), else fallback to hiding via Opacity/MarkerFill alpha
+                    var prop = s.GetType().GetProperty("IsVisible");
+                    if (prop != null && prop.CanWrite)
+                    {
+                        prop.SetValue(s, item.IsChecked);
+                    }
+                    else
+                    {
+                        // fallback: attempt to dim/remove by setting MarkerFill alpha to 0 (best-effort)
+                        if (s is OxyPlot.Series.ScatterSeries ss && ss.MarkerFill != null)
+                        {
+                            var c = ss.MarkerFill;
+                            ss.MarkerFill = item.IsChecked ? OxyColor.FromArgb(255, c.R, c.G, c.B) : OxyColor.FromArgb(0, c.R, c.G, c.B);
+                        }
+                    }
+                    // Also show/hide associated arrow annotations for this series (if any)
+                    try { PlotHelper.SetSeriesAnnotationsVisibility(pm, s, item.IsChecked); } catch { }
+                    // request redraw
+                    try { pm.InvalidatePlot(false); } catch { }
+                }
+                catch { /* best-effort */ }
+            };
+            SeriesFilters.Add(item);
+            idx++;
+        }
+    }
 }

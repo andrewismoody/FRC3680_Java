@@ -1,5 +1,5 @@
-Plot should contain a legend to identify which colors belong to which layer in a floating fly-out that can be collapsed and dragged around to allow viewing underneath
-Legend should allow filtering visible layers - each fixture type, each module, etc.
+DONE -- Plot should contain a legend to identify which colors belong to which layer in a floating fly-out that can be collapsed and dragged around to allow viewing underneath
+DONE -- Legend should allow filtering visible layers - each fixture type, each module, etc.
 Review autotarget implementation - lookat, position, rotation, etc, etc to ensure all available options are included in schema/editor/evaluator
 User preferences - save between execution instances and reload on startup.
 Default/Required Params - enforce params that are required for minimal functionality

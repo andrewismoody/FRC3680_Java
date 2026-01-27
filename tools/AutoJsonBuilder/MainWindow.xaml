@@ -265,6 +265,30 @@
             <RowDefinition Height="*" />
           </Grid.RowDefinitions>
 
+          <!-- Insert the series filter UI above the PlotView (adjust Grid.Row/Grid.Column to match your layout) -->
+          <!-- place in plot row so it sits above the plot; pin to top-left and raise z-order -->
+          <DockPanel Grid.Row="0" Grid.Column="0" LastChildFill="True" Margin="12,12,0,0"
+                     HorizontalAlignment="Left" VerticalAlignment="Top" Panel.ZIndex="100">
+            <ToggleButton x:Name="SeriesFilterToggle" Content="Series ▾" Width="90" Margin="4,0,6,0" />
+            <Popup PlacementTarget="{Binding ElementName=SeriesFilterToggle}" Placement="Bottom"
+                  IsOpen="{Binding IsChecked, ElementName=SeriesFilterToggle, Mode=TwoWay}"
+                  StaysOpen="False" AllowsTransparency="True">
+              <Border Background="White" BorderBrush="Gray" BorderThickness="1" Padding="6">
+                <ScrollViewer MaxHeight="260" Width="240">
+                  <ItemsControl ItemsSource="{Binding SeriesFilters}">
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate>
+                        <CheckBox Content="{Binding Title}" IsChecked="{Binding IsChecked, Mode=TwoWay}" />
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                </ScrollViewer>
+              </Border>
+            </Popup>
+
+            <!-- keep PlotView outside this DockPanel (it remains defined below); this DockPanel only hosts the toggle + popup -->
+          </DockPanel>
+
           <Border x:Name="PlotBorder" Grid.Row="0" Margin="10" Background="{DynamicResource AppControlBackgroundBrush}" BorderBrush="{DynamicResource AppBorderBrush}" BorderThickness="1" CornerRadius="6">
             <oxy:PlotView Model="{Binding FieldPlotModel}" />
           </Border>
