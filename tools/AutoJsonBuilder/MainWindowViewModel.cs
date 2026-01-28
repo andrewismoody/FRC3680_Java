@@ -1261,6 +1261,9 @@ public sealed class MainWindowViewModel : NotifyBase
         foreach (var s in pm.Series)
         {
             var title = string.IsNullOrWhiteSpace(s.Title) ? $"series{idx}" : s.Title;
+
+            // NOTE: do not exclude 'map' here — include it in the filters so users can toggle the background image.
+
             // prefer Series.IsVisible if available; assume visible by default otherwise
             bool isVisible = true;
             try

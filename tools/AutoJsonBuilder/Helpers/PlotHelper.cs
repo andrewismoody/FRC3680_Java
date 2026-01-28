@@ -46,6 +46,9 @@ public static class PlotHelper
 	// per-PlotModel mapping: Series -> its ArrowAnnotations (for hide/show)
 	private static readonly Dictionary<PlotModel, Dictionary<Series, List<ArrowAnnotation>>> s_seriesArrows = new();
 
+	// NEW: per-PlotModel mapping: Series -> other Annotations (ImageAnnotation, etc.) to support toggling the background 'map'
+	private static readonly Dictionary<PlotModel, Dictionary<Series, List<Annotation>>> s_seriesExtraAnnotations = new();
+
 	// pending field image info (queued until Updated handler can place them with stable axes/plotArea)
 	private sealed class FieldImageInfo
 	{
@@ -721,8 +724,39 @@ public static class PlotHelper
 				s_seriesArrows[pm] = localSeriesArrows;
 			}
 
-			// add arrows
-			// (arrows already added above from localSeriesArrows)
+			 // Ensure a "map" series exists when a background image is pending so the legend/filters include it.
+			// This must run before TryAddAnnotationLegend so the created series appears in the legend list.
+			try
+			{
+				if (s_pendingFieldImages.TryGetValue(pm, out var pending) && pending != null)
+				{
+					const string mapTitle = "map";
+					if (!pm.Series.Any(s => string.Equals(s.Title, mapTitle, StringComparison.OrdinalIgnoreCase)))
+					{
+						var ms = new ScatterSeries
+						{
+							Title = mapTitle,
+							MarkerType = MarkerType.None,
+							MarkerSize = 0,
+							MarkerFill = OxyColors.Transparent
+						};
+						// insert at front so legend shows it near top
+						pm.Series.Insert(0, ms);
+
+						// ensure extra-annotation mapping exists so RegisterAnnotationUnderMap will find it
+						if (!s_seriesExtraAnnotations.TryGetValue(pm, out var mapDict) || mapDict == null)
+						{
+							mapDict = new Dictionary<Series, List<Annotation>>();
+							s_seriesExtraAnnotations[pm] = mapDict;
+						}
+						if (!mapDict.ContainsKey(ms)) mapDict[ms] = new List<Annotation>();
+					}
+				}
+			}
+			catch
+			{
+				// tolerant — legend inclusion is a nicety
+			}
 
 			 // Build a guaranteed-visible annotation legend (fallback in case built-in legend doesn't show).
 			TryAddAnnotationLegend(pm);
@@ -841,6 +875,7 @@ public static class PlotHelper
 										};
 										pm.Annotations.Add(imgAnn);
 										s_log?.Invoke($"PlotHelper(Updated): added deferred image annotation (data bounds) for '{pending.PngPath}' (image size used)");
+										RegisterAnnotationUnderMap(pm, imgAnn);
 
 										// Diagnostic: add a small visible marker at data (0,0) so we can confirm where the JSON-origin maps in plot coords.
 										try
@@ -891,6 +926,7 @@ public static class PlotHelper
 											Height = new OxyPlot.PlotLength(useH, OxyPlot.PlotLengthUnit.Data)
 										};
 										pm.Annotations.Add(imgAnn);
+										RegisterAnnotationUnderMap(pm, imgAnn);
 
 										var left = -(pending.OriginX ?? 0);
 										var right = left + useW;
@@ -946,6 +982,7 @@ public static class PlotHelper
 											VerticalAlignment = OxyPlot.VerticalAlignment.Middle
 										};
 										pm.Annotations.Add(ia);
+										RegisterAnnotationUnderMap(pm, ia);
 										s_log?.Invoke($"PlotHelper(Updated): added deferred fallback image annotation for '{pending.PngPath}'");
 
 										// Diagnostic marker for fallback case
@@ -1084,8 +1121,9 @@ public static class PlotHelper
 		if (pm == null) return;
 
 		// collect titled series and their display colors (prefers ScatterSeries.MarkerFill; falls back to black)
+		// Exclude the internal "map" series from the legend.
 		var items = pm.Series
-					  .Where(s => !string.IsNullOrWhiteSpace(s.Title))
+					  .Where(s => !string.IsNullOrWhiteSpace(s.Title) && !string.Equals(s.Title, "map", StringComparison.OrdinalIgnoreCase))
 					  .Select(s =>
 					  {
 						  var color = OxyColors.Black;
@@ -1465,29 +1503,91 @@ public static class PlotHelper
 	}
 
 	// Show/hide arrow annotations associated with a series on the given PlotModel.
+	// Now also handles generic annotations (ImageAnnotation) registered under a series.
 	public static void SetSeriesAnnotationsVisibility(PlotModel pm, Series series, bool visible)
 	{
 		if (pm == null || series == null) return;
 		try
 		{
-			if (!s_seriesArrows.TryGetValue(pm, out var map) || map == null) return;
-			if (!map.TryGetValue(series, out var arrows) || arrows == null) return;
-			if (visible)
+			// remove/add ArrowAnnotation lists (existing behavior)
+			if (s_seriesArrows.TryGetValue(pm, out var map) && map != null && map.TryGetValue(series, out var arrows) && arrows != null)
 			{
-				foreach (var a in arrows)
+				if (visible)
 				{
-					if (!pm.Annotations.Contains(a)) pm.Annotations.Add(a);
+					foreach (var a in arrows)
+						if (!pm.Annotations.Contains(a)) pm.Annotations.Add(a);
+				}
+				else
+				{
+					foreach (var a in arrows)
+						if (pm.Annotations.Contains(a)) pm.Annotations.Remove(a);
 				}
 			}
-			else
+
+			// NEW: handle other annotations (images, rectangles, etc.)
+			if (s_seriesExtraAnnotations.TryGetValue(pm, out var extraMap) && extraMap != null && extraMap.TryGetValue(series, out var anns) && anns != null)
 			{
-				foreach (var a in arrows)
+				if (visible)
 				{
-					if (pm.Annotations.Contains(a)) pm.Annotations.Remove(a);
+					foreach (var a in anns)
+					{
+						if (!pm.Annotations.Contains(a)) pm.Annotations.Add(a);
+					}
+				}
+				else
+				{
+					foreach (var a in anns)
+					{
+						if (pm.Annotations.Contains(a)) pm.Annotations.Remove(a);
+					}
 				}
 			}
+
 			try { pm.InvalidatePlot(false); } catch { }
 		}
 		catch { /* best-effort */ }
+	}
+
+	// Register a non-arrow annotation (e.g. ImageAnnotation) under the special "map" series so it can be toggled.
+	private static void RegisterAnnotationUnderMap(PlotModel pm, Annotation ann)
+	{
+		if (pm == null || ann == null) return;
+		try
+		{
+			const string mapTitle = "map";
+			// find or create the map series
+			var mapSeries = pm.Series.FirstOrDefault(s => string.Equals(s.Title, mapTitle, StringComparison.OrdinalIgnoreCase));
+			if (mapSeries == null)
+			{
+				// create an inert ScatterSeries used only for legend/filtering
+				var ms = new ScatterSeries
+				{
+					Title = mapTitle,
+					MarkerType = MarkerType.None,
+					MarkerSize = 0,
+					MarkerFill = OxyColors.Transparent
+				};
+				// insert at front so legend shows it near top
+				pm.Series.Insert(0, ms);
+				mapSeries = ms;
+			}
+
+			// ensure mapping dict exists for this PlotModel
+			if (!s_seriesExtraAnnotations.TryGetValue(pm, out var mapDict) || mapDict == null)
+			{
+				mapDict = new Dictionary<Series, List<Annotation>>();
+				s_seriesExtraAnnotations[pm] = mapDict;
+			}
+
+			if (!mapDict.TryGetValue(mapSeries, out var list) || list == null)
+			{
+				list = new List<Annotation>();
+				mapDict[mapSeries] = list;
+			}
+
+			// avoid duplicates
+			if (!list.Contains(ann)) list.Add(ann);
+		}
+		catch { /* tolerant */ }
 	}
 }
