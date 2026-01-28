@@ -8,6 +8,8 @@ using OxyPlot.Axes;
 using AutoJsonBuilder.Models;
 using System.Threading.Tasks;
 using System.Windows; // used for Application.Current.Dispatcher
+using System.IO;
+using System.Text.Json;
 
 namespace AutoJsonBuilder.Helpers;
 
@@ -43,6 +45,21 @@ public static class PlotHelper
 
 	// per-PlotModel mapping: Series -> its ArrowAnnotations (for hide/show)
 	private static readonly Dictionary<PlotModel, Dictionary<Series, List<ArrowAnnotation>>> s_seriesArrows = new();
+
+	// pending field image info (queued until Updated handler can place them with stable axes/plotArea)
+	private sealed class FieldImageInfo
+	{
+		public byte[] Bytes = Array.Empty<byte>();
+		public string? PngPath;
+		public int? OriginX;
+		public int? OriginY;
+		public int? ExtentW;
+		public int? ExtentH;
+		public double? FieldWidthMeters;
+		public double? FieldHeightMeters;
+		public bool Added = false;
+	}
+	private static readonly Dictionary<PlotModel, FieldImageInfo> s_pendingFieldImages = new();
 
 	// per-PlotModel mapping used to apply the desired initial view once (avoids OxyPlot autoscale clobbering)
 	private static readonly Dictionary<PlotModel, (double xMin, double xMax, double yMin, double yMax)> s_initialViews
@@ -182,6 +199,55 @@ public static class PlotHelper
 		catch { /* best-effort */ }
 	}
 
+	// Convert length to meters based on units.
+	private static double ConvertLengthToMeters(double value, string? units)
+	{
+		if (string.IsNullOrWhiteSpace(units)) return value * 0.0254;
+		var u = units.Trim().ToLowerInvariant();
+		if (u == "m" || u == "meter" || u == "meters" || u == "metre" || u == "metres") return value;
+		if (u == "in" || u == "inch" || u == "inches") return value * 0.0254;
+		if (u == "ft" || u == "foot" || u == "feet") return value * 0.3048;
+		return value * 0.0254;
+	}
+
+	// Normalize rotation to degrees based on units.
+	private static double? NormalizeRotationToDegrees(double? value, string? units)
+	{
+		if (value == null) return null;
+		if (string.IsNullOrWhiteSpace(units)) return value * 180.0 / Math.PI;
+		var u = units.Trim().ToLowerInvariant();
+		if (u.Contains("deg")) return value;
+		return value * 180.0 / Math.PI;
+	}
+
+	// --- new: color helpers used to pick distinct layer colors ---
+	private static OxyColor GetDistinctColor(int idx, int total, OxyColor[] palette)
+	{
+		if (palette != null && palette.Length >= total && idx >= 0 && idx < palette.Length) return palette[idx];
+		var hue = (idx * 360.0) / Math.Max(1, total);
+		return HsvToOxyColor(hue, 0.6, 0.9);
+	}
+
+	private static OxyColor HsvToOxyColor(double h, double s, double v)
+	{
+		h = (h % 360 + 360) % 360;
+		double c = v * s;
+		double hp = h / 60.0;
+		double x = c * (1 - Math.Abs((hp % 2) - 1));
+		double r1 = 0, g1 = 0, b1 = 0;
+		if (0 <= hp && hp < 1) { r1 = c; g1 = x; b1 = 0; }
+		else if (1 <= hp && hp < 2) { r1 = x; g1 = c; b1 = 0; }
+		else if (2 <= hp && hp < 3) { r1 = 0; g1 = c; b1 = x; }
+		else if (3 <= hp && hp < 4) { r1 = 0; g1 = x; b1 = c; }
+		else if (4 <= hp && hp < 5) { r1 = x; g1 = 0; b1 = c; }
+		else { r1 = c; g1 = 0; b1 = x; }
+		double m = v - c;
+		byte r = (byte)Math.Round((r1 + m) * 255.0);
+		byte g = (byte)Math.Round((g1 + m) * 255.0);
+		byte b = (byte)Math.Round((b1 + m) * 255.0);
+		return OxyColor.FromRgb(r, g, b);
+	}
+
 	// Build a PlotModel showing fixtures (grouped by type) and targets (layered by module).
 	// - doc: document model
 	// - evaluatedLookup: params/evaluated lookup used when resolving translation numeric entries (local best-effort)
@@ -223,6 +289,199 @@ public static class PlotHelper
 			 // Note: the built-in legend does not support rounded corners or user-drag out of the box.
 			 // For full rounded/drag behaviour you can replace this with a custom Annotation-based legend.
 			ApplyLegendStyle(pm, collapsed: false);
+
+			// --- fixtures ---
+			var fixtures = doc.Fixtures ?? new List<FixtureSchemaModel>();
+			var groups = fixtures.Where(f => f != null).GroupBy(f => f.Type ?? "(none)").ToList();
+			// precompute total layers so we can evenly space hues and avoid color duplication
+			var moduleNamesList = (doc.Modules ?? Enumerable.Empty<string>()).Select(m => string.IsNullOrWhiteSpace(m) ? "(no-module)" : m).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+			int totalLayers = Math.Max(1, groups.Count + moduleNamesList.Count);
+			int colorIdx = 0;
+
+			// --- moved-in: try to add background field image from FieldDefs/{season} ---
+			// We'll track image data-space extents so the initial view can include the image.
+			double? imageMinX = null, imageMaxX = null, imageMinY = null, imageMaxY = null;
+
+			try
+			{
+				var season = (doc?.Season?.Trim()) ?? "2025";
+				var defsDir = Path.Combine(AppContext.BaseDirectory ?? ".", "FieldDefs", season);
+				s_log?.Invoke($"PlotHelper: image load: season='{season}', defsDir='{defsDir}'");
+				if (!Directory.Exists(defsDir))
+				{
+					s_log?.Invoke($"PlotHelper: image load: FieldDefs directory not found: '{defsDir}'");
+				}
+				else
+				{
+					var pngPath = Directory.EnumerateFiles(defsDir, "*.png", SearchOption.TopDirectoryOnly).FirstOrDefault();
+					if (string.IsNullOrWhiteSpace(pngPath))
+					{
+						s_log?.Invoke($"PlotHelper: image load: no PNG found in '{defsDir}'");
+					}
+					else
+					{
+						s_log?.Invoke($"PlotHelper: image load: found PNG '{pngPath}'");
+						// prefer defn/definition json names but accept any .json
+						var jsonPath = Directory.EnumerateFiles(defsDir, "*.json", SearchOption.TopDirectoryOnly)
+											  .FirstOrDefault(f => Path.GetFileName(f).IndexOf("defn", StringComparison.OrdinalIgnoreCase) >= 0)
+									   ?? Directory.EnumerateFiles(defsDir, "*.json", SearchOption.TopDirectoryOnly).FirstOrDefault();
+						if (string.IsNullOrWhiteSpace(jsonPath))
+						{
+							s_log?.Invoke($"PlotHelper: image load: no JSON found in '{defsDir}' (continuing without JSON)");
+						}
+						else
+						{
+							s_log?.Invoke($"PlotHelper: image load: found JSON '{jsonPath}'");
+						}
+
+						int? originX = null, originY = null;
+						int? extentW = null, extentH = null;
+
+						if (!string.IsNullOrWhiteSpace(jsonPath))
+						{
+							try
+							{
+								var js = File.ReadAllText(jsonPath);
+								using var jd = JsonDocument.Parse(js);
+								if (jd.RootElement.TryGetProperty("origin", out var o) && o.ValueKind == JsonValueKind.Array && o.GetArrayLength() >= 2)
+								{
+									if (o[0].ValueKind == JsonValueKind.Number) originX = o[0].GetInt32();
+									if (o[1].ValueKind == JsonValueKind.Number) originY = o[1].GetInt32();
+								}
+								if (jd.RootElement.TryGetProperty("extent", out var ex) && ex.ValueKind == JsonValueKind.Array && ex.GetArrayLength() >= 2)
+								{
+									if (ex[0].ValueKind == JsonValueKind.Number) extentW = ex[0].GetInt32();
+									if (ex[1].ValueKind == JsonValueKind.Number) extentH = ex[1].GetInt32();
+								}
+								s_log?.Invoke($"PlotHelper: parsed JSON origin={originX?.ToString() ?? "null"},{originY?.ToString() ?? "null"} extent={extentW?.ToString() ?? "null"}x{extentH?.ToString() ?? "null"}");
+							}
+							catch (Exception je)
+							{
+								s_log?.Invoke($"PlotHelper: failed to parse field JSON '{jsonPath}': {je.Message}");
+							}
+						}
+
+						// Attempt to obtain field-size (meters) from evaluatedLookup or from doc via reflection.
+						double? fieldWidthMeters = null;
+						double? fieldHeightMeters = null;
+						try
+						{
+							// prefer evaluated lookup (e.g. params or top-level resolved values)
+							if (evaluatedLookup != null)
+							{
+								object? fv = null;
+								foreach (var key in new[] { "fieldsize", "fieldSize", "field_size", "fieldSizeMeters" })
+								{
+									if (evaluatedLookup.TryGetValue(key, out var v)) { fv = v; break; }
+								}
+								if (fv != null)
+								{
+									if (fv is double dd) { fieldWidthMeters = dd; fieldHeightMeters = dd; }
+									else if (fv is float ff) { fieldWidthMeters = Convert.ToDouble(ff); fieldHeightMeters = fieldWidthMeters; }
+									else if (fv is int ii) { fieldWidthMeters = Convert.ToDouble(ii); fieldHeightMeters = fieldWidthMeters; }
+									else if (fv is IList<object> list && list.Count >= 2)
+									{
+										if (double.TryParse(list[0]?.ToString() ?? "", out var a)) fieldWidthMeters = a;
+										if (double.TryParse(list[1]?.ToString() ?? "", out var b)) fieldHeightMeters = b;
+									}
+									else if (fv is System.Text.Json.JsonElement je)
+									{
+										if (je.ValueKind == JsonValueKind.Number && je.TryGetDouble(out var d)) { fieldWidthMeters = d; fieldHeightMeters = d; }
+										else if (je.ValueKind == JsonValueKind.Array && je.GetArrayLength() >= 2)
+										{
+											if (je[0].ValueKind == JsonValueKind.Number) fieldWidthMeters = je[0].GetDouble();
+											if (je[1].ValueKind == JsonValueKind.Number) fieldHeightMeters = je[1].GetDouble();
+										}
+									}
+								}
+								s_log?.Invoke($"PlotHelper: evaluatedLookup gave fieldWidthMeters={fieldWidthMeters?.ToString() ?? "null"} fieldHeightMeters={fieldHeightMeters?.ToString() ?? "null"}");
+							}
+						}
+						catch { /* best-effort */ }
+
+						// fallback: try doc reflection for common property names if evaluatedLookup didn't yield a size
+						if (!fieldWidthMeters.HasValue)
+						{
+							try
+							{
+								var names = new[] { "FieldSize", "FieldSizeMeters", "FieldDimensions", "Field" };
+								foreach (var n in names)
+								{
+									var prop = doc?.GetType().GetProperty(n);
+									if (prop == null) continue;
+									var val = prop.GetValue(doc);
+									if (val == null) continue;
+									if (val is double dv) { fieldWidthMeters = dv; fieldHeightMeters = dv; break; }
+									if (val is IList<object> lst && lst.Count >= 2)
+									{
+										if (double.TryParse(lst[0]?.ToString() ?? "", out var a)) fieldWidthMeters = a;
+										if (double.TryParse(lst[1]?.ToString() ?? "", out var b)) fieldHeightMeters = b;
+										break;
+									}
+									if (double.TryParse(val.ToString(), out var pd)) { fieldWidthMeters = pd; fieldHeightMeters = pd; break; }
+								}
+								s_log?.Invoke($"PlotHelper: reflection gave fieldWidthMeters={fieldWidthMeters?.ToString() ?? "null"} fieldHeightMeters={fieldHeightMeters?.ToString() ?? "null"}");
+							}
+							catch { /* best-effort */ }
+						}
+
+						 // --- new: normalize suspiciously large field sizes (common case: user supplied inches without units) ---
+						if (fieldWidthMeters.HasValue)
+						{
+							try
+							{
+								var rawFw = fieldWidthMeters.Value;
+								// Heuristic: values larger than 50 are unlikely to be meters for typical fields.
+								// Treat them as inches and convert to meters.
+								if (rawFw > 50.0)
+								{
+									s_log?.Invoke($"PlotHelper: fieldWidthMeters={rawFw} seems large; assuming units in inches and converting to meters.");
+									fieldWidthMeters = ConvertLengthToMeters(rawFw, "in");
+									if (fieldHeightMeters.HasValue)
+										fieldHeightMeters = ConvertLengthToMeters(fieldHeightMeters.Value, "in");
+									else if (extentH.HasValue && extentW.HasValue && extentW.Value > 0)
+										fieldHeightMeters = fieldWidthMeters * ((double)extentH.Value / extentW.Value);
+
+									s_log?.Invoke($"PlotHelper: normalized field size -> {fieldWidthMeters:F3}m x {fieldHeightMeters:F3}m (assumed inches)");
+								}
+							}
+							catch { /* best-effort */ }
+						}
+						// --- end normalization ---
+
+						// read PNG bytes and queue placement for Updated handler (avoid placing before axes/layout stable)
+						try
+						{
+							s_log?.Invoke($"PlotHelper: queueing PNG bytes from '{pngPath}' for deferred placement");
+							var bytes = File.ReadAllBytes(pngPath);
+							var finfo = new FieldImageInfo
+							{
+								Bytes = bytes,
+								PngPath = pngPath,
+								OriginX = originX,
+								OriginY = originY,
+								ExtentW = extentW,
+								ExtentH = extentH,
+								FieldWidthMeters = fieldWidthMeters,
+								FieldHeightMeters = fieldHeightMeters,
+								Added = false
+							};
+							// store per-PlotModel; will be applied in Updated once plotArea/axes are stable
+							s_pendingFieldImages[pm] = finfo;
+							s_log?.Invoke($"PlotHelper: queued field image for PlotModel '{pm.Title}' (will be placed in Updated handler).");
+						}
+						catch (Exception ie)
+						{
+							s_log?.Invoke($"PlotHelper: failed to read PNG '{pngPath}': {ie.Message}");
+						}
+					}
+				}
+			}
+			catch (Exception ex)
+			{
+				s_log?.Invoke($"PlotHelper: field image load error: {ex.Message}");
+			}
+			// --- end moved-in image logic ---
 
 			// local helper to coerce "raw" objects into doubles (strings / ParamValue wrappers / numeric types)
 			bool TryResolveDouble(object? raw, out double v)
@@ -273,45 +532,6 @@ public static class PlotHelper
 				var u = units.Trim().ToLowerInvariant();
 				if (u.Contains("deg")) return value;
 				return value * 180.0 / Math.PI;
-			}
-
-			// --- fixtures ---
-			var fixtures = doc.Fixtures ?? new List<FixtureSchemaModel>();
-			var groups = fixtures.Where(f => f != null).GroupBy(f => f.Type ?? "(none)").ToList();
-			// precompute total layers so we can evenly space hues and avoid color duplication
-			var moduleNamesList = (doc.Modules ?? Enumerable.Empty<string>()).Select(m => string.IsNullOrWhiteSpace(m) ? "(no-module)" : m).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
-			int totalLayers = Math.Max(1, groups.Count + moduleNamesList.Count);
-			int colorIdx = 0;
-
-			// helper: get a distinct color for layer index (fallback to palette if needed)
-			static OxyColor GetDistinctColor(int idx, int total, OxyColor[] palette)
-			{
-				// if total is small and palette contains enough entries, prefer palette for familiarity
-				if (palette != null && palette.Length >= total && idx < palette.Length) return palette[idx];
-				// otherwise generate evenly spaced hues
-				var hue = (idx * 360.0) / Math.Max(1, total);
-				return HsvToOxyColor(hue, 0.6, 0.9);
-			}
-			
-			// HSV -> OxyColor (0..360 hue, 0..1 sat, 0..1 val)
-			static OxyColor HsvToOxyColor(double h, double s, double v)
-			{
-				h = (h % 360 + 360) % 360;
-				double c = v * s;
-				double hp = h / 60.0;
-				double x = c * (1 - Math.Abs((hp % 2) - 1));
-				double r1 = 0, g1 = 0, b1 = 0;
-				if (0 <= hp && hp < 1) { r1 = c; g1 = x; b1 = 0; }
-				else if (1 <= hp && hp < 2) { r1 = x; g1 = c; b1 = 0; }
-				else if (2 <= hp && hp < 3) { r1 = 0; g1 = c; b1 = x; }
-				else if (3 <= hp && hp < 4) { r1 = 0; g1 = x; b1 = c; }
-				else if (4 <= hp && hp < 5) { r1 = x; g1 = 0; b1 = c; }
-				else { r1 = c; g1 = 0; b1 = x; }
-				double m = v - c;
-				byte r = (byte)Math.Round((r1 + m) * 255.0);
-				byte g = (byte)Math.Round((g1 + m) * 255.0);
-				byte b = (byte)Math.Round((b1 + m) * 255.0);
-				return OxyColor.FromRgb(r, g, b);
 			}
 
 			var collectedArrows = new List<ArrowAnnotation>();
@@ -578,6 +798,176 @@ public static class PlotHelper
 							s_initialViewApplied.Add(pm);
 							s_initialViews.Remove(pm);
 							s_log?.Invoke($"Applied isotropic initial view X={desiredXMin:F3}..{desiredXMax:F3}, Y={desiredYMin:F3}..{desiredYMax:F3} (nudge applied)");
+
+							// Defer image placement until after initial view applied and layout is stable:
+							if (s_pendingFieldImages.TryGetValue(pm, out var pending) && pending != null && !pending.Added)
+							{
+								try
+								{
+									// construct OxyImage now and place using the same math previously used
+									var oxyImg = new OxyImage(pending.Bytes);
+									// pick branch based on metadata
+									if (pending.ExtentW.HasValue && pending.ExtentW.Value > 0 && pending.FieldWidthMeters.HasValue)
+									{
+										double fWm = pending.FieldWidthMeters.Value;
+										double fHm = pending.FieldHeightMeters ?? (fWm * (pending.ExtentH.HasValue && pending.ExtentW.HasValue ? ((double)pending.ExtentH.Value / pending.ExtentW.Value) : 1.0));
+										double pixelSizeMeters = fWm / (double)pending.ExtentW.Value;
+
+										 // compute top-left in data coords (convert origin Y from bottom->top)
+										double topLeftDataX = -((pending.OriginX ?? 0) * pixelSizeMeters);
+										double originYPx = pending.OriginY ?? 0;
+										double extentHPx = oxyImg.Height; // safe fallback
+										double topLeftDataY = ((extentHPx - originYPx) * pixelSizeMeters);
+
+										 // Explicit image physical size (entire image converted to meters)
+										double imgWidthMeters = pixelSizeMeters * (double)oxyImg.Width;
+										double imgHeightMeters = pixelSizeMeters * (double)oxyImg.Height;
+
+										s_log?.Invoke($"PlotHelper(Updated): placing deferred image scaled -> imageMeters={imgWidthMeters:F3}m x {imgHeightMeters:F3}m pixel->m={pixelSizeMeters:F6} originPx=({pending.OriginX},{pending.OriginY}) topLeftData=({topLeftDataX:F3},{topLeftDataY:F3})");
+
+										var imgAnn = new ImageAnnotation
+										{
+											ImageSource = oxyImg,
+											Opacity = 1.0,
+											Interpolate = false,
+											Layer = AnnotationLayer.BelowSeries,
+											HorizontalAlignment = OxyPlot.HorizontalAlignment.Left,
+											VerticalAlignment = OxyPlot.VerticalAlignment.Top,
+											X = new OxyPlot.PlotLength(topLeftDataX, OxyPlot.PlotLengthUnit.Data),
+											Y = new OxyPlot.PlotLength(topLeftDataY, OxyPlot.PlotLengthUnit.Data),
+											// use full image size converted to meters (not any subset)
+											Width = new OxyPlot.PlotLength(imgWidthMeters, OxyPlot.PlotLengthUnit.Data),
+											Height = new OxyPlot.PlotLength(imgHeightMeters, OxyPlot.PlotLengthUnit.Data)
+										};
+										pm.Annotations.Add(imgAnn);
+										s_log?.Invoke($"PlotHelper(Updated): added deferred image annotation (data bounds) for '{pending.PngPath}' (image size used)");
+
+										// Diagnostic: add a small visible marker at data (0,0) so we can confirm where the JSON-origin maps in plot coords.
+										try
+										{
+											var originMarker = new EllipseAnnotation
+											{
+												X = 0.0,
+												Y = 0.0,
+												Width = Math.Max(imgWidthMeters, 1.0) * 0.005,  // tiny relative marker
+												Height = Math.Max(imgHeightMeters, 1.0) * 0.005,
+												Fill = OxyColor.FromArgb(200, 255, 0, 0),
+												Stroke = OxyColors.DarkRed,
+												StrokeThickness = 1,
+												Layer = AnnotationLayer.AboveSeries
+											};
+											pm.Annotations.Add(originMarker);
+
+											// Also log where data (0,0) projects on the PlotView surface (plotArea-relative pixels).
+											try
+											{
+												var data0x_px = plotArea.Left + xAxis.Transform(0.0);
+												var data0y_px = plotArea.Top + yAxis.Transform(0.0);
+												s_log?.Invoke($"PlotHelper(Updated): diagnostic: data origin (0,0) -> plotView-relative px = ({data0x_px:F1},{data0y_px:F1})");
+												s_log?.Invoke($"PlotHelper(Updated): image data bounds -> left={topLeftDataX:F3} right={topLeftDataX + imgWidthMeters:F3} top={topLeftDataY:F3} bottom={topLeftDataY - imgHeightMeters:F3}");
+											}
+											catch { /* best-effort diagnostic */ }
+										}
+										catch { /* ignore marker failures */ }
+									}
+									else if (pending.ExtentW.HasValue && pending.ExtentH.HasValue)
+									{
+										var useW = pending.ExtentW.Value;
+										var useH = pending.ExtentH.Value;
+										// originY in JSON is bottom-based — compute top pixel index (from top) = extentH - originY
+										var originYPx = pending.OriginY ?? 0;
+										var topPx = useH - originYPx;
+										var imgAnn = new ImageAnnotation
+										{
+											ImageSource = oxyImg,
+											Opacity = 1.0,
+											Interpolate = false,
+											Layer = AnnotationLayer.BelowSeries,
+											HorizontalAlignment = OxyPlot.HorizontalAlignment.Left,
+											VerticalAlignment = OxyPlot.VerticalAlignment.Top,
+											X = new OxyPlot.PlotLength(-(pending.OriginX ?? 0), OxyPlot.PlotLengthUnit.Data),
+											Y = new OxyPlot.PlotLength(topPx, OxyPlot.PlotLengthUnit.Data),
+											Width = new OxyPlot.PlotLength(useW, OxyPlot.PlotLengthUnit.Data),
+											Height = new OxyPlot.PlotLength(useH, OxyPlot.PlotLengthUnit.Data)
+										};
+										pm.Annotations.Add(imgAnn);
+
+										var left = -(pending.OriginX ?? 0);
+										var right = left + useW;
+										var top = topPx;
+										var bottom = top - useH;
+
+										imageMinX = imageMinX.HasValue ? Math.Min(imageMinX.Value, left) : left;
+										imageMaxX = imageMaxX.HasValue ? Math.Max(imageMaxX.Value, right) : right;
+										imageMinY = imageMinY.HasValue ? Math.Min(imageMinY.Value, bottom) : bottom;
+										imageMaxY = imageMaxY.HasValue ? Math.Max(imageMaxY.Value, top) : top;
+
+										s_log?.Invoke($"PlotHelper(Updated): added deferred pixel-units image annotation for '{pending.PngPath}' (originPx bottom-based converted to topPx={topPx})");
+
+										// Diagnostic: add small marker at data (0,0) for pixel-units branch as well.
+										try
+										{
+											var originMarker2 = new EllipseAnnotation
+											{
+												X = 0.0,
+												Y = 0.0,
+												Width = Math.Max(useW, 1.0) * 0.005,
+												Height = Math.Max(useH, 1.0) * 0.005,
+												Fill = OxyColor.FromArgb(200, 255, 0, 0),
+												Stroke = OxyColors.DarkRed,
+												StrokeThickness = 1,
+												Layer = AnnotationLayer.AboveSeries
+											};
+											pm.Annotations.Add(originMarker2);
+											try
+											{
+												var data0x_px = plotArea.Left + xAxis.Transform(0.0);
+												var data0y_px = plotArea.Top + yAxis.Transform(0.0);
+												s_log?.Invoke($"PlotHelper(Updated): diagnostic: data origin (0,0) -> plotView-relative px = ({data0x_px:F1},{data0y_px:F1})");
+												s_log?.Invoke($"PlotHelper(Updated): image pixel-units bounds -> left={left} right={right} top={top} bottom={bottom}");
+											}
+											catch { }
+										}
+										catch { }
+									}
+									else
+									{
+										var ia = new ImageAnnotation
+										{
+											ImageSource = new OxyImage(pending.Bytes),
+											Opacity = 1.0,
+											Interpolate = false,
+											Layer = AnnotationLayer.BelowSeries,
+											X = new OxyPlot.PlotLength(0, OxyPlot.PlotLengthUnit.Data),
+											Y = new OxyPlot.PlotLength(0, OxyPlot.PlotLengthUnit.Data),
+											Width = new OxyPlot.PlotLength(1, OxyPlot.PlotLengthUnit.Data),
+											Height = new OxyPlot.PlotLength(1, OxyPlot.PlotLengthUnit.Data),
+											HorizontalAlignment = OxyPlot.HorizontalAlignment.Center,
+											VerticalAlignment = OxyPlot.VerticalAlignment.Middle
+										};
+										pm.Annotations.Add(ia);
+										s_log?.Invoke($"PlotHelper(Updated): added deferred fallback image annotation for '{pending.PngPath}'");
+
+										// Diagnostic marker for fallback case
+										try
+										{
+											var originMarker3 = new EllipseAnnotation { X = 0, Y = 0, Width = 0.2, Height = 0.2, Fill = OxyColors.Red, Layer = AnnotationLayer.AboveSeries };
+											pm.Annotations.Add(originMarker3);
+											var data0x_px = plotArea.Left + xAxis.Transform(0.0);
+											var data0y_px = plotArea.Top + yAxis.Transform(0.0);
+											s_log?.Invoke($"PlotHelper(Updated): diagnostic fallback: data origin (0,0) -> plotView px ({data0x_px:F1},{data0y_px:F1})");
+										}
+										catch { }
+									}
+									pending.Added = true;
+									// request a redraw so the image appears now that placement is set
+									try { pm.InvalidatePlot(false); } catch { }
+								}
+								catch (Exception ie)
+								{
+									s_log?.Invoke($"PlotHelper(Updated): failed to place deferred image: {ie.Message}");
+								}
+							}
 
 							// Bail out of this Updated invocation so subsequent Updated (triggered by the Zoom/nudge)
 							// sees stable axis ActualMinimum/Maximum and arrow sizing can run safely.

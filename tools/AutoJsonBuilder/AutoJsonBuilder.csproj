@@ -16,4 +16,24 @@
     <Page Update="MainWindow.xaml" />
     <ApplicationDefinition Update="App.xaml" />
   </ItemGroup>
+
+  <!-- Copy the repository-level FieldDefs tree (tools/FieldDefs) to the build/publish output
+       and preserve a top-level 'FieldDefs' folder via Link mapping. -->
+  <ItemGroup>
+    <Content Include="..\FieldDefs\**\*">
+      <!-- Preserve top-level FieldDefs folder in output by linking files under FieldDefs\... -->
+      <Link>FieldDefs\%(RecursiveDir)%(Filename)%(Extension)</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+    </Content>
+  </ItemGroup>
+
+  <!-- OPTIONAL: copy only 2025 season folder (uncomment if you prefer) -->
+  <!--
+  <ItemGroup>
+    <Content Include="FieldDefs\2025\**\*">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+  -->
 </Project>
