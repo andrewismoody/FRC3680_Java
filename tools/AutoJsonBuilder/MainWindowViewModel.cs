@@ -1398,5 +1398,65 @@ public sealed class MainWindowViewModel : NotifyBase
                 ApplyFlagsToNode(child);
             }
         }
+
+        // reorder paramsNode.Children: provided (canonical order) first, then other user params (alphabetical)
+        try
+        {
+            var providedOrder = _providedParamNames.ToList(); // canonical list order
+            var providedList = new List<TreeItemVm>();
+            var otherList = new List<TreeItemVm>();
+
+            foreach (var child in paramsNode.Children)
+            {
+                if (child == null) continue;
+                if (string.IsNullOrWhiteSpace(child.Title)) { otherList.Add(child); continue; }
+                if (_providedParamNames.Contains(child.Title))
+                    providedList.Add(child);
+                else
+                    otherList.Add(child);
+            }
+
+            // sort providedList by canonical order (stable)
+            providedList.Sort((a, b) =>
+            {
+                var ai = providedOrder.IndexOf(a.Title ?? "");
+                var bi = providedOrder.IndexOf(b.Title ?? "");
+                return ai.CompareTo(bi);
+            });
+
+            // sort otherList alphabetically by Title
+            otherList.Sort((a, b) => string.Compare(a.Title, b.Title, StringComparison.OrdinalIgnoreCase));
+
+            // if current order already matches desired order, no-op
+            bool needsReorder = false;
+            int idx = 0;
+            var desired = providedList.Concat(otherList).ToList();
+            if (desired.Count == paramsNode.Children.Count)
+            {
+                foreach (var node in paramsNode.Children)
+                {
+                    if (!object.ReferenceEquals(node, desired[idx]))
+                    {
+                        needsReorder = true;
+                        break;
+                    }
+                    idx++;
+                }
+            }
+            else
+            {
+                needsReorder = true;
+            }
+
+            if (needsReorder)
+            {
+                paramsNode.Children.Clear();
+                foreach (var n in desired) paramsNode.Children.Add(n);
+            }
+        }
+        catch
+        {
+            // tolerate failures; ordering is a nicety not critical
+        }
     }
 }

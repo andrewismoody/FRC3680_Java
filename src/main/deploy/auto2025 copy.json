@@ -9,8 +9,6 @@
     "coralPickupOffset": 36,
     "coralAlignOffset": 36,
     "waypointOffset": 36,
-    "robotCenterY": 10,
-    "robotCenterX": 18,
     "fieldSize": [
       690,
       317
