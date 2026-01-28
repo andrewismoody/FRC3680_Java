@@ -41,7 +41,26 @@ public sealed class TreeItemVm : NotifyBase
     }
 
     // If false, render as TextBlock (section headers); if true, render as TextBox
-    public bool IsCaptionEditable { get; set; } = false;
+    private bool _isCaptionEditable = true;
+    public bool IsCaptionEditable
+    {
+        get => _isCaptionEditable;
+        set => Set(ref _isCaptionEditable, value);
+    }
+
+    private bool _isReadOnly = false;
+    public bool IsReadOnly
+    {
+        get => _isReadOnly;
+        set => Set(ref _isReadOnly, value);
+    }
+
+    private bool _isDeletable = true;
+    public bool IsDeletable
+    {
+        get => _isDeletable;
+        set => Set(ref _isDeletable, value);
+    }
 
     public TreeItemKind Kind { get; }
 

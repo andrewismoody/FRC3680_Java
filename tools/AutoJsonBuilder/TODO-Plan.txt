@@ -1,7 +1,7 @@
 Review autotarget implementation - lookat, position, rotation, etc, etc to ensure all available options are included in schema/editor/evaluator
 User preferences - save between execution instances and reload on startup.
-Default/Required Params - enforce params that are required for minimal functionality
 Go through building a file from scratch and verify all functionality
+DONE -- Default/Required Params - enforce params that are required for minimal functionality
 DONE -- The plot area doesn't seem to be square - y axis is compressed?  set 0,0 to lower left and include 9 meters along the x axis by default.
 DONE -- Plot should contain a legend to identify which colors belong to which layer in a floating fly-out that can be collapsed and dragged around to allow viewing underneath
 DONE -- Legend should allow filtering visible layers - each fixture type, each module, etc.
@@ -29,3 +29,46 @@ Find out why edits got reverted and restore from previous commits
   DONE -- each of the sequence fields should be its own array in the tree view - consult the schema.
   DONE -- add the other missing array fields to sequences
   DONE -- remove question mark placeholders from target captions, only provide configured values.
+
+    the fieldSize array param should be provided if not present.
+  Default to [690, 317].
+  We should always provide the fieldCenter array Param using the standard expressions (not hard coded to values): [
+      "$fieldSize.X / 2",
+      "$fieldSize.Y / 2"
+    ]
+The frameSize array param should be provided.
+Default to [24,24].
+we should always provide the frameCenter array Param using the standard expressions (not hard coded to values): [
+          "$frameSize.X / 2",
+          "$frameSize.Y / 2"
+        ]
+bumperWidth scalar param should be provided with a default value of 0.
+we should always provide the robotSize array param with the standard expressions (not hard coded to values):  [
+      "$frameSize.X + $bumperWidth * 2",
+      "$frameSize.Y + $bumperWidth * 2"
+    ]
+We should always provide the robotCenter array param with the standard expressions (not hard coded to values): [
+      "$robotSize.X / 2",
+      "$robotSize.Y / 2"
+    ]
+The startArea array param should be provided.
+Default to [90,30].
+The redStartTranslation array param should be provided.
+Default to [
+      "$fieldCenter.X",
+      "$fieldCenter.Y",
+      0
+    ]
+The redStartRotation array param should be provided.
+Default to [ 0, 0, 180 ].
+The startPadding scalar param should be provided with a default value of 0.
+The robotOffset array param we should provide with the standard expressions (not hardcoded): [
+      "$robotCenter.X + $startPadding",
+      "$robotCenter.Y + $startPadding * 2"
+    ]
+The blueStartY1, blueStartY2, and blueStartY3 scalar params should be provided with a default value of 0.
+The blueStartPosition array param we should provide with the standard expression: [
+      "$fieldCenter.X - $startArea.X + ($frameSize.X/2 + $bumperWidth/2 + (($startArea.X/2 - ($frameSize.X/2 + $bumperWidth/2)) ) )",
+      "$fieldCenter.Y"
+    ]
+

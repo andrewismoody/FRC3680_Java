@@ -8,6 +8,8 @@ using System.Windows; // <-- added for Dispatcher
 using System.Diagnostics; // <-- added for timing
 using OxyPlot;
 using System.ComponentModel; // <-- add near other usings
+using System.Linq; // <-- replaced reflection/usings with Linq
+using System.Reflection; // <-- added
 
 namespace AutoJsonBuilder;
 
@@ -103,6 +105,14 @@ public sealed class MainWindowViewModel : NotifyBase
         }
         public event PropertyChangedEventHandler? PropertyChanged;
     }
+
+    // canonical list reused by ParamsInitializer (keep in sync)
+    private static readonly HashSet<string> _providedParamNames = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "fieldSize","fieldCenter","frameSize","frameCenter","bumperWidth",
+        "robotSize","robotCenter","startArea","redStartTranslation","redStartRotation",
+        "startPadding","robotOffset","blueStartY1","blueStartY2","blueStartY3","blueStartPosition"
+    };
 
     // Try to resolve an arbitrary "raw" value into a double.
     // Accepts numbers, boxed numeric types, numeric strings, or parameter name strings that exist in _evaluatedLookup.
@@ -564,7 +574,7 @@ public sealed class MainWindowViewModel : NotifyBase
                 case "params":
                     return "params — Named values (numbers, arrays, or parameter expressions) referenced by other fields and expressions.";
                 case "poses":
-                    return "poses — Definitions of named poses (group, location, index, position, action) used by events and targets.";
+                    return "poses — Definitions of named poses (group, location, index, position and action) used by events and targets.";
                 case "fixtures":
                     return "fixtures — Field fixtures: physical points on the field, either explicit translations or derived from other fixtures.";
                 case "targets":
@@ -841,6 +851,9 @@ public sealed class MainWindowViewModel : NotifyBase
         var prev = TreeHelper.GetViewState(TreeRootItems);
 
         var root = BuildTreeRoot();
+        // ensure provided/default params appear non-editable/non-deletable in the tree
+        ApplyProvidedParamFlags(root);
+
         sw.Stop();
         Log($"RebuildTree: BuildTreeRoot took {sw.ElapsedMilliseconds}ms");
 
@@ -886,6 +899,10 @@ public sealed class MainWindowViewModel : NotifyBase
             var swBuild = Stopwatch.StartNew();
             var root = await Task.Run(() => BuildTreeRoot());
             swBuild.Stop();
+
+            // mark provided params as non-editable/non-deletable BEFORE installing the VM on the UI
+            ApplyProvidedParamFlags(root);
+
             Log($"RebuildTreeAsync: BuildTreeRoot {swBuild.ElapsedMilliseconds}ms");
 
             // Marshal applying the constructed root to the UI thread and time UI-phase pieces
@@ -1283,6 +1300,103 @@ public sealed class MainWindowViewModel : NotifyBase
             };
             SeriesFilters.Add(item);
             idx++;
+        }
+    }
+
+    // Walk the tree and set known VM properties on param entries that are provided by default.
+    // This implementation now applies flags recursively to the param node and its child subtree
+    // so array dimensions/elements cannot be added or removed for provided params.
+    private void ApplyProvidedParamFlags(TreeItemVm? root)
+    {
+        if (root == null) return;
+
+        // breadth-first search to find the "params" section node
+        var q = new Queue<TreeItemVm>();
+        q.Enqueue(root);
+        TreeItemVm? paramsNode = null;
+        while (q.Count > 0)
+        {
+            var node = q.Dequeue();
+            if (string.Equals(node.Title, "params", StringComparison.OrdinalIgnoreCase))
+            {
+                paramsNode = node;
+                break;
+            }
+
+            if (node.Children != null)
+            {
+                foreach (var ch in node.Children)
+                    q.Enqueue(ch);
+            }
+        }
+
+        if (paramsNode == null) return;
+        if (paramsNode.Children == null) return;
+
+        // recursive applier that disables add/remove/delete and nulls commands on node and descendants
+        void ApplyFlagsToNode(TreeItemVm node)
+        {
+            try { node.IsCaptionEditable = false; } catch { }
+            try { node.IsReadOnly = true; } catch { }
+
+            // disable add/remove and delete affordances exposed by the VM
+            try { node.IsDeletable = false; } catch { }
+            try { node.HasRemove = false; } catch { }
+            try { node.HasAdd = false; } catch { }
+
+            // null common command properties if present on VM
+            try { node.RemoveCommand = null; } catch { }
+            try { node.AddCommand = null; } catch { }
+
+            // reflection: null out other command-style properties templates may check for
+            void NullifyCommandProp(object obj, string propName)
+            {
+                try
+                {
+                    var pi = obj.GetType().GetProperty(propName, BindingFlags.Instance | BindingFlags.Public | BindingFlags.IgnoreCase);
+                    if (pi != null && pi.CanWrite && typeof(ICommand).IsAssignableFrom(pi.PropertyType))
+                        pi.SetValue(obj, null);
+                }
+                catch { }
+            }
+
+            var cmdNames = new[] { "DeleteCommand", "RemoveCommand", "DeleteCmd", "CmdDelete", "CmdRemove", "AddCommand", "AddCmd" };
+            foreach (var n in cmdNames) NullifyCommandProp(node, n);
+
+            // clear boolean flags templates might check for
+            try
+            {
+                var t = node.GetType();
+                var boolNames = new[] { "CanDelete", "Deletable", "AllowDelete", "IsDeletable", "AllowRemove", "Removable", "CanAdd", "AllowAdd" };
+                foreach (var n in boolNames)
+                {
+                    var pi = t.GetProperty(n, BindingFlags.Instance | BindingFlags.Public | BindingFlags.IgnoreCase);
+                    if (pi != null && pi.CanWrite && pi.PropertyType == typeof(bool))
+                        pi.SetValue(node, false);
+                }
+            }
+            catch { }
+
+            // recurse children
+            if (node.Children != null)
+            {
+                foreach (var c in node.Children)
+                {
+                    if (c != null) ApplyFlagsToNode(c);
+                }
+            }
+        }
+
+        // apply to every canonical provided param child under params node
+        foreach (var child in paramsNode.Children)
+        {
+            if (child == null) continue;
+            if (string.IsNullOrWhiteSpace(child.Title)) continue;
+
+            if (_providedParamNames.Contains(child.Title))
+            {
+                ApplyFlagsToNode(child);
+            }
         }
     }
 }
