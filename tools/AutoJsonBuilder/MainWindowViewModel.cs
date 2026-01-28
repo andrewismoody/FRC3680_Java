@@ -2,22 +2,12 @@ using System.Collections.ObjectModel;
 using System.IO;
 using System.Text.Json;
 using System.Windows.Input;
-using Microsoft.Win32;
 using AutoJsonBuilder.Models;
-using System.Linq;
 using AutoJsonBuilder.Helpers; // <-- added
-using System.Threading.Tasks; // <-- added near other usings
 using System.Windows; // <-- added for Dispatcher
-using System.Threading; // <-- add this near other usings
 using System.Diagnostics; // <-- added for timing
 using OxyPlot;
-using OxyPlot.Series;
-using OxyPlot.Annotations;
-using OxyPlot.Axes;
-using System.Runtime.CompilerServices; // add near other usings
-using System.Text; // <-- added for StringBuilder / Encoding
 using System.ComponentModel; // <-- add near other usings
-using System.Collections.ObjectModel; // ensure present (already used for TreeRootItems)
 
 namespace AutoJsonBuilder;
 
@@ -653,12 +643,13 @@ public sealed class MainWindowViewModel : NotifyBase
             Description = "",
         };
 
+        // ensure params defaults/expressions are present for a freshly-created document
+        ParamsInitializer.EnsureParams(_doc);
+
         // moved to PoseHelper
         PoseHelper.EnsurePoseBackingLists(_doc);
 
         // Ensure modules list exists and seed a sensible default so targets can reference it.
-        if (_doc.Modules == null || _doc.Modules.Count == 0)
-            _doc.Modules.Clear(); // defensive (if null-handling in model differs)
         if (_doc.Modules.Count == 0) _doc.Modules.Add("module1");
 
         var group = _doc.Groups[0];
@@ -736,6 +727,9 @@ public sealed class MainWindowViewModel : NotifyBase
             opts.Converters.Add(new FlexibleDoubleDictionaryConverter()); // keeps older numeric semantics for model values
             _doc = JsonSerializer.Deserialize<AutoDefinitionModel>(json, opts)
                    ?? throw new InvalidOperationException("Invalid JSON file.");
+
+            // Ensure params defaults/expressions are present after load (fills missing keys without overwriting)
+            ParamsInitializer.EnsureParams(_doc);
 
             // moved
             PoseHelper.EnsurePoseBackingLists(_doc);
