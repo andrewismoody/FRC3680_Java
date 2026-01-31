@@ -54,7 +54,8 @@ public class SwerveMotorModule {
   double angleEncSimFactor = 0.03;
   double driveEncSimRate = 3.0;
   double driveEncSimFactor = 9.0;
-  double encoderMultiplier = 1.0;
+  double steeringGearRatio = 1.0;
+  EncoderMountLocation encoderLocation;
 
   double floatTolerance;
 
@@ -86,7 +87,7 @@ public class SwerveMotorModule {
   private NetworkTableEntry encoderOffsetEntry;
   private NetworkTableEntry floatToleranceEntry;
   private NetworkTableEntry invertDriveEntry;
-  private NetworkTableEntry encoderMultiplierEntry;
+  private NetworkTableEntry steeringGearRatioEntry;
   private NetworkTableEntry invertRotationEntry;
   private NetworkTableEntry enableDecelCompEntry;
   private NetworkTableEntry enableGiveUpEntry;
@@ -101,7 +102,16 @@ public class SwerveMotorModule {
   boolean enableDecelComp = false;
   boolean enableGiveUp = false;
 
-  public SwerveMotorModule(Utility.SwervePosition SwervePosition, Translation2d Position, SwerveMotorDefinition MotorDefinition, double EncoderMultiplier, double FloatTolerance, boolean InvertRotation, boolean InvertDrive, double RotationOffset) {
+  double lastDirectionChange = 0.0;
+  double lastDirection = 1.0;
+  double directionChangeInterval = 500; // milliseconds
+
+  public enum EncoderMountLocation {
+      BeforeGearbox,
+      AfterGearbox,
+  }
+
+  public SwerveMotorModule(Utility.SwervePosition SwervePosition, Translation2d Position, SwerveMotorDefinition MotorDefinition, double SteeringGearRatio, EncoderMountLocation EncoderLocation, double FloatTolerance, boolean InvertRotation, boolean InvertDrive, double RotationOffset) {
     moduleID = SwervePosition.toString();
     swervePosition = SwervePosition;
 
@@ -115,8 +125,18 @@ public class SwerveMotorModule {
 
     rotationOffset = RotationOffset;
 
-    encoderMultiplier = EncoderMultiplier;
-    angleEncoder.setMultiplier(EncoderMultiplier);
+    steeringGearRatio = SteeringGearRatio;
+    encoderLocation = EncoderLocation;
+    switch (encoderLocation) {
+      case BeforeGearbox:
+        // encoder is mounted on motor side, so we need to account for gear ratio
+        angleEncoder.setMultiplier(1.0 / steeringGearRatio);
+        break;
+      case AfterGearbox:
+        // encoder is mounted on wheel side, so no multiplier needed
+        angleEncoder.setMultiplier(1.0);
+        break;
+    }
 
     invertRotation = InvertRotation;
     // only invert real encoders, fake encoders don't invert because the inversion it match software to hardware behavior
@@ -149,7 +169,7 @@ public class SwerveMotorModule {
     encoderOffsetEntry = myTable.getEntry("encoderOffset");
     floatToleranceEntry = myTable.getEntry("floatTolerance");
     invertDriveEntry = myTable.getEntry("invertDrive");
-    encoderMultiplierEntry = myTable.getEntry("encoderMultiplier");
+    steeringGearRatioEntry = myTable.getEntry("steeringGearRatio");
     invertRotationEntry = myTable.getEntry("invertRotation");
     enableDecelCompEntry = myTable.getEntry("enableDecelComp");
     enableGiveUpEntry = myTable.getEntry("enableGiveUp");
@@ -168,7 +188,7 @@ public class SwerveMotorModule {
     encoderOffsetEntry.setDouble(angleEncoder.getAngleOffsetRad());
     floatToleranceEntry.setDouble(floatTolerance);
     invertDriveEntry.setBoolean(invertDrive);
-    encoderMultiplierEntry.setDouble(encoderMultiplier);
+    steeringGearRatioEntry.setDouble(steeringGearRatio);
     invertRotationEntry.setBoolean(invertRotation);
     enableDecelCompEntry.setBoolean(enableDecelComp);
     enableGiveUpEntry.setBoolean(enableGiveUp);
@@ -199,6 +219,17 @@ public class SwerveMotorModule {
     var kp = 0.333;
     var ki = 0; //kp * 0.1; // ki = 10% of kp
     var kd = 0; // ki * 3; // kd = 3 times ki
+
+    switch (encoderLocation) {
+      case BeforeGearbox:
+        // tuning for motor-side encoder - no change
+        break;
+      case AfterGearbox:
+        // tuning for wheel-side encoder
+        kp /= steeringGearRatio;
+        break;
+    }
+
     pidController = new PIDController(kp, ki, kd);
     pidController.enableContinuousInput(-Math.PI, Math.PI);
     // pidController.setTolerance(floatTolerance);
@@ -253,11 +284,18 @@ public class SwerveMotorModule {
     pidOutputEntry.setDouble(motorSpeed);
 
     steerMotorSpeedEntry.setDouble(motorSpeed);
-    if (driveModule.controller.enableDriveTrain && driveModule.controller.enableSteer)
+    if (driveModule.controller.enableDriveTrain && driveModule.controller.enableSteer  && now > lastDirectionChange + directionChangeInterval)
       rotatorMotor.set(motorSpeed);
 
     previousRotationSpeed = motorSpeed;
     previousCurrentAngle = currentRad;
+    
+    // TODO: Verify this logic for delaying direction changes
+    double direction = Math.signum(motorSpeed);
+    if (direction != lastDirection) {
+      lastDirectionChange = now;
+      lastDirection = direction;
+    }
 
     if (useFakeEncoder) {
       // fake adjust current angle to simulate encoder input

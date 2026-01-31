@@ -55,7 +55,8 @@ public class Constants {
     public static final double steerMotorRPM = 11000.0;
     public static final double steerMotorSpeed = ((steerMotorRPM * (Math.PI * 2)) / 60.0) / steerGearRatio; 
     // 20:1 gearbox
-    public static final double steeringEncoderMultiplier = 1.0 / steerGearRatio;
+    // the encoder multiplier is only needed for motor-side encoders.  If the encoder is on the output shaft, set this to 1.0
+    public static final double steeringEncoderMultiplier = 1.0; // / steerGearRatio;
   
     public static final double elevatorMaxDistance = 0.5;
     public static final double elevatorDistancePerRotation = 0.3;
