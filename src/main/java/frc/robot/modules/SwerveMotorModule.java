@@ -219,23 +219,19 @@ public class SwerveMotorModule {
     // slow down if we aren't aiming the right direction yet
     moduleState.speedMetersPerSecond *= moduleState.angle.minus(currentAngle).getCos();
 
-    if (driveModule.controller.enableDriveTrain) {
-      now = System.currentTimeMillis();
+    now = System.currentTimeMillis();
 
-      if (previousTime == 0) {
-        elapsedTime = 0;
-      } else {
-        elapsedTime = now - previousTime;
-      }
-      previousTime = now;
-      
-      elapsedTimeEntry.setDouble(elapsedTime);
-
-      if (driveModule.controller.enableSteer)
-        setAngle(moduleState);
-      if (driveModule.controller.enableDrive)
-        setSpeed(moduleState);
+    if (previousTime == 0) {
+      elapsedTime = 0;
+    } else {
+      elapsedTime = now - previousTime;
     }
+    previousTime = now;
+    
+    elapsedTimeEntry.setDouble(elapsedTime);
+
+    setAngle(moduleState);
+    setSpeed(moduleState);
 
     return moduleState;
   }
@@ -257,7 +253,8 @@ public class SwerveMotorModule {
     pidOutputEntry.setDouble(motorSpeed);
 
     steerMotorSpeedEntry.setDouble(motorSpeed);
-    rotatorMotor.set(motorSpeed);
+    if (driveModule.controller.enableDriveTrain && driveModule.controller.enableSteer)
+      rotatorMotor.set(motorSpeed);
 
     previousRotationSpeed = motorSpeed;
     previousCurrentAngle = currentRad;
@@ -287,8 +284,10 @@ public class SwerveMotorModule {
 
     previousDriveSpeed = motorSpeed;
 
-    driveMotor.set(motorSpeed);
-    currentState.speedMetersPerSecond = motorSpeed * driveModule.driveSpeed;
+    if (driveModule.controller.enableDriveTrain && driveModule.controller.enableDrive)
+      driveMotor.set(motorSpeed);
+
+      currentState.speedMetersPerSecond = motorSpeed * driveModule.driveSpeed;
 
     if (useFakeEncoder && driveEncoder != null) {
       // fake adjust current distance to simulate encoder input

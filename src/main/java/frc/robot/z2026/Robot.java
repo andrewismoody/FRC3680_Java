@@ -75,9 +75,9 @@ public class Robot extends TimedRobot {
 
   // need to change to absolute encoder for steering
   final Encoder enc_steer_lf = new REVEncoder(can_steer_lf.getEncoder());
-  final Encoder enc_steer_rf = new REVEncoder(can_steer_rf.getEncoder());
-  final Encoder enc_steer_lr = new REVEncoder(can_steer_lr.getEncoder());
-  final Encoder enc_steer_rr = new REVEncoder(can_steer_rr.getEncoder());
+  final Encoder enc_steer_rf = new REVEncoder(can_steer_rf.getAbsoluteEncoder());
+  final Encoder enc_steer_lr = new REVEncoder(can_steer_lr.getAbsoluteEncoder());
+  final Encoder enc_steer_rr = new REVEncoder(can_steer_rr.getAbsoluteEncoder());
 
   final Encoder enc_drive_lf = new REVEncoder(can_drive_lf.getEncoder());
   final Encoder enc_drive_rf = new REVEncoder(can_drive_rf.getEncoder());
@@ -163,7 +163,7 @@ public class Robot extends TimedRobot {
     modules.Initialize();
 
     // modules.SetEnableDrive(true);
-    // modules.SetEnableSteer(true);
+    modules.SetEnableSteer(false);
     // modules.SetEnableDriveTrain(false);
 
     Dashboard.InitializeChoosers();
