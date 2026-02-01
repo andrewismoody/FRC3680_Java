@@ -282,13 +282,6 @@ public class SwerveMotorModule {
     // start rotating wheel to the new optimized angle
     var motorSpeed = pidController.calculate(currentRad, tarRad);
     pidOutputEntry.setDouble(motorSpeed);
-
-    steerMotorSpeedEntry.setDouble(motorSpeed);
-    if (driveModule.controller.enableDriveTrain && driveModule.controller.enableSteer  && now > lastDirectionChange + directionChangeInterval)
-      rotatorMotor.set(motorSpeed);
-
-    previousRotationSpeed = motorSpeed;
-    previousCurrentAngle = currentRad;
     
     // TODO: Verify this logic for delaying direction changes
     double direction = Math.signum(motorSpeed);
@@ -296,6 +289,13 @@ public class SwerveMotorModule {
       lastDirectionChange = now;
       lastDirection = direction;
     }
+
+    steerMotorSpeedEntry.setDouble(motorSpeed);
+    if (driveModule.controller.enableDriveTrain && driveModule.controller.enableSteer  && now > lastDirectionChange + directionChangeInterval)
+      rotatorMotor.set(motorSpeed);
+
+    previousRotationSpeed = motorSpeed;
+    previousCurrentAngle = currentRad;
 
     if (useFakeEncoder) {
       // fake adjust current angle to simulate encoder input
