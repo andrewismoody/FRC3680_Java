@@ -102,10 +102,6 @@ public class SwerveMotorModule {
   boolean enableDecelComp = false;
   boolean enableGiveUp = false;
 
-  double lastDirectionChange = 0.0;
-  double lastDirection = 1.0;
-  double directionChangeInterval = 500; // milliseconds
-
   public enum EncoderMountLocation {
       BeforeGearbox,
       AfterGearbox,
@@ -282,16 +278,9 @@ public class SwerveMotorModule {
     // start rotating wheel to the new optimized angle
     var motorSpeed = pidController.calculate(currentRad, tarRad);
     pidOutputEntry.setDouble(motorSpeed);
-    
-    // TODO: Verify this logic for delaying direction changes
-    double direction = Math.signum(motorSpeed);
-    if (direction != lastDirection) {
-      lastDirectionChange = now;
-      lastDirection = direction;
-    }
 
     steerMotorSpeedEntry.setDouble(motorSpeed);
-    if (driveModule.controller.enableDriveTrain && driveModule.controller.enableSteer  && now > lastDirectionChange + directionChangeInterval)
+    if (driveModule.controller.enableDriveTrain && driveModule.controller.enableSteer)
       rotatorMotor.set(motorSpeed);
 
     previousRotationSpeed = motorSpeed;
