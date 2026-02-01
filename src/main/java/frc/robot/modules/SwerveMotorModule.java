@@ -226,7 +226,7 @@ public class SwerveMotorModule {
         break;
       case AfterGearbox:
         // tuning for wheel-side encoder
-        kp /= steeringGearRatio;
+        // kp = 1.0 / steeringGearRatio * 10;
         break;
     }
 

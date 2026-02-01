@@ -164,7 +164,7 @@ public class Robot extends TimedRobot {
     modules.Initialize();
 
     // modules.SetEnableDrive(true);
-    modules.SetEnableSteer(false);
+    // modules.SetEnableSteer(false);
     // modules.SetEnableDriveTrain(false);
 
     Dashboard.InitializeChoosers();
