@@ -76,6 +76,7 @@ public class SwerveMotorModule {
 
   boolean invertDrive = false;
   boolean invertRotation = false;
+  boolean flipMotorEncoderRotation = false;
 
   SwerveDriveModule driveModule;
   SwervePosition swervePosition;
@@ -107,7 +108,7 @@ public class SwerveMotorModule {
       AfterGearbox,
   }
 
-  public SwerveMotorModule(Utility.SwervePosition SwervePosition, Translation2d Position, SwerveMotorDefinition MotorDefinition, double SteeringGearRatio, EncoderMountLocation EncoderLocation, double FloatTolerance, boolean InvertRotation, boolean InvertDrive, double RotationOffset) {
+  public SwerveMotorModule(Utility.SwervePosition SwervePosition, Translation2d Position, SwerveMotorDefinition MotorDefinition, double SteeringGearRatio, EncoderMountLocation EncoderLocation, double FloatTolerance, boolean InvertRotation, boolean InvertDrive, double RotationOffset, boolean FlipMotorEncoderRotation) {
     moduleID = SwervePosition.toString();
     swervePosition = SwervePosition;
 
@@ -136,14 +137,13 @@ public class SwerveMotorModule {
 
     invertRotation = InvertRotation;
     // only invert real encoders, fake encoders don't invert because the inversion it match software to hardware behavior
-    if (rotatorMotor instanceof SparkMax)
-      if (angleEncoder.isRelative()) {
-        // This sets encoder and motor inversion simultaneously for relative encoders, due to how Spark Max works.
-        // Don't change it permanently, just set it now.
-        // This won't affect other settings nor persist across power cycles, so swapping to a different configuration will be simple
-        ((SparkMax)rotatorMotor).configure(new SparkMaxConfig().inverted(invertRotation), ResetMode.kNoResetSafeParameters, PersistMode.kNoPersistParameters);
-      }
-    else {
+    if (rotatorMotor instanceof SparkMax) {
+      // This sets encoder and motor inversion simultaneously for encoders, due to how Spark Max works.
+      // Don't change it permanently, just set it now.
+      // This won't affect other settings nor persist across power cycles, so swapping to a different configuration will be simple
+      System.out.printf("%s: setting inversion on controller\r\n", moduleID);
+      ((SparkMax)rotatorMotor).configure(new SparkMaxConfig().inverted(invertRotation), ResetMode.kNoResetSafeParameters, PersistMode.kNoPersistParameters);
+    } else {
       // not used for absolute encoders - why?
       angleEncoder.setReverseDirection(InvertRotation);
       rotatorMotor.setInverted(InvertRotation);
@@ -279,7 +279,7 @@ public class SwerveMotorModule {
 
     // start rotating wheel to the new optimized angle
     var motorSpeed = pidController.calculate(currentRad, tarRad);
-    if (!angleEncoder.isRelative() && invertRotation) {
+    if (flipMotorEncoderRotation) {
       // for absolute encoders, we may need to invert the output
       motorSpeed *= -1;
     }
