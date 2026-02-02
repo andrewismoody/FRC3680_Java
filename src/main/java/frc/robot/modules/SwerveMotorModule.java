@@ -143,13 +143,19 @@ public class SwerveMotorModule {
       // Don't change it permanently, just set it now.
       // This won't affect other settings nor persist across power cycles, so swapping to a different configuration will be simple
       System.out.printf("%s: setting inversion on controller\r\n", moduleID);
-      ((SparkMax)rotatorMotor).configure(new SparkMaxConfig().inverted(invertRotationEncoder), ResetMode.kNoResetSafeParameters, PersistMode.kNoPersistParameters);
+      var config = new SparkMaxConfig();
+      if (angleEncoder.isAbsolute()) {
+        config.absoluteEncoder.inverted(invertRotationEncoder);
+      } else {
+        config.inverted(invertRotationEncoder);
+      }
+
+      ((SparkMax)rotatorMotor).configure(config, ResetMode.kNoResetSafeParameters, PersistMode.kNoPersistParameters);
     } else {
       // not used for absolute encoders - why?
       angleEncoder.setReverseDirection(invertRotationEncoder);
     }
     rotatorMotor.setInverted(invertRotationMotor);
-
   }
 
   public SwervePosition GetSwervePosition() {
@@ -218,16 +224,6 @@ public class SwerveMotorModule {
     var kp = 0.333;
     var ki = 0; //kp * 0.1; // ki = 10% of kp
     var kd = 0; // ki * 3; // kd = 3 times ki
-
-    switch (encoderLocation) {
-      case BeforeGearbox:
-        // tuning for motor-side encoder - no change
-        break;
-      case AfterGearbox:
-        // tuning for wheel-side encoder
-        // kp = 1.0 / steeringGearRatio * 10;
-        break;
-    }
 
     pidController = new PIDController(kp, ki, kd);
     pidController.enableContinuousInput(-Math.PI, Math.PI);
