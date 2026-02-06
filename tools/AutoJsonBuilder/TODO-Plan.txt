@@ -1,6 +1,6 @@
-Review autotarget implementation - lookat, position, rotation, etc, etc to ensure all available options are included in schema/editor/evaluator
 User preferences - save between execution instances and reload on startup.
 Go through building a file from scratch and verify all functionality
+DONE -- Review autotarget implementation - lookat, position, rotation, etc, etc to ensure all available options are included in schema/editor/evaluator
 DONE -- Default/Required Params - enforce params that are required for minimal functionality
 DONE -- The plot area doesn't seem to be square - y axis is compressed?  set 0,0 to lower left and include 9 meters along the x axis by default.
 DONE -- Plot should contain a legend to identify which colors belong to which layer in a floating fly-out that can be collapsed and dragged around to allow viewing underneath

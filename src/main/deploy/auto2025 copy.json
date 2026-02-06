@@ -764,35 +764,7 @@
     }
   ],
   "fixtures": [
-    {
-      "type": "tag",
-      "index": 12,
-      "translation": null,
-      "derivedFrom": {
-        "fixture": null,
-        "fixture2": {
-          "type": "tag",
-          "index": 19
-        },
-        "derivedFrom": {
-          "fixture": {
-            "type": "tag",
-            "index": 13
-          },
-          "fixture2": {
-            "type": "tag",
-            "index": 17
-          },
-          "derivedFrom": null,
-          "derivedFrom2": null,
-          "function": "bisector",
-          "offset": "12"
-        },
-        "derivedFrom2": null,
-        "function": "perpendicular",
-        "offset": "13"
-      }
-    },
+    { "type": "tag", "index": 12, "translation": { "position": [33.51, 25.8, 0], "rotation": 54 } },
     {
       "type": "tag",
       "index": 13,

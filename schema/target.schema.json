@@ -47,6 +47,12 @@
         },
         "fixture": {
             "$ref": "fixtureref.schema.json"
+        },
+        "lookAtTranslation": {
+            "$ref": "translation.schema.json"
+        },
+        "lookAtFixture": {
+            "$ref": "fixtureref.schema.json"
         }
     },
     "oneOf": [
@@ -61,6 +67,12 @@
         },
         {
             "required": [ "fixture" ]
+        },
+        {
+            "required": [ "lookAtTranslation" ]
+        },
+        {
+            "required": [ "lookAtFixture" ]
         }
     ]
 }

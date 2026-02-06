@@ -201,20 +201,22 @@ public final class AutoSequenceFactory {
             }
         }
 
+        Pose3d positionPose = new Pose3d();
+        Pose3d lookAtPose = new Pose3d();
+        boolean hasPosition = false;
+        boolean hasRotation = false;
+        boolean hasLookat = false;
+
         if (t.hasNonNull("translation")) {
             var myTranslation = t.get("translation");
 
-            Pose3d tr = parseTranslation(t.get("translation"));
-            if (tr == null) return null;
-
-            var myPosition = myTranslation.get("position");
-            var myRotation = myTranslation.get("rotation");
-
-            if (myPosition != null && myRotation != null) return new AutoTarget(tr.getTranslation(), tr.getRotation().toRotation2d());
-            if (myPosition != null) return new AutoTarget(tr.getTranslation(), false);
-            if (myRotation != null) return new AutoTarget(tr.getRotation().toRotation2d());
-
-            return null;
+            positionPose = parseTranslation(myTranslation);
+            if (positionPose == null) {
+                System.out.printf("AutoSequenceFactory: translation for target not parseable\n");
+            } else {
+                hasPosition = myTranslation.get("position") != null;
+                hasRotation = myTranslation.get("rotation") != null;
+            }
         }
 
         if (t.hasNonNull("fixture")) {
@@ -226,25 +228,66 @@ public final class AutoSequenceFactory {
             JsonNode resolved = def.resolvedFixtures.get(key);
             if (resolved == null) {
                 System.out.printf("AutoSequenceFactory: unresolved fixture ref '%s' for target\n", key);
-                return null;
+            } else {
+                // Minimal assumption: fixture contains a translation usable as a target position
+                if (resolved.hasNonNull("translation")) {
+                    var myTranslation = resolved.get("translation");
+
+                    positionPose = parseTranslation(myTranslation);
+                    if (positionPose == null) {
+                        System.out.printf("AutoSequenceFactory: translation for fixture ref '%s' not parseable\n", key);
+                    } else {
+                        hasPosition = myTranslation.get("position") != null;
+                        hasRotation = myTranslation.get("rotation") != null;
+                    }
+                } else {
+                    System.out.printf("AutoSequenceFactory: fixture ref '%s' for target has no translation\n", key);
+                }
             }
-
-            // Minimal assumption: fixture contains a translation usable as a target position
-            if (resolved.hasNonNull("translation")) {
-                var myTranslation = resolved.get("translation");
-
-                Pose3d tr = parseTranslation(myTranslation);
-                if (tr == null) return null;
-
-                var myPosition = myTranslation.get("position");
-                var myRotation = myTranslation.get("rotation");
-
-                if (myPosition != null && myRotation != null) return new AutoTarget(tr.getTranslation(), tr.getRotation().toRotation2d());
-                if (myPosition != null) return new AutoTarget(tr.getTranslation(), false);
-                if (myRotation != null) return new AutoTarget(tr.getRotation().toRotation2d());
-            }
-            return null;
         }
+
+        if (t.hasNonNull("lookAtTranslation")) {
+            var myTranslation = t.get("lookAtTranslation");
+
+            lookAtPose = parseTranslation(myTranslation);
+            if (lookAtPose == null) {
+                System.out.printf("AutoSequenceFactory: lookAtTranslation for target not parseable\n");
+            } else {
+                hasLookat = myTranslation.get("position") != null;
+            }
+        }
+
+        if (t.hasNonNull("lookAtFixture")) {
+            JsonNode fref = t.get("lookAtFixture");
+            String ftype = fref.path("type").asText("");
+            int findex = fref.path("index").asInt(-1);
+            String key = ftype + ":" + findex;
+
+            JsonNode resolved = def.resolvedFixtures.get(key);
+            if (resolved == null) {
+                System.out.printf("AutoSequenceFactory: unresolved lookAtFixture ref '%s' for target\n", key);
+            } else {
+                // Minimal assumption: fixture contains a translation usable as a target position
+                if (resolved.hasNonNull("translation")) {
+                    var myTranslation = resolved.get("translation");
+
+                    lookAtPose = parseTranslation(myTranslation);
+                    if (lookAtPose == null) {
+                        System.out.printf("AutoSequenceFactory: translation for lookAtFixture ref '%s' not parseable\n", key);
+                    } else {
+                        hasLookat = myTranslation.get("position") != null;
+                    }
+                } else {
+                    System.out.printf("AutoSequenceFactory: lookAtFixture ref '%s' for target has no translation\n", key);
+                }
+            }
+        }
+
+        if (hasPosition && hasLookat) return new AutoTarget(positionPose.getTranslation(), lookAtPose.getTranslation());
+        if (!hasPosition && hasLookat) return new AutoTarget(lookAtPose.getTranslation(), true);
+        if (hasPosition && hasRotation) return new AutoTarget(positionPose.getTranslation(), positionPose.getRotation().toRotation2d());
+        if (hasPosition) return new AutoTarget(positionPose.getTranslation(), false);
+        if (hasRotation) return new AutoTarget(positionPose.getRotation().toRotation2d());
 
         return null;
     }
