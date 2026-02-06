@@ -500,6 +500,75 @@ public static class TreeBuildHelper
 		}
 		AddActiveChild();
 
+		// NEW: lookAt support (none / translation / fixture)
+		var lookAtKindField = new TreeItemVm("lookAtKind", TreeItemKind.Field) { Editor = TreeEditorKind.Enum, Model = t };
+		lookAtKindField.Options.Add("none"); lookAtKindField.Options.Add("translation"); lookAtKindField.Options.Add("fixture");
+		// initial kind depends on model
+		lookAtKindField.Value = (t.LookAtTranslation != null) ? "translation" : (t.LookAtFixture != null) ? "fixture" : "none";
+		node.Children.Add(lookAtKindField);
+
+		void AddActiveLookAtChild()
+		{
+			// remove previous lookAt children
+			var existingLA = node.Children.FirstOrDefault(c => c.Title == "lookAtTranslation" || c.Title == "lookAtFixture");
+			if (existingLA != null) node.Children.Remove(existingLA);
+
+			var kind = lookAtKindField.Value?.ToString() ?? "none";
+			if (kind == "translation")
+			{
+				// ensure model exists
+				t.LookAtTranslation ??= new TranslationModel { Position = new() { 0d, 0d, 0d }, PositionUnits = "inches", RotationUnits = "degrees" };
+				var child = TreeHelper.CreateTranslationNode(t.LookAtTranslation, paramKeys);
+				// label the child "lookAtTranslation" so it maps to schema path
+				child.Title = "lookAtTranslation";
+				node.Children.Add(child);
+				// clear fixture counterpart
+				t.LookAtFixture = null;
+			}
+			else if (kind == "fixture")
+			{
+				t.LookAtFixture ??= new FixtureRefModel();
+				var child = TreeHelper.CreateFixtureRefNode("lookAtFixture", t.LookAtFixture,
+					() => t.LookAtFixture?.Type ?? "",
+					v => t.LookAtFixture!.Type = v,
+					() => t.LookAtFixture?.Index ?? 0,
+					v => t.LookAtFixture!.Index = v,
+					fixtureOptionsProvider);
+				node.Children.Add(child);
+				// clear translation counterpart
+				t.LookAtTranslation = null;
+			}
+			else
+			{
+				// none selected: clear both
+				t.LookAtTranslation = null;
+				t.LookAtFixture = null;
+			}
+			triggerModelChangedImmediate();
+		}
+
+		// initialize lookAt child
+		AddActiveLookAtChild();
+
+		// when lookAt kind changes swap child/model accordingly and rebuild/save
+		lookAtKindField.PropertyChanged += async (_, e) =>
+		{
+			if (e.PropertyName != nameof(TreeItemVm.Value)) return;
+			AddActiveLookAtChild();
+			triggerModelChangedImmediate();
+			_ = rebuildAsync();
+		};
+
+		// existing kind change handling for primary child
+		kindField.PropertyChanged += async (_, e) =>
+		{
+			if (e.PropertyName != nameof(TreeItemVm.Value)) return;
+			AddActiveChild();
+			triggerModelChangedImmediate();
+			_ = rebuildAsync();
+		};
+
+		// UpdateTitle: include lookAt presence indicator so users see it in the list
 		void UpdateTitle()
 		{
 			string body;
@@ -529,10 +598,22 @@ public static class TreeBuildHelper
 				body = string.Join(" ", parts);
 			}
 			var modulePart = string.IsNullOrWhiteSpace(t.Module) ? null : t.Module;
-			if (string.IsNullOrWhiteSpace(modulePart) && string.IsNullOrWhiteSpace(body)) node.Title = "";
-			else if (string.IsNullOrWhiteSpace(modulePart)) node.Title = body;
-			else if (string.IsNullOrWhiteSpace(body)) node.Title = modulePart;
-			else node.Title = $"{modulePart} · {body}";
+
+			// append lookAt marker when configured
+			string lookAtPart = "";
+			if (t.LookAtFixture != null)
+			{
+				lookAtPart = $" → lookAt({t.LookAtFixture.Type}:{t.LookAtFixture.Index})";
+			}
+			else if (t.LookAtTranslation != null)
+			{
+				lookAtPart = " → lookAt";
+			}
+
+			if (string.IsNullOrWhiteSpace(modulePart) && string.IsNullOrWhiteSpace(body)) node.Title = lookAtPart.TrimStart();
+			else if (string.IsNullOrWhiteSpace(modulePart)) node.Title = body + lookAtPart;
+			else if (string.IsNullOrWhiteSpace(body)) node.Title = modulePart + lookAtPart;
+			else node.Title = $"{modulePart} · {body}{lookAtPart}";
 		}
 
 		moduleField.PropertyChanged += (_, e) => { if (e.PropertyName == nameof(TreeItemVm.Value)) UpdateTitle(); };
@@ -542,16 +623,9 @@ public static class TreeBuildHelper
 		positionField.PropertyChanged += (_, e) => { if (e.PropertyName == nameof(TreeItemVm.Value)) UpdateTitle(); };
 		actionField.PropertyChanged += (_, e) => { if (e.PropertyName == nameof(TreeItemVm.Value)) UpdateTitle(); };
 		kindField.PropertyChanged += (_, e) => { if (e.PropertyName == nameof(TreeItemVm.Value)) UpdateTitle(); };
+		lookAtKindField.PropertyChanged += (_, e) => { if (e.PropertyName == nameof(TreeItemVm.Value)) UpdateTitle(); };
 
 		UpdateTitle();
-
-		kindField.PropertyChanged += async (_, e) =>
-		{
-			if (e.PropertyName != nameof(TreeItemVm.Value)) return;
-			AddActiveChild();
-			triggerModelChangedImmediate();
-			_ = rebuildAsync();
-		};
 
 		targetsSection.Children.Add(node);
 		targetsSection.IsExpanded = true;
