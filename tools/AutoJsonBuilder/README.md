@@ -77,3 +77,7 @@ If you’re unsure of the expected filename/path, search the robot codebase for:
   - the JSON is inside `src/main/deploy`
   - the filename matches what the robot code loads
   - the JSON is valid (no trailing commas, correct schema for the season)
+
+
+## Generating a random json for testing:
+dotnet run --project tools/AutoJsonBuilder -- -o ./src/main/deploy/random-auto.json

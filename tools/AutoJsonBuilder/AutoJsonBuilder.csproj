@@ -1,6 +1,12 @@
-<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk.WindowsDesktop">
   <PropertyGroup>
-    <OutputType>WinExe</OutputType>
+    <!-- Option A: keep GUI as WinExe (no console by default).
+         If you keep WinExe, Program.AllocConsole will create a console only when running CLI. -->
+    <!-- <OutputType>WinExe</OutputType> -->
+
+    <!-- Option B: use Exe so the console is always present (useful for debugging CLI but will show a console when launching GUI). -->
+    <OutputType>Exe</OutputType>
+
     <TargetFramework>net8.0-windows</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
@@ -8,6 +14,9 @@
     <RootNamespace>AutoJsonBuilder</RootNamespace>
     <UseWPF>true</UseWPF>
     <EnableDefaultCompileItems>true</EnableDefaultCompileItems>
+
+    <!-- NEW: specify the class containing the desired entry point -->
+    <StartupObject>AutoJsonBuilder.Program</StartupObject>
   </PropertyGroup>
 
   <ItemGroup>
