@@ -75,7 +75,7 @@ public class Robot extends TimedRobot {
   final Relay pwm_slide = new Relay(0);
 
   // need to change to absolute encoder for steering
-  final Encoder enc_steer_lf = new REVEncoder(can_steer_lf.getEncoder());
+  final Encoder enc_steer_lf = new REVEncoder(can_steer_lf.getAbsoluteEncoder());
   final Encoder enc_steer_rf = new REVEncoder(can_steer_rf.getAbsoluteEncoder());
   final Encoder enc_steer_lr = new REVEncoder(can_steer_lr.getAbsoluteEncoder());
   final Encoder enc_steer_rr = new REVEncoder(can_steer_rr.getAbsoluteEncoder());
@@ -118,7 +118,7 @@ public class Robot extends TimedRobot {
   // 4 - make sure rotationoffset is correct for each corner and specified in radians - if this is wrong, the wheels won't point in the right direction in any situation
   // for rev, right-front should be 0, everything else rotates from that, no inversion on rotation.
   SwerveDriveModule swerveDriveModule = new SwerveDriveModule("swerveDrive", m_gyro, m_positioner, Constants.driveSpeed, Constants.driveRatio, Constants.steerMotorSpeed, Constants.floatTolerance
-    , new SwerveMotorModule(SwervePosition.LeftFront, new Translation2d(Constants.motorPosition.getX(), Constants.motorPosition.getY()),leftFrontDef, Constants.steerGearRatio, EncoderMountLocation.BeforeGearbox, Constants.floatTolerance, false, false, false, 4.71)
+    , new SwerveMotorModule(SwervePosition.LeftFront, new Translation2d(Constants.motorPosition.getX(), Constants.motorPosition.getY()),leftFrontDef, Constants.steerGearRatio, EncoderMountLocation.BeforeGearbox, Constants.floatTolerance, true, false, false, 4.71)
     , new SwerveMotorModule(SwervePosition.RightFront, new Translation2d(Constants.motorPosition.getX(), -Constants.motorPosition.getY()), rightFrontDef, Constants.steerGearRatio, EncoderMountLocation.AfterGearbox, Constants.floatTolerance, true, false, false, 0)
     , new SwerveMotorModule(SwervePosition.LeftRear, new Translation2d(-Constants.motorPosition.getX(), Constants.motorPosition.getY()), leftRearDef, Constants.steerGearRatio, EncoderMountLocation.AfterGearbox, Constants.floatTolerance, true, false, false, 3.14)
     , new SwerveMotorModule(SwervePosition.RightRear, new Translation2d(-Constants.motorPosition.getX(), -Constants.motorPosition.getY()), rightRearDef, Constants.steerGearRatio, EncoderMountLocation.AfterGearbox, Constants.floatTolerance, true, false, false, 1.57)
