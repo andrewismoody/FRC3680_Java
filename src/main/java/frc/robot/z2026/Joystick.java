@@ -48,13 +48,13 @@ public class Joystick {
     m_controller.SetValueButtonInversion(ButtonName.RightTrigger, true);
     m_controller.RegisterValueButtonConsumer(ButtonName.RightTrigger, modules::ProcessSpeedDilation);
 
-    m_controller.SetValueButtonInversion(ButtonName.LeftThumbstickY, false);
+    m_controller.SetValueButtonInversion(ButtonName.LeftThumbstickY, true);
     m_controller.RegisterValueButtonConsumer(ButtonName.LeftThumbstickY, swerveDriveModule::ProcessForwardSpeed);
 
     m_controller.SetValueButtonInversion(ButtonName.LeftThumbstickX, true);
     m_controller.RegisterValueButtonConsumer(ButtonName.LeftThumbstickX, swerveDriveModule::ProcessLateralSpeed);
 
-    m_controller.SetValueButtonInversion(ButtonName.RightThumbstickX, false);
+    m_controller.SetValueButtonInversion(ButtonName.RightThumbstickX, true);
     m_controller.RegisterValueButtonConsumer(ButtonName.RightThumbstickX, swerveDriveModule::ProcessRotationAngle);
 
     // m_controller.SetValueButtonInversion(ButtonName.Chat, null);
