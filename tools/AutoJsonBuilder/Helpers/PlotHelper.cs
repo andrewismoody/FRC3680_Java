@@ -10,6 +10,8 @@ using System.Threading.Tasks;
 using System.Windows; // used for Application.Current.Dispatcher
 using System.IO;
 using System.Text.Json;
+using System.Diagnostics;
+using System.Text;
 
 namespace AutoJsonBuilder.Helpers;
 
@@ -261,6 +263,7 @@ public static class PlotHelper
 		AutoDefinitionModel doc,
 		IDictionary<string, object?> evaluatedLookup,
 		Dictionary<string, (double x, double y, double z, double? rot)> resolvedFixtures,
+		Dictionary<int, (double x, double y, double z, double? rot)> resolvedTargets,
 		OxyColor[] palette,
 		Action<string> log)
 	{
@@ -492,7 +495,39 @@ public static class PlotHelper
 				v = 0;
 				try
 				{
+					// Handle JsonElement values (left by System.Text.Json deserialization)
+					if (raw is JsonElement je)
+					{
+						switch (je.ValueKind)
+						{
+							case JsonValueKind.Number:
+								if (je.TryGetDouble(out var dj)) { v = dj; return true; }
+								break;
+							case JsonValueKind.String:
+								var s = je.GetString();
+								if (!string.IsNullOrEmpty(s) && double.TryParse(s, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var parsedJs))
+								{ v = parsedJs; return true; }
+								// delegate non-numeric string to Java evaluator below by treating raw as string
+								raw = s;
+								break;
+							case JsonValueKind.Array:
+								// prefer first numeric array element
+								if (je.GetArrayLength() > 0)
+								{
+									var first = je[0];
+									return TryResolveDouble(first, out v);
+								}
+								return false;
+							case JsonValueKind.Null:
+								return false;
+							default:
+								// objects etc. fall through to wrapper handling below
+								break;
+						}
+					}
+
 					if (raw == null) return false;
+					// Quick local numeric unwraps first
 					switch (raw)
 					{
 						case double d: v = d; return true;
@@ -501,8 +536,43 @@ public static class PlotHelper
 						case long l: v = Convert.ToDouble(l); return true;
 						case decimal dec: v = Convert.ToDouble(dec); return true;
 						case string s:
+							// numeric literal?
 							if (double.TryParse(s, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var parsed)) { v = parsed; return true; }
-							if (evaluatedLookup != null && evaluatedLookup.TryGetValue(s, out var ev)) return TryResolveDouble(ev, out v);
+
+							// ALWAYS delegate any non-numeric string to the Java evaluator (no local resolution).
+							// Build input JSON { "expr": "<string>", "params": { ... } } and ask interop to evaluate.
+							try
+							{
+								// diagnostic: record that we're delegating to AutoExpr
+								try { s_log?.Invoke($"TryResolveDouble: delegating expr='{s}' paramsCount={(evaluatedLookup?.Count ?? 0)}"); } catch { }
+								var payload = new Dictionary<string, object?> { ["expr"] = s };
+								// pass the evaluatedLookup (may be empty) so Java has current params context
+								if (evaluatedLookup != null)
+									payload["params"] = evaluatedLookup;
+								else
+									payload["params"] = new Dictionary<string, object?>();
+								var options = new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase, DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull };
+								var inputJson = JsonSerializer.Serialize(payload, options);
+
+								var resp = FixtureResolverInterop.EvaluateExpression(inputJson);
+								try { s_log?.Invoke($"TryResolveDouble: AutoExpr response {(string.IsNullOrWhiteSpace(resp) ? "<null/empty>" : resp)}"); } catch { }
+								if (!string.IsNullOrWhiteSpace(resp))
+								{
+									using var jd = JsonDocument.Parse(resp);
+									if (jd.RootElement.TryGetProperty("value", out var vEl) && vEl.ValueKind == JsonValueKind.Number && vEl.TryGetDouble(out var dv))
+									{
+										v = dv;
+										return true;
+									}
+								}
+							}
+							catch (Exception ex)
+							{
+								// log via runtime logger if provided, but don't try local fallbacks
+								try { s_log?.Invoke($"TryResolveDouble: EvaluateExpression failed: {ex.Message}"); } catch { }
+							}
+
+							// unresolved
 							return false;
 					}
 					// wrapper with Raw
@@ -517,6 +587,48 @@ public static class PlotHelper
 				catch { /* best-effort */ }
 				return false;
 			}
+
+				// Evaluate expression by delegating to the interop (classpath JVM invocation).
+				static bool TryEvaluateExprWithAutoExpr(string expr, IDictionary<string, object?> evaluatedLookup, out double value, Action<string>? log)
+				{
+					value = 0;
+					if (string.IsNullOrWhiteSpace(expr)) return false;
+
+					// Build input JSON { "expr": "...", "params": { ... } }
+					var payload = new Dictionary<string, object?>();
+					payload["expr"] = expr;
+					var prm = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase);
+					if (evaluatedLookup != null)
+					{
+						foreach (var kv in evaluatedLookup) prm[kv.Key] = kv.Value;
+					}
+					var options = new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase, DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull };
+					var inputJson = JsonSerializer.Serialize(payload, options);
+
+					try
+					{
+						var resp = FixtureResolverInterop.EvaluateExpression(inputJson);
+						if (string.IsNullOrWhiteSpace(resp))
+						{
+							log?.Invoke("EvaluateExpression returned empty/null output.");
+							return false;
+						}
+						using var jd = JsonDocument.Parse(resp);
+						var root = jd.RootElement;
+						if (root.TryGetProperty("value", out var vEl) && vEl.ValueKind == JsonValueKind.Number && vEl.TryGetDouble(out var dv))
+						{
+							value = dv;
+							return true;
+						}
+						log?.Invoke($"EvaluateExpression returned non-numeric result for expr='{expr}': {resp}");
+						return false;
+					}
+					catch (Exception ex)
+					{
+						log?.Invoke($"EvaluateExpression failed: {ex.Message}");
+						return false;
+					}
+				}
 
 			static double ConvertLengthToMeters(double value, string? units)
 			{
@@ -605,77 +717,291 @@ public static class PlotHelper
 			}
 
 			int plottedTargets = 0;
-			foreach (var t in doc.Targets ?? Enumerable.Empty<TargetSchemaModel>())
+			var targets = doc.Targets ?? new List<TargetSchemaModel>();
+			for (int tIdx = 0; tIdx < targets.Count; tIdx++)
 			{
-				var moduleName = string.IsNullOrWhiteSpace(t.Module) ? "(no-module)" : t.Module;
+				var t = targets[tIdx];
+				var moduleName = string.IsNullOrWhiteSpace(t?.Module) ? "(no-module)" : t.Module;
 				var s = GetOrCreate(moduleName);
 
 				bool added = false;
 				double tx = 0, ty = 0, tz = 0;
 				double? trot = null;
+				string source = "unknown";
 
-				if (t.Fixture != null)
+				// Prefer resolver-produced target positions (by index) when available.
+				try
 				{
-					try
+					if (resolvedTargets != null && resolvedTargets.TryGetValue(tIdx, out var rpos) && !double.IsNaN(rpos.x) && !double.IsNaN(rpos.y))
 					{
-						var key = $"{t.Fixture.Type}:{t.Fixture.Index}";
-						if (resolvedFixtures.TryGetValue(key, out var pos))
-						{
-							tx = pos.x; ty = pos.y; tz = pos.z; trot = pos.rot;
-							added = true;
-						}
+						tx = rpos.x; ty = rpos.y; tz = rpos.z; trot = rpos.rot;
+						added = true;
+						source = "resolver";
 					}
-					catch { /* best-effort */ }
 				}
+				catch { /* best-effort */ }
 
-				if (!added && t.Translation != null)
+				// If resolver didn't supply a target position, fall back to fixture-ref or local translation evaluation.
+				if (!added && t != null)
 				{
-					try
+					if (t.Fixture != null)
 					{
-						var tr = t.Translation;
-						if (tr.Position != null && tr.Position.Count >= 2)
+						try
 						{
-							if (TryResolveDouble(tr.Position[0], out var rx) && TryResolveDouble(tr.Position[1], out var ry))
+							var key = $"{t.Fixture.Type}:{t.Fixture.Index}";
+							if (resolvedFixtures.TryGetValue(key, out var pos))
 							{
-								var units = tr.PositionUnits;
-								tx = ConvertLengthToMeters(rx, units);
-								ty = ConvertLengthToMeters(ry, units);
-
-								if (tr.Position.Count >= 3 && TryResolveDouble(tr.Position[2], out var rz))
-									tz = ConvertLengthToMeters(rz, units);
-								else
-									tz = 0.0;
-
-								if (tr.Rotation != null && TryResolveDouble(tr.Rotation, out var rrot))
-									trot = NormalizeRotationToDegrees(rrot, tr.RotationUnits);
-
+								tx = pos.x; ty = pos.y; tz = pos.z; trot = pos.rot;
 								added = true;
+								source = "fixture";
 							}
 						}
+						catch { /* best-effort */ }
 					}
-					catch { /* best-effort */ }
+
+					if (!added && t.Translation != null)
+					{
+						try
+						{
+							var tr = t.Translation;
+							if (tr.Position != null && tr.Position.Count >= 2)
+							{
+								if (TryResolveDouble(tr.Position[0], out var rx) && TryResolveDouble(tr.Position[1], out var ry))
+								{
+									// If the translation X/Y came from an expression/param (string like "$..."),
+									// those evaluated numbers are produced from the JSON params which default to inches.
+									// Detect that situation and convert from inches -> meters. Otherwise treat the
+									// value as having the declared PositionUnits.
+									string declaredUnits = tr.PositionUnits ?? null;
+									string sourceUnitsForConversion = declaredUnits ?? "in"; // default if no explicit units
+									try
+									{
+										var rawX = tr.Position[0];
+										bool rawIsExpr = false;
+										if (rawX is JsonElement rxJe && rxJe.ValueKind == JsonValueKind.String)
+											rawIsExpr = (rxJe.GetString() ?? "").TrimStart().StartsWith("$");
+										else if (rawX is string sx)
+											rawIsExpr = sx.TrimStart().StartsWith("$");
+
+										if (rawIsExpr)
+										{
+											// JSON expressions/params default to inches -> convert from inches to meters
+											sourceUnitsForConversion = "in";
+										}
+									}
+									catch { /* best-effort detection - ignore failures */ }
+
+									tx = ConvertLengthToMeters(rx, sourceUnitsForConversion);
+									ty = ConvertLengthToMeters(ry, sourceUnitsForConversion);
+									// diagnostic about conversion when sourceUnits differs from declared units
+									try
+									{
+										if (!string.Equals(sourceUnitsForConversion, tr.PositionUnits ?? "in", StringComparison.OrdinalIgnoreCase))
+											log?.Invoke($"Target[{tIdx}] translation: evaluated expr -> assumed '{sourceUnitsForConversion}' -> converted to meters (tx={tx:F3},ty={ty:F3})");
+									}
+									catch { }
+
+									if (tr.Position.Count >= 3 && TryResolveDouble(tr.Position[2], out var rz))
+										tz = ConvertLengthToMeters(rz, sourceUnitsForConversion);
+									else
+										tz = 0.0;
+
+									if (tr.Rotation != null && TryResolveDouble(tr.Rotation, out var rrot))
+										trot = NormalizeRotationToDegrees(rrot, tr.RotationUnits);
+
+									added = true;
+									source = "translation";
+								}
+							}
+						}
+						catch { /* best-effort */ }
+					}
 				}
 
 				if (added)
 				{
 					s.Points.Add(new ScatterPoint(tx, ty));
-					plottedTargets++;
-					if (trot.HasValue)
+					// Log the plotted target and its source/location
+					try
 					{
-						var theta = trot.Value * Math.PI / 180.0;
-						var ex = tx + Math.Cos(theta) * arrowLengthMeters;
-						var ey = ty + Math.Sin(theta) * arrowLengthMeters;
-						var color = moduleColors.TryGetValue(moduleName, out var c) ? c : OxyPlot.OxyColors.Black;
-						var a = new ArrowAnnotation { StartPoint = new DataPoint(tx, ty), EndPoint = new DataPoint(ex, ey), Color = color, HeadLength = 4, HeadWidth = 3 };
-						if (!localSeriesArrows.TryGetValue(s, out var list)) { list = new List<ArrowAnnotation>(); localSeriesArrows[s] = list; }
-						list.Add(a);
+						log?.Invoke($"Target[{tIdx}] plotted at x={tx:F3}, y={ty:F3} (module={moduleName}, source={source})");
 					}
+					catch { /* best-effort logging only */ }
+					plottedTargets++;
+
+					// NEW: prefer lookAt arrows when a lookAt is defined on the target (unchanged logic)
+					double? lookAtX = null, lookAtY = null;
+					try
+					{
+						if (t.LookAtTranslation != null && t.LookAtTranslation.Position != null && t.LookAtTranslation.Position.Count >= 2)
+						{
+							var lat = t.LookAtTranslation;
+							if (TryResolveDouble(lat.Position[0], out var lxRaw) && TryResolveDouble(lat.Position[1], out var lyRaw))
+							{
+								var units = lat.PositionUnits;
+								lookAtX = ConvertLengthToMeters(lxRaw, units);
+								lookAtY = ConvertLengthToMeters(lyRaw, units);
+							}
+						}
+					}
+					catch { /* best-effort */ }
+
+					if ((!lookAtX.HasValue || !lookAtY.HasValue) && t.LookAtFixture != null)
+					{
+						try
+						{
+							var key = $"{t.LookAtFixture.Type}:{t.LookAtFixture.Index}";
+							if (resolvedFixtures.TryGetValue(key, out var lf))
+							{
+								lookAtX = lf.x;
+								lookAtY = lf.y;
+							}
+						}
+						catch { /* best-effort */ }
+					}
+
+					if (lookAtX.HasValue && lookAtY.HasValue)
+					{
+						try
+						{
+							var color = moduleColors.TryGetValue(moduleName, out var c) ? c : OxyPlot.OxyColors.Black;
+							var a = new ArrowAnnotation
+							{
+								StartPoint = new DataPoint(tx, ty),
+								EndPoint = new DataPoint(lookAtX.Value, lookAtY.Value),
+								Color = color,
+								HeadLength = 4,
+								HeadWidth = 3
+							};
+							if (!localSeriesArrows.TryGetValue(s, out var list)) { list = new List<ArrowAnnotation>(); localSeriesArrows[s] = list; }
+							list.Add(a);
+						}
+						catch { /* best-effort */ }
+					}
+					else if (trot.HasValue)
+					{
+						try
+						{
+							var theta = trot.Value * Math.PI / 180.0;
+							var ex = tx + Math.Cos(theta) * arrowLengthMeters;
+							var ey = ty + Math.Sin(theta) * arrowLengthMeters;
+							var color = moduleColors.TryGetValue(moduleName, out var c) ? c : OxyPlot.OxyColors.Black;
+							var a = new ArrowAnnotation { StartPoint = new DataPoint(tx, ty), EndPoint = new DataPoint(ex, ey), Color = color, HeadLength = 4, HeadWidth = 3 };
+							if (!localSeriesArrows.TryGetValue(s, out var list)) { list = new List<ArrowAnnotation>(); localSeriesArrows[s] = list; }
+							list.Add(a);
+						}
+						catch { /* best-effort */ }
+					}
+					// ...existing code that adds lookAt arrows / rotation arrows...
+				}
+				else
+				{
+					// Log why the target was not plotted (best-effort, non-throwing)
+					try
+					{
+						string desc;
+						if (t == null) desc = "(null target entry)";
+						else if (t.Fixture != null) desc = $"module={moduleName} fixture={t.Fixture.Type ?? "(type)"}:{t.Fixture.Index}";
+						else if (t.Translation != null) desc = $"module={moduleName} translation";
+						else desc = $"module={moduleName} (no location)";
+
+						string reason = "unresolved";
+						if (t == null)
+						{
+							reason = "null target entry";
+						}
+						else if (resolvedTargets != null && resolvedTargets.TryGetValue(tIdx, out var _))
+						{
+							// should have been added earlier; if not, indicate unexpected resolver omission
+							reason = "resolver provided value but was considered invalid";
+						}
+						else if (t.Fixture != null)
+						{
+							var key = $"{t.Fixture.Type}:{t.Fixture.Index}";
+							if (!resolvedFixtures.ContainsKey(key)) reason = $"fixture '{key}' missing from resolver output";
+							else reason = "fixture present but could not be used";
+						}
+						else if (t.Translation == null)
+						{
+							reason = "no translation or fixture";
+						}
+						else if (t.Translation.Position == null || t.Translation.Position.Count < 2)
+						{
+							reason = "translation.position missing or too short";
+						}
+						else
+						{
+							// attempt to provide hint about X/Y raw values (expressions vs non-numeric)
+							try
+							{
+								var rawX = t.Translation.Position[0];
+								var rawY = t.Translation.Position[1];
+								// diagnostics: attempt to resolve X/Y now (this will also log if it delegates to Java)
+								bool dxOk = TryResolveDouble(rawX, out var dxVal);
+								bool dyOk = TryResolveDouble(rawY, out var dyVal);
+								string rawXType, rawYType, rawXPreview, rawYPreview;
+								if (rawX is JsonElement rxJe)
+								{
+									rawXType = $"JsonElement({rxJe.ValueKind})";
+									rawXPreview = rxJe.ValueKind == JsonValueKind.String ? rxJe.GetString() ?? "<str>" : rxJe.ToString();
+								}
+								else
+								{
+									rawXType = rawX == null ? "null" : rawX.GetType().Name;
+									rawXPreview = rawX?.ToString() ?? "null";
+								}
+								if (rawY is JsonElement ryJe)
+								{
+									rawYType = $"JsonElement({ryJe.ValueKind})";
+									rawYPreview = ryJe.ValueKind == JsonValueKind.String ? ryJe.GetString() ?? "<str>" : ryJe.ToString();
+								}
+								else
+								{
+									rawYType = rawY == null ? "null" : rawY.GetType().Name;
+									rawYPreview = rawY?.ToString() ?? "null";
+								}
+								string resolvedTargetPresent = (resolvedTargets != null && resolvedTargets.ContainsKey(tIdx)) ? "yes" : "no";
+								string fixtureKeyHint = "(none)";
+								try { if (t.Fixture != null) fixtureKeyHint = $"{t.Fixture.Type}:{t.Fixture.Index}"; } catch { }
+
+								if ((rawX is JsonElement rxs && rxs.ValueKind == JsonValueKind.String && (rxs.GetString() ?? "").StartsWith("$")) ||
+									(rawY is JsonElement rys && rys.ValueKind == JsonValueKind.String && (rys.GetString() ?? "").StartsWith("$")))
+									reason = "translation X/Y unresolved: contains parameter/expression";
+								else if ((rawX is string sx && sx.StartsWith("$")) || (rawY is string sy && sy.StartsWith("$")))
+									reason = "translation X/Y unresolved: contains parameter/expression";
+								else
+									reason = $"translation X/Y unresolved: raw=[{rawXPreview},{rawYPreview}] types=[{rawXType},{rawYType}] dxOk={dxOk} dyOk={dyOk} dx={(dxOk ? dxVal.ToString("F3") : "n/a")} dy={(dyOk ? dyVal.ToString("F3") : "n/a")} resolverTarget={resolvedTargetPresent} fixtureKey={fixtureKeyHint}";
+							}
+							catch
+							{
+								// fallback
+								reason = "translation X/Y unresolved (could not inspect raw values)";
+							}
+						}
+
+						log?.Invoke($"Target[{tIdx}] not plotted: {reason} ({desc}).");
+					}
+					catch { /* best-effort logging only */ }
 				}
 			}
 
-			// add module series (only those with points)
-			foreach (var ms in moduleSeries.Values)
-				if (ms.Points.Count > 0) pm.Series.Add(ms);
+			// NEW: ensure module series are added to the PlotModel so targets are visible and appear in legend
+			try
+			{
+				foreach (var kv in moduleSeries)
+				{
+					var ms = kv.Value;
+					// add series only if it has points (avoid cluttering legend with empty series)
+					if (ms.Points != null && ms.Points.Count > 0)
+					{
+						pm.Series.Add(ms);
+					}
+				}
+			}
+			catch
+			{
+				// best-effort: do not break plotting if adding fails
+			}
 
 			 // Compute plotted data extents so we can choose a sensible initial view.
 			// Default requirement: origin at lower-left and X span should show 9 meters.
@@ -1358,6 +1684,7 @@ public static class PlotHelper
 				{
 					var v = propMarker.GetValue(series);
 					if (v is OxyColor mv) markerFill = mv;
+					else markerFill = null;
 				}
 				catch { /* ignore */ }
 			}
@@ -1368,6 +1695,7 @@ public static class PlotHelper
 				{
 					var v = propColor.GetValue(series);
 					if (v is OxyColor cv) color = cv;
+					else color = null;
 				}
 				catch { /* ignore */ }
 			}

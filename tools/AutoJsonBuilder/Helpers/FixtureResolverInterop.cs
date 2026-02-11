@@ -132,6 +132,65 @@ internal static class FixtureResolverInterop
 		}
 	}
 
+	// New: evaluate a single AutoExpr expression (JSON input {"expr": "...", "params": {...}}).
+	// This follows the same JVM/classpath interop pattern used by Resolve(...) so Java runs on the classpath
+	// rather than spawning a different jar directly inside PlotHelper.
+	public static string? EvaluateExpression(string inputJson, int timeoutMs = 1000)
+	{
+		// Only classpath-based JVM invocation (no local jar fallback, no reflection).
+		if (string.IsNullOrWhiteSpace(inputJson)) return null;
+		try
+		{
+			var javaExe = GetJavaExecutable();
+			if (string.IsNullOrWhiteSpace(javaExe)) return null;
+
+			var classpath = FindFixtureResolverClasspath();
+			if (string.IsNullOrWhiteSpace(classpath)) return null;
+
+			var psi = new ProcessStartInfo
+			{
+				FileName = javaExe,
+				Arguments = $"-cp \"{classpath}\" frc.robot.auto.AutoExprCli",
+				UseShellExecute = false,
+				RedirectStandardInput = true,
+				RedirectStandardOutput = true,
+				RedirectStandardError = true,
+				CreateNoWindow = true,
+				StandardOutputEncoding = Encoding.UTF8,
+				StandardErrorEncoding = Encoding.UTF8,
+				WorkingDirectory = AppContext.BaseDirectory ?? "."
+			};
+
+			using var proc = Process.Start(psi);
+			if (proc == null) return null;
+
+			var outTask = proc.StandardOutput.ReadToEndAsync();
+			var errTask = proc.StandardError.ReadToEndAsync();
+
+			// send input and close stdin so AutoExprCli single-shot mode runs and exits
+			proc.StandardInput.Write(inputJson);
+			proc.StandardInput.Close();
+
+			if (!proc.WaitForExit(timeoutMs))
+			{
+				try { proc.Kill(true); } catch { }
+				return null;
+			}
+
+			var stdout = outTask.Result;
+			var stderr = errTask.Result;
+			if (!string.IsNullOrWhiteSpace(stderr))
+			{
+				Debug.WriteLine($"AutoExpr stderr: {stderr.Trim()}");
+			}
+			return string.IsNullOrWhiteSpace(stdout) ? null : stdout.Trim();
+		}
+		catch
+		{
+			return null;
+		}
+	}
+
 	// No persistent server support — always invoke ResolvedFixtureDump per request (no fallback).
 
 	// Try to find classpath using same project layout heuristics as AutoExprInterop

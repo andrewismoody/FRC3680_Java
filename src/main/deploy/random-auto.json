@@ -1,1 +1,399 @@
-{"season":"SE8504","version":"1","description":"Random auto doc seed=859675986","params":{"fieldSize":[690,317],"fieldCenter":["$fieldSize.X / 2","$fieldSize.Y / 2"],"frameSize":[24,24],"frameCenter":["$frameSize.X / 2","$frameSize.Y / 2"],"bumperWidth":0,"startArea":[90,30],"redStartTranslation":["$fieldCenter.X","$fieldCenter.Y",0],"redStartRotation":[0,0,180],"extraParam0":18.92733509602367,"extraParam1":9.291481231009346,"extraParam2":39.067660290313725,"exprParam":"$fieldSize.X / 3"},"poses":[{"name":"pose1","group":"g1","location":"locA","index":0,"position":"pos1","action":"act1"},{"name":"pose2","group":"g1","location":"locA","index":1,"position":"pos1","action":"act1"},{"name":"pose3","group":"g1","location":"locA","index":2,"position":"pos1","action":"act1"}],"groups":["g1","g2"],"modules":["drive"],"travelGroups":[],"locations":["locA"],"positions":["pos1","pos2"],"actions":["act1"],"events":[{"name":"evtAwait1","type":"await","parallel":false,"pose":"pose1","milliseconds":null,"triggerType":null,"triggerValue":null,"triggerModule":null,"triggerInvert":false},{"name":"evtAwait2","type":"await","parallel":true,"pose":"pose2","milliseconds":null,"triggerType":null,"triggerValue":null,"triggerModule":null,"triggerInvert":false},{"name":"evtTime1","type":"time","parallel":false,"pose":null,"milliseconds":500,"triggerType":"boolean","triggerValue":true,"triggerModule":"drive","triggerInvert":false}],"targets":[{"module":"","group":null,"location":null,"index":null,"position":null,"action":null,"measurement":12.34,"state":null,"translation":null,"fixture":null,"lookAtTranslation":null,"lookAtFixture":null},{"module":"drive","group":null,"location":null,"index":null,"position":null,"action":null,"measurement":null,"state":"IDLE","translation":null,"fixture":null,"lookAtTranslation":null,"lookAtFixture":null},{"module":"drive","group":null,"location":null,"index":null,"position":null,"action":null,"measurement":null,"state":null,"translation":{"position":[120,60,0],"positionUnits":"inches","rotation":180,"rotationUnits":"degrees"},"fixture":null,"lookAtTranslation":null,"lookAtFixture":null},{"module":"arm","group":null,"location":null,"index":null,"position":null,"action":null,"measurement":null,"state":null,"translation":{"position":["$fieldCenter.X","$fieldCenter.Y",0],"positionUnits":"m","rotation":null,"rotationUnits":null},"fixture":null,"lookAtTranslation":null,"lookAtFixture":null},{"module":"drive","group":null,"location":null,"index":null,"position":null,"action":null,"measurement":null,"state":null,"translation":null,"fixture":{"type":"fixtureType0","index":0},"lookAtTranslation":null,"lookAtFixture":null},{"module":"drive","group":null,"location":null,"index":null,"position":null,"action":null,"measurement":null,"state":null,"translation":{"position":[10,20,0],"positionUnits":"inches","rotation":null,"rotationUnits":null},"fixture":null,"lookAtTranslation":{"position":[0,0,0],"positionUnits":"inches","rotation":null,"rotationUnits":null},"lookAtFixture":null},{"module":"drive","group":null,"location":null,"index":null,"position":null,"action":null,"measurement":null,"state":null,"translation":{"position":[30,40,0],"positionUnits":"inches","rotation":null,"rotationUnits":null},"fixture":null,"lookAtTranslation":null,"lookAtFixture":{"type":"fixtureType1","index":1}}],"fixtures":[{"type":"fixtureType0","index":0,"translation":{"position":[0,0,0],"positionUnits":"inches","rotation":90,"rotationUnits":"degrees"},"derivedFrom":null},{"type":"fixtureType1","index":1,"translation":{"position":[10,5,0],"positionUnits":"m","rotation":null,"rotationUnits":null},"derivedFrom":null},{"type":"fixtureType0","index":2,"translation":{"position":[20,10,0],"positionUnits":"inches","rotation":null,"rotationUnits":null},"derivedFrom":null},{"type":"fixtureType1","index":3,"translation":{"position":[30,15,0],"positionUnits":"m","rotation":90,"rotationUnits":"degrees"},"derivedFrom":null}],"sequences":[{"name":"seqAll","start1":["evtAwait1"],"start2":["evtAwait2"],"start3":null,"events":["evtAwait1","evtTime1","evtAwait2"]},{"name":"seqSimple","start1":null,"start2":null,"start3":null,"events":["evtTime1"]}]}
+{
+  "season": "SE8504",
+  "version": "1",
+  "description": "Random auto doc seed=859675986",
+  "params": {
+    "fieldSize": [
+      690,
+      317
+    ],
+    "fieldCenter": [
+      "$fieldSize.X / 2",
+      "$fieldSize.Y / 2"
+    ],
+    "frameSize": [
+      24,
+      24
+    ],
+    "frameCenter": [
+      "$frameSize.X / 2",
+      "$frameSize.Y / 2"
+    ],
+    "bumperWidth": 0,
+    "startArea": [
+      90,
+      30
+    ],
+    "redStartTranslation": [
+      "$fieldCenter.X",
+      "$fieldCenter.Y",
+      0
+    ],
+    "redStartRotation": [
+      0,
+      0,
+      180
+    ],
+    "extraParam0": 18.92733509602367,
+    "extraParam1": 9.291481231009346,
+    "extraParam2": 39.067660290313725,
+    "exprParam": "$fieldSize.X / 3",
+    "robotSize": [
+      "$frameSize.X \u002B $bumperWidth * 2",
+      "$frameSize.Y \u002B $bumperWidth * 2"
+    ],
+    "robotCenter": [
+      "$robotSize.X / 2",
+      "$robotSize.Y / 2"
+    ],
+    "startPadding": 0,
+    "robotOffset": [
+      "$robotCenter.X \u002B $startPadding",
+      "$robotCenter.Y \u002B $startPadding * 2"
+    ],
+    "blueStartY1": 0,
+    "blueStartY2": 0,
+    "blueStartY3": 0,
+    "blueStartPosition": [
+      "$fieldCenter.X - $startArea.X \u002B ($frameSize.X/2 \u002B $bumperWidth/2 \u002B (($startArea.X/2 - ($frameSize.X/2 \u002B $bumperWidth/2)) ) )",
+      "$fieldCenter.Y"
+    ]
+  },
+  "poses": [
+    {
+      "name": "pose1",
+      "group": "g1",
+      "location": "locA",
+      "index": 0,
+      "position": "pos1",
+      "action": "act1"
+    },
+    {
+      "name": "pose2",
+      "group": "g1",
+      "location": "locA",
+      "index": 1,
+      "position": "pos1",
+      "action": "act1"
+    },
+    {
+      "name": "pose3",
+      "group": "g1",
+      "location": "locA",
+      "index": 2,
+      "position": "pos1",
+      "action": "act1"
+    }
+  ],
+  "groups": [
+    "g1",
+    "g2"
+  ],
+  "modules": [
+    "drive",
+    "arm"
+  ],
+  "travelGroups": [],
+  "locations": [
+    "locA"
+  ],
+  "positions": [
+    "pos1",
+    "pos2"
+  ],
+  "actions": [
+    "act1"
+  ],
+  "events": [
+    {
+      "name": "evtAwait1",
+      "type": "await",
+      "parallel": false,
+      "pose": "pose1",
+      "milliseconds": null,
+      "triggerType": null,
+      "triggerValue": null,
+      "triggerModule": null,
+      "triggerInvert": false
+    },
+    {
+      "name": "evtAwait2",
+      "type": "await",
+      "parallel": true,
+      "pose": "pose2",
+      "milliseconds": null,
+      "triggerType": null,
+      "triggerValue": null,
+      "triggerModule": null,
+      "triggerInvert": false
+    },
+    {
+      "name": "evtTime1",
+      "type": "time",
+      "parallel": false,
+      "pose": null,
+      "milliseconds": 500,
+      "triggerType": "boolean",
+      "triggerValue": true,
+      "triggerModule": "drive",
+      "triggerInvert": false
+    }
+  ],
+  "targets": [
+    {
+      "module": "",
+      "group": null,
+      "location": null,
+      "index": null,
+      "position": null,
+      "action": null,
+      "measurement": 12.34,
+      "state": null,
+      "translation": {
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "positionUnits": "inches",
+        "rotation": null,
+        "rotationUnits": "degrees"
+      },
+      "fixture": null,
+      "lookAtTranslation": null,
+      "lookAtFixture": null
+    },
+    {
+      "module": "drive",
+      "group": null,
+      "location": null,
+      "index": null,
+      "position": null,
+      "action": null,
+      "measurement": null,
+      "state": "IDLE",
+      "translation": {
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "positionUnits": "inches",
+        "rotation": null,
+        "rotationUnits": "degrees"
+      },
+      "fixture": null,
+      "lookAtTranslation": null,
+      "lookAtFixture": null
+    },
+    {
+      "module": "drive",
+      "group": null,
+      "location": null,
+      "index": null,
+      "position": null,
+      "action": null,
+      "measurement": null,
+      "state": null,
+      "translation": {
+        "position": [
+          120,
+          60,
+          0
+        ],
+        "positionUnits": "inches",
+        "rotation": 180,
+        "rotationUnits": "degrees"
+      },
+      "fixture": null,
+      "lookAtTranslation": null,
+      "lookAtFixture": null
+    },
+    {
+      "module": "arm",
+      "group": null,
+      "location": null,
+      "index": null,
+      "position": null,
+      "action": null,
+      "measurement": null,
+      "state": null,
+      "translation": {
+        "position": [
+          "$fieldCenter.X",
+          "$fieldCenter.Y",
+          0
+        ],
+        "positionUnits": "m",
+        "rotation": null,
+        "rotationUnits": null
+      },
+      "fixture": null,
+      "lookAtTranslation": null,
+      "lookAtFixture": null
+    },
+    {
+      "module": "drive",
+      "group": null,
+      "location": null,
+      "index": null,
+      "position": null,
+      "action": null,
+      "measurement": null,
+      "state": null,
+      "translation": null,
+      "fixture": {
+        "type": "fixtureType0",
+        "index": 0
+      },
+      "lookAtTranslation": null,
+      "lookAtFixture": null
+    },
+    {
+      "module": "drive",
+      "group": null,
+      "location": null,
+      "index": null,
+      "position": null,
+      "action": null,
+      "measurement": null,
+      "state": null,
+      "translation": {
+        "position": [
+          10,
+          20,
+          0
+        ],
+        "positionUnits": "inches",
+        "rotation": null,
+        "rotationUnits": null
+      },
+      "fixture": null,
+      "lookAtTranslation": {
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "positionUnits": "inches",
+        "rotation": null,
+        "rotationUnits": null
+      },
+      "lookAtFixture": null
+    },
+    {
+      "module": "drive",
+      "group": null,
+      "location": null,
+      "index": null,
+      "position": null,
+      "action": null,
+      "measurement": null,
+      "state": null,
+      "translation": {
+        "position": [
+          30,
+          40,
+          0
+        ],
+        "positionUnits": "inches",
+        "rotation": null,
+        "rotationUnits": null
+      },
+      "fixture": null,
+      "lookAtTranslation": null,
+      "lookAtFixture": {
+        "type": "fixtureType1",
+        "index": 1
+      }
+    }
+  ],
+  "fixtures": [
+    {
+      "type": "fixtureType0",
+      "index": 0,
+      "translation": {
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "positionUnits": "inches",
+        "rotation": 90,
+        "rotationUnits": "degrees"
+      },
+      "derivedFrom": null
+    },
+    {
+      "type": "fixtureType1",
+      "index": 1,
+      "translation": {
+        "position": [
+          10,
+          5,
+          0
+        ],
+        "positionUnits": "m",
+        "rotation": null,
+        "rotationUnits": null
+      },
+      "derivedFrom": null
+    },
+    {
+      "type": "fixtureType0",
+      "index": 2,
+      "translation": {
+        "position": [
+          20,
+          10,
+          0
+        ],
+        "positionUnits": "inches",
+        "rotation": null,
+        "rotationUnits": null
+      },
+      "derivedFrom": null
+    },
+    {
+      "type": "fixtureType1",
+      "index": 3,
+      "translation": {
+        "position": [
+          30,
+          15,
+          0
+        ],
+        "positionUnits": "m",
+        "rotation": 90,
+        "rotationUnits": "degrees"
+      },
+      "derivedFrom": null
+    }
+  ],
+  "sequences": [
+    {
+      "name": "seqAll",
+      "start1": [
+        "evtAwait1"
+      ],
+      "start2": [
+        "evtAwait2"
+      ],
+      "start3": [],
+      "events": [
+        "evtAwait1",
+        "evtTime1",
+        "evtAwait2"
+      ]
+    },
+    {
+      "name": "seqSimple",
+      "start1": [],
+      "start2": [],
+      "start3": [],
+      "events": [
+        "evtTime1"
+      ]
+    }
+  ]
+}

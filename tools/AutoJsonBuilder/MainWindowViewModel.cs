@@ -78,6 +78,10 @@ public sealed class MainWindowViewModel : NotifyBase
     private readonly Dictionary<string, (double x, double y, double z, double? rot)> _resolvedFixturePositions
         = new(StringComparer.OrdinalIgnoreCase);
 
+    // NEW: resolved target positions keyed by target array index -> (x,y,z,rotation?)
+    private readonly Dictionary<int, (double x, double y, double z, double? rot)> _resolvedTargetPositions
+        = new();
+
     // Series filter collection bound to the UI dropdown
     public ObservableCollection<SeriesFilterItem> SeriesFilters { get; } = new();
 
@@ -124,6 +128,34 @@ public sealed class MainWindowViewModel : NotifyBase
         {
             if (raw is null) return false;
 
+            // Handle JsonElement values left by System.Text.Json deserialization
+            if (raw is JsonElement je)
+            {
+                switch (je.ValueKind)
+                {
+                    case JsonValueKind.Number:
+                        if (je.TryGetDouble(out var d))
+                        {
+                            value = d;
+                            return true;
+                        }
+                        break;
+                    case JsonValueKind.String:
+                        var sje = je.GetString();
+                        if (!string.IsNullOrEmpty(sje) && double.TryParse(sje, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var parsedJe))
+                        {
+                            value = parsedJe;
+                            return true;
+                        }
+                        // fall through to string-handling below
+                        raw = sje;
+                        break;
+                    case JsonValueKind.Null:
+                        return false;
+                    // arrays/objects fall through to best-effort handling below (likely unresolved)
+                }
+            }
+
             // unwrap nullable numeric (boxed)
             switch (raw)
             {
@@ -141,18 +173,58 @@ public sealed class MainWindowViewModel : NotifyBase
                     return false; // don't coerce booleans
             }
 
-            // string: numeric literal or param key
-            if (raw is string s)
+            // string: numeric literal or param key or expression -> delegate to Java interop when non-numeric
+            if (raw is string str)
             {
-                if (double.TryParse(s, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var parsed))
+                // numeric literal?
+                if (double.TryParse(str, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var parsed))
                 {
                     value = parsed; return true;
                 }
-                // look up evaluated params / values
-                if (_evaluatedLookup.TryGetValue(s, out var ev))
+
+                // If a param key exists and is already numeric, return it directly.
+                if (_evaluatedLookup.TryGetValue(str, out var ev))
                 {
-                    return TryResolveDoubleFromObject(ev, out value);
+                    if (ev is double dd) { value = dd; return true; }
+                    if (ev is float ff) { value = Convert.ToDouble(ff); return true; }
+                    if (ev is int ii) { value = Convert.ToDouble(ii); return true; }
+                    if (ev is long ll) { value = Convert.ToDouble(ll); return true; }
+                    // If the param value is a string (expression) prefer evaluating that via Java interop
+                    if (ev is string eset)
+                    {
+                        str = eset;
+                    }
+                    // otherwise fall through and treat original 'str' as expression to send to Java
                 }
+
+                // Build JSON payload for AutoExpr: { "expr": "<expr>", "params": { ... } }
+                try
+                {
+                    var payload = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase)
+                    {
+                        ["expr"] = str,
+                        ["params"] = _evaluatedLookup ?? new Dictionary<string, object?>()
+                    };
+                    var options = new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase, DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull };
+                    var inputJson = JsonSerializer.Serialize(payload, options);
+
+                    // Use the interop (classpath JVM). Allow a bit more time for JVM startup.
+                    var resp = FixtureResolverInterop.EvaluateExpression(inputJson, timeoutMs: 2000);
+                    if (!string.IsNullOrWhiteSpace(resp))
+                    {
+                        using var jd = JsonDocument.Parse(resp);
+                        if (jd.RootElement.TryGetProperty("value", out var vEl) && vEl.ValueKind == JsonValueKind.Number && vEl.TryGetDouble(out var dv))
+                        {
+                            value = dv;
+                            return true;
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Log($"TryResolveDoubleFromObject: EvaluateExpression failed: {ex.Message}");
+                }
+
                 return false;
             }
 
@@ -163,6 +235,21 @@ public sealed class MainWindowViewModel : NotifyBase
             {
                 var inner = rawProp.GetValue(raw);
                 return TryResolveDoubleFromObject(inner, out value);
+            }
+
+            // Best-effort: if it's an IEnumerable<object> prefer first numeric element
+            if (raw is System.Collections.IEnumerable ie)
+            {
+                foreach (var el in ie)
+                {
+                    if (TryResolveDoubleFromObject(el, out var v))
+                    {
+                        value = v;
+                        return true;
+                    }
+                    // only try the first few items minimally
+                    break;
+                }
             }
         }
         catch { /* best-effort */ }
@@ -193,59 +280,7 @@ public sealed class MainWindowViewModel : NotifyBase
         return false;
     }
 
-    // New helpers: unit conversion and rotation normalization used for plotting translations.
-    private static double ConvertLengthToMeters(double value, string? units)
-    {
-        if (string.IsNullOrWhiteSpace(units)) return value * 0.0254; // default inches -> meters
-        var u = units.Trim().ToLowerInvariant();
-        if (u == "m" || u == "meter" || u == "meters" || u == "metre" || u == "metres") return value;
-        if (u == "in" || u == "inch" || u == "inches") return value * 0.0254;
-        if (u == "ft" || u == "foot" || u == "feet") return value * 0.3048;
-        // unknown => treat as inches for backwards compatibility
-        return value * 0.0254;
-    }
-
-    private static double? NormalizeRotationToDegrees(double? value, string? units)
-    {
-        if (value == null) return null;
-        if (string.IsNullOrWhiteSpace(units)) return value * 180.0 / Math.PI; // assume radians if not specified
-        var u = units.Trim().ToLowerInvariant();
-        if (u.Contains("deg")) return value;
-        // otherwise assume radians
-        return value * 180.0 / Math.PI;
-    }
-
-    // Rebuild the PlotModel from current _doc fixtures and targets. Groups fixtures by Type and plots XY points.
-    private void UpdatePlotModel()
-    {
-        try
-        {
-            // Ensure evaluated params/local lookup is fresh for any NumberOrParam translation values.
-            try { EvaluateParamsOnly(); } catch { /* best-effort */ }
-
-            // ensure fixture resolution is up-to-date before plotting.
-            try { ResolveFixturesOnly(); } catch { /* best-effort */ }
-
-            // Delegate to helper that constructs the full PlotModel. Helper returns a PlotModel and accepts a log callback.
-            var pm = PlotHelper.BuildFieldPlot(_doc, _evaluatedLookup, _resolvedFixturePositions, _palette, Log);
-            FieldPlotModel = pm;
-
-            // Refresh the SeriesFilters UI so user can show/hide series
-            RefreshSeriesFilters(pm);
-        }
-        catch (Exception ex)
-        {
-            Log($"UpdatePlotModel failed: {ex.Message}");
-        }
-    }
-
-    // No-op ResolveFixturePositions: resolution is performed by the external Java resolver (EvaluateAllExpressions).
-    // Keep this method so callers (UpdatePlotModel) can call it safely without duplicating logic in C#.
-    private void ResolveFixturePositions()
-    {
-        // intentionally empty — _resolvedFixturePositions is populated by EvaluateAllExpressions via FixtureResolverInterop.Resolve.
-    }
-
+    // Re-add EvaluateParamsOnly (was accidentally removed) -----------------------------------------
     // Populate _evaluatedLookup from _doc.Params (best-effort, local conversion).
     // Used by tree building / UI editor options. This intentionally does NOT run external Java.
     private void EvaluateParamsOnly()
@@ -305,12 +340,63 @@ public sealed class MainWindowViewModel : NotifyBase
             Log($"EvaluateParamsOnly failed: {ex.Message}");
         }
     }
+    // -----------------------------------------------------------------------------------------------
+
+    // New helpers: unit conversion and rotation normalization used for plotting translations.
+    private static double ConvertLengthToMeters(double value, string? units)
+    {
+        if (string.IsNullOrWhiteSpace(units)) return value * 0.0254; // default inches -> meters
+        var u = units.Trim().ToLowerInvariant();
+        if (u == "m" || u == "meter" || u == "meters" || u == "metre" || u == "metres") return value;
+        if (u == "in" || u == "inch" || u == "inches") return value * 0.0254;
+        if (u == "ft" || u == "foot" || u == "feet") return value * 0.3048;
+        // unknown => treat as inches for backwards compatibility
+        return value * 0.0254;
+    }
+
+    private static double? NormalizeRotationToDegrees(double? value, string? units)
+    {
+        if (value == null) return null;
+        if (string.IsNullOrWhiteSpace(units)) return value * 180.0 / Math.PI; // assume radians if not specified
+        var u = units.Trim().ToLowerInvariant();
+        if (u.Contains("deg")) return value;
+        // otherwise assume radians
+        return value * 180.0 / Math.PI;
+    }
+
+    // Rebuild the PlotModel from current _doc fixtures and targets. Groups fixtures by Type and plots XY points.
+    private void UpdatePlotModel()
+    {
+        try
+        {
+            // Ensure evaluated params/local lookup is fresh for any NumberOrParam translation values.
+            try { EvaluateParamsOnly(); } catch { /* best-effort */ }
+
+            // ensure fixture resolution is up-to-date before plotting.
+            try { ResolveFixturesOnly(); } catch { /* best-effort */ }
+
+            // NEW: log per-target eligibility (why some targets may not be plotted)
+            try { LogTargetPlotEligibility(); } catch { /* best-effort */ }
+
+            // Delegate to helper that constructs the full PlotModel. Helper returns a PlotModel and accepts a log callback.
+            var pm = PlotHelper.BuildFieldPlot(_doc, _evaluatedLookup, _resolvedFixturePositions, _resolvedTargetPositions, _palette, Log);
+            FieldPlotModel = pm;
+
+            // Refresh the SeriesFilters UI so user can show/hide series
+            RefreshSeriesFilters(pm);
+        }
+        catch (Exception ex)
+        {
+            Log($"UpdatePlotModel failed: {ex.Message}");
+        }
+    }
 
     // Resolve fixtures using the Java ResolvedFixtureDump (or other configured interop).
     // Populates _resolvedFixturePositions used exclusively by plotting code.
     private void ResolveFixturesOnly()
     {
         _resolvedFixturePositions.Clear();
+        _resolvedTargetPositions.Clear(); // NEW: clear previous resolved targets
         try
         {
             string? outputJson = null;
@@ -319,8 +405,87 @@ public sealed class MainWindowViewModel : NotifyBase
             if (!string.IsNullOrWhiteSpace(CurrentJsonPath))
             {
                 Log($"ResolveFixturesOnly: attempting ResolveFromFile('{CurrentJsonPath}')");
-                outputJson = FixtureResolverInterop.ResolveFromFile(CurrentJsonPath);
-                if (string.IsNullOrWhiteSpace(outputJson))
+                var fileOutput = FixtureResolverInterop.ResolveFromFile(CurrentJsonPath);
+                // Diagnostic: log whether ResolveFromFile produced any output and its size
+                if (string.IsNullOrWhiteSpace(fileOutput))
+                {
+                    Log("ResolveFixturesOnly: ResolveFromFile returned empty/null output.");
+                }
+                else
+                {
+                    Log($"ResolveFixturesOnly: ResolveFromFile returned {fileOutput.Length} bytes.");
+                }
+                if (!string.IsNullOrWhiteSpace(fileOutput))
+                {
+                    // If ResolveFromFile produced output, examine whether it contains resolved 'targets'.
+                    // If it does not, prefer asking the Java evaluator to process the full in-memory document
+                    // so that targets are evaluated the same way fixtures are.
+                    try
+                    {
+                        using var pf = JsonDocument.Parse(fileOutput);
+                        var myroot = pf.RootElement;
+                        var hasTargets = myroot.TryGetProperty("targets", out var tEl) && tEl.ValueKind == JsonValueKind.Array && tEl.GetArrayLength() > 0;
+                        Log($"ResolveFixturesOnly: ResolveFromFile contains 'targets' = {hasTargets}.");
+                        if (hasTargets)
+                        {
+                            outputJson = fileOutput;
+                        }
+                        else
+                        {
+                            // Fall back to in-memory Resolve which sends the full document (fixtures + targets) to the evaluator.
+                            var docJson = JsonHelper.SerializeCamel(_doc);
+                            Log("ResolveFixturesOnly: resolver file output missing 'targets' — calling Resolve(in-memory) to evaluate targets.");
+                            var memOutput = FixtureResolverInterop.Resolve(docJson);
+                            if (string.IsNullOrWhiteSpace(memOutput))
+                                Log("ResolveFixturesOnly: Resolve(in-memory) returned empty/null output.");
+                            else
+                                Log($"ResolveFixturesOnly: Resolve(in-memory) returned {memOutput.Length} bytes.");
+                            if (!string.IsNullOrWhiteSpace(memOutput))
+                            {
+                                // prefer memOutput if it contains targets, else keep fileOutput
+                                try
+                                {
+                                    using var pm = JsonDocument.Parse(memOutput);
+                                    var mroot = pm.RootElement;
+                                    var memHasTargets = mroot.TryGetProperty("targets", out var mtEl) && mtEl.ValueKind == JsonValueKind.Array && mtEl.GetArrayLength() > 0;
+                                    Log($"ResolveFixturesOnly: Resolve(in-memory) contains 'targets' = {memHasTargets}.");
+                                    if (memHasTargets)
+                                    {
+                                        outputJson = memOutput;
+                                    }
+                                    else
+                                    {
+                                        // neither contains targets: fall back to fileOutput (best-effort)
+                                        outputJson = fileOutput;
+                                    }
+                                }
+                                catch
+                                {
+                                    // parse failed: keep fileOutput
+                                    outputJson = fileOutput;
+                                }
+                            }
+                            else
+                            {
+                                // memOutput empty: fall back to fileOutput
+                                outputJson = fileOutput;
+                            }
+                        }
+                    }
+                    catch
+                    {
+                        // If parsing fileOutput failed for any reason, fall back to trying in-memory resolve
+                        var docJson = JsonHelper.SerializeCamel(_doc);
+                        outputJson = FixtureResolverInterop.Resolve(docJson);
+                        Log($"ResolveFixturesOnly: fallback Resolve(in-memory) returned {(outputJson == null ? "null/empty" : outputJson.Length.ToString() + " bytes")}.");
+                        if (string.IsNullOrWhiteSpace(outputJson))
+                        {
+                            // final fallback to raw file output even if unparsed
+                            outputJson = fileOutput;
+                        }
+                    }
+                }
+                else
                 {
                     Log($"ResolveFixturesOnly: ResolveFromFile failed for '{CurrentJsonPath}', falling back to in-memory JSON");
                 }
@@ -332,8 +497,32 @@ public sealed class MainWindowViewModel : NotifyBase
                 // use helper to produce camel-case JSON
                 var docJson = JsonHelper.SerializeCamel(_doc);
                 outputJson = FixtureResolverInterop.Resolve(docJson);
+                Log($"ResolveFixturesOnly: final Resolve(in-memory) returned {(outputJson == null ? "null/empty" : outputJson.Length.ToString() + " bytes")}.");
             }
             if (string.IsNullOrWhiteSpace(outputJson)) return;
+
+            // Diagnostic: record whether the final output contains targets before parsing
+            try
+            {
+                using var quickCheck = JsonDocument.Parse(outputJson);
+                var hasTargetsFinal = quickCheck.RootElement.TryGetProperty("targets", out var tt) && tt.ValueKind == JsonValueKind.Array && tt.GetArrayLength() > 0;
+                Log($"ResolveFixturesOnly: final resolver output contains 'targets' = {hasTargetsFinal}.");
+                if (!hasTargetsFinal)
+                {
+                    // persist the output for offline inspection (best-effort)
+                    try
+                    {
+                        var dbgPath = Path.Combine(AppContext.BaseDirectory, "resolver-last-output.json");
+                        File.WriteAllText(dbgPath, outputJson);
+                        Log($"ResolveFixturesOnly: dumped resolver output to '{dbgPath}' for inspection.");
+                    }
+                    catch { /* ignore disk failures */ }
+                }
+            }
+            catch (Exception ex)
+            {
+                Log($"ResolveFixturesOnly: failed quick-check parse of resolver output: {ex.Message}");
+            }
 
             using var doc = JsonDocument.Parse(outputJson);
             var root = doc.RootElement;
@@ -409,6 +598,93 @@ public sealed class MainWindowViewModel : NotifyBase
                         }
                         catch { /* skip malformed entry */ }
                     }
+                }
+            }
+
+            // --- NEW: parse targets array from resolver output (best-effort) ---
+            if (root.TryGetProperty("targets", out var targetsEl) && targetsEl.ValueKind == JsonValueKind.Array)
+            {
+                int idx = 0;
+                foreach (var tEl in targetsEl.EnumerateArray())
+                {
+                    try
+                    {
+                        double x = double.NaN, y = double.NaN, z = 0.0;
+                        double? rotDeg = null;
+                        bool found = false;
+
+                        // direct x/y at root of target element
+                        if (tEl.ValueKind == JsonValueKind.Object)
+                        {
+                            if (TryGetDouble(tEl, "x", out var tx) && TryGetDouble(tEl, "y", out var ty))
+                            {
+                                x = tx; y = ty; found = true;
+                                if (TryGetDouble(tEl, "z", out var tz)) z = tz;
+                                rotDeg = ReadRotationNormalizedToDegrees(tEl);
+                            }
+                            else if (tEl.TryGetProperty("translation", out var trEl) && trEl.ValueKind == JsonValueKind.Object)
+                            {
+                                // translation.position array [x,y,z] or fields x/y
+                                if (trEl.TryGetProperty("position", out var posEl) && posEl.ValueKind == JsonValueKind.Array && posEl.GetArrayLength() >= 2)
+                                {
+                                    // parse position[0], position[1], optional position[2]
+                                    bool px = false, py = false;
+                                    try
+                                    {
+                                        var p0 = posEl[0];
+                                        if (p0.ValueKind == JsonValueKind.Number && p0.TryGetDouble(out var dv0)) { x = dv0; px = true; }
+                                        else if (p0.ValueKind == JsonValueKind.String && double.TryParse(p0.GetString(), System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var sv0)) { x = sv0; px = true; }
+
+                                        var p1 = posEl[1];
+                                        if (p1.ValueKind == JsonValueKind.Number && p1.TryGetDouble(out var dv1)) { y = dv1; py = true; }
+                                        else if (p1.ValueKind == JsonValueKind.String && double.TryParse(p1.GetString(), System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var sv1)) { y = sv1; py = true; }
+
+                                        if (posEl.GetArrayLength() >= 3)
+                                        {
+                                            var p2 = posEl[2];
+                                            if (p2.ValueKind == JsonValueKind.Number && p2.TryGetDouble(out var dv2)) z = dv2;
+                                            else if (p2.ValueKind == JsonValueKind.String && double.TryParse(p2.GetString(), System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var sv2)) z = sv2;
+                                        }
+
+                                        if (px && py) found = true;
+                                    }
+                                    catch { /* ignore per-entry parse errors */ }
+                                }
+                                // fallback to x/y fields inside translation object
+                                if (!found && TryGetDouble(trEl, "x", out var tx2) && TryGetDouble(trEl, "y", out var ty2))
+                                {
+                                    x = tx2; y = ty2; found = true;
+                                    if (TryGetDouble(trEl, "z", out var tz2)) z = tz2;
+                                }
+                                rotDeg = ReadRotationNormalizedToDegrees(trEl);
+                            }
+                        }
+
+                        if (found)
+                        {
+                            _resolvedTargetPositions[idx] = (x, y, z, rotDeg);
+
+                            // inject numeric translation into in-memory _doc.Targets so PlotHelper sees numeric values.
+                            // Best-effort: only mutate when index maps to an existing target object.
+                            if (idx >= 0 && idx < _doc.Targets.Count)
+                            {
+                                try
+                                {
+                                    var existingTarget = _doc.Targets[idx];
+                                    existingTarget.Translation = new TranslationModel
+                                    {
+                                        Position = new System.Collections.Generic.List<object> { x, y, z },
+                                        PositionUnits = "m",
+                                        Rotation = rotDeg,
+                                        RotationUnits = rotDeg.HasValue ? "degrees" : null
+                                    };
+                                }
+                                catch { /* best-effort only */ }
+                            }
+                        }
+                    }
+                    catch { /* skip malformed target entry */ }
+                    idx++;
                 }
             }
         }
@@ -1460,6 +1736,121 @@ public sealed class MainWindowViewModel : NotifyBase
         catch
         {
             // tolerate failures; ordering is a nicety not critical
+        }
+    }
+
+    // Log reasons why individual targets may not be plotted (best-effort, non-throwing).
+    // Outputs concise messages to DebugLog via Log(...).
+    private void LogTargetPlotEligibility()
+    {
+        try
+        {
+            if (_doc?.Targets == null) return;
+            for (int i = 0; i < _doc.Targets.Count; i++)
+            {
+                var t = _doc.Targets[i];
+                if (t == null)
+                {
+                    Log($"Target[{i}] not plotted: null target entry.");
+                    continue;
+                }
+
+                // Build a short descriptor to help correlate messages with the UI list
+                string desc;
+                try
+                {
+                    var module = string.IsNullOrWhiteSpace(t.Module) ? "(no module)" : t.Module;
+                    if (t.Fixture != null)
+                        desc = $"module={module} fixture={t.Fixture.Type ?? "(type)"}:{t.Fixture.Index}";
+                    else if (t.Translation != null)
+                        desc = $"module={module} translation";
+                    else
+                        desc = $"module={module} (no location)";
+                }
+                catch { desc = $"target[{i}]"; }
+
+                // If no spatial location at all -> not plotted
+                if (t.Translation == null && t.Fixture == null)
+                {
+                    // However, if the resolver produced a target position for this index, note that.
+                    if (_resolvedTargetPositions.TryGetValue(i, out var rt))
+                    {
+                        Log($"Target[{i}] will be plotted using resolver result: x={rt.x}, y={rt.y} ({desc}).");
+                    }
+                    else
+                    {
+                        Log($"Target[{i}] not plotted: no translation or fixture ({desc}).");
+                    }
+                    continue;
+                }
+
+                // If fixture reference present, ensure resolver provided a position for its key
+                if (t.Fixture != null)
+                {
+                    try
+                    {
+                        var key = $"{t.Fixture.Type}:{t.Fixture.Index}";
+                        if (!_resolvedFixturePositions.ContainsKey(key))
+                        {
+                            Log($"Target[{i}] not plotted: fixture '{key}' missing from resolver output ({desc}). Ensure fixture resolver ran and keys match (type:index).");
+                        }
+                        // else resolved -> will be plotted (no log)
+                    }
+                    catch (Exception ex)
+                    {
+                        Log($"Target[{i}] fixture check failed: {ex.Message}");
+                    }
+                    continue;
+                }
+
+                // Translation present: verify X/Y can be resolved to numeric doubles
+                var tr = t.Translation;
+                if (tr == null)
+                {
+                    Log($"Target[{i}] not plotted: translation unexpectedly null ({desc}).");
+                    continue;
+                }
+
+                if (tr.Position == null || tr.Position.Count < 2)
+                {
+                    Log($"Target[{i}] not plotted: translation.position missing or too short ({desc}).");
+                    continue;
+                }
+
+                // Try to resolve the first two coordinates (best-effort, uses _evaluatedLookup)
+                if (!TryResolveDoubleFromObject(tr.Position[0], out var x) || !TryResolveDoubleFromObject(tr.Position[1], out var y))
+                {
+                    // If the resolver produced a numeric position for this target, prefer that and log accordingly
+                    if (_resolvedTargetPositions.TryGetValue(i, out var rt2))
+                    {
+                        Log($"Target[{i}] will be plotted using resolver result: x={rt2.x}, y={rt2.y} ({desc}).");
+                        continue;
+                    }
+
+                    // Provide hint if the values look like parameter expressions (strings starting with '$') or are non-numeric
+                    string hint = "";
+                    try
+                    {
+                        var rawX = tr.Position[0];
+                        var rawY = tr.Position[1];
+                        if ((rawX is string sx && sx.StartsWith("$")) || (rawY is string sy && sy.StartsWith("$")))
+                            hint = " (contains parameter/expression; ensure params evaluated or resolver ran)";
+                        else
+                            hint = $" (X/Y not numeric or unresolved: [{rawX}, {rawY}]) ";
+                    }
+                    catch { hint = " (could not analyze X/Y)"; }
+
+                    Log($"Target[{i}] not plotted: translation X/Y could not be resolved{hint} ({desc}).");
+                    continue;
+                }
+
+                // If we get here, X/Y are numeric and target should be plotted; no log needed.
+            }
+        }
+        catch (Exception ex)
+        {
+            // Never throw from diagnostic logging
+            Log($"LogTargetPlotEligibility failed: {ex.Message}");
         }
     }
 }
