@@ -70,6 +70,9 @@ public class Robot extends TimedRobot {
   final SparkFlex can_drive_rr = new SparkFlex(9, MotorType.kBrushless);
   final SparkMax can_steer_rr = new SparkMax(5, MotorType.kBrushless);
 
+  final SparkMax can_intake = new SparkMax(10, MotorType.kBrushless);
+  final SparkMax can_Shooter = new SparkMax(11, MotorType.kBrushless);
+
   // final SparkMax can_elev = new SparkMax(2, MotorType.kBrushless);
 
   final Relay pwm_slide = new Relay(0);
