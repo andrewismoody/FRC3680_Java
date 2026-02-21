@@ -17,11 +17,16 @@ public class Joystick {
     ModuleController modules, SwerveDriveModule swerveDriveModule, SingleActuatorModule slide
     // , SingleMotorModule elevator
     // , DualMotorModule grabber
+     , SingleMotorModule neoShooter
+     , SingleMotorModule redlineShooter
     ) {
     // TODO: need to move button mappings to preferences and initialize in game controller class
     
     m_controller.ClearAllRegistrations();
 
+    m_controller.RegisterBinaryButtonConsumer(ButtonName.TopButton, neoShooter::ApplyValue);
+    m_controller.RegisterBinaryButtonConsumer(ButtonName.BottomButton, redlineShooter::ApplyValue);
+    
     m_controller.RegisterBinaryButtonConsumer(ButtonName.LeftShoulderButton, slide::ApplyValue);
     m_controller.RegisterBinaryButtonConsumer(ButtonName.RightShoulderButton, slide::ApplyInverse);
 
