@@ -261,7 +261,7 @@ public class GameController {
         JoystickTypeNTEntry.setString(Type.toString());
     }
 
-    // TODO 1: this doesn't seem to interrupt motion (especially seektag) -make sure this doesn't break teleop after auto
+    //TODO 1: this doesn't seem to interrupt motion (especially seektag) -make sure this doesn't break teleop after auto
    public boolean getAnyButton() {
        // any binary pressed
        for (Map.Entry<ButtonName, java.util.function.Supplier<Boolean>> e : BinaryButtonSuppliers.entrySet()) {

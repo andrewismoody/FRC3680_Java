@@ -54,7 +54,8 @@ public class SwerveMotorModule {
   double angleEncSimFactor = 0.03;
   double driveEncSimRate = 3.0;
   double driveEncSimFactor = 9.0;
-  double encoderMultiplier = 1.0;
+  double steeringGearRatio = 1.0;
+  EncoderMountLocation encoderLocation;
 
   double floatTolerance;
 
@@ -74,7 +75,8 @@ public class SwerveMotorModule {
   boolean gaveUp = false;
 
   boolean invertDrive = false;
-  boolean invertRotation = false;
+  boolean invertRotationEncoder = false;
+  boolean invertRotationMotor = false;
 
   SwerveDriveModule driveModule;
   SwervePosition swervePosition;
@@ -86,7 +88,7 @@ public class SwerveMotorModule {
   private NetworkTableEntry encoderOffsetEntry;
   private NetworkTableEntry floatToleranceEntry;
   private NetworkTableEntry invertDriveEntry;
-  private NetworkTableEntry encoderMultiplierEntry;
+  private NetworkTableEntry steeringGearRatioEntry;
   private NetworkTableEntry invertRotationEntry;
   private NetworkTableEntry enableDecelCompEntry;
   private NetworkTableEntry enableGiveUpEntry;
@@ -101,7 +103,12 @@ public class SwerveMotorModule {
   boolean enableDecelComp = false;
   boolean enableGiveUp = false;
 
-  public SwerveMotorModule(Utility.SwervePosition SwervePosition, Translation2d Position, SwerveMotorDefinition MotorDefinition, double EncoderMultiplier, double FloatTolerance, boolean InvertRotation, boolean InvertDrive, double RotationOffset) {
+  public enum EncoderMountLocation {
+      BeforeGearbox,
+      AfterGearbox,
+  }
+
+  public SwerveMotorModule(Utility.SwervePosition SwervePosition, Translation2d Position, SwerveMotorDefinition MotorDefinition, double SteeringGearRatio, EncoderMountLocation EncoderLocation, double FloatTolerance, boolean InvertRotationEncoder, boolean InvertRotationMotor, boolean InvertDrive, double RotationOffset) {
     moduleID = SwervePosition.toString();
     swervePosition = SwervePosition;
 
@@ -115,22 +122,40 @@ public class SwerveMotorModule {
 
     rotationOffset = RotationOffset;
 
-    encoderMultiplier = EncoderMultiplier;
-    angleEncoder.setMultiplier(EncoderMultiplier);
+    steeringGearRatio = SteeringGearRatio;
+    encoderLocation = EncoderLocation;
+    switch (encoderLocation) {
+      case BeforeGearbox:
+        // encoder is mounted on motor side, so we need to account for gear ratio
+        angleEncoder.setMultiplier(1.0 / steeringGearRatio);
+        break;
+      case AfterGearbox:
+        // encoder is mounted on wheel side, so no multiplier needed
+        angleEncoder.setMultiplier(1.0);
+        break;
+    }
 
-    invertRotation = InvertRotation;
+    invertRotationEncoder = InvertRotationEncoder;
+    invertRotationMotor = InvertRotationMotor;
     // only invert real encoders, fake encoders don't invert because the inversion it match software to hardware behavior
-    if (rotatorMotor instanceof SparkMax)
+    if (rotatorMotor instanceof SparkMax) {
       // This sets encoder and motor inversion simultaneously, due to how Spark Max works.
       // Don't change it permanently, just set it now.
       // This won't affect other settings nor persist across power cycles, so swapping to a different configuration will be simple
-      ((SparkMax)rotatorMotor).configure(new SparkMaxConfig().inverted(invertRotation), ResetMode.kNoResetSafeParameters, PersistMode.kNoPersistParameters);
-    else {
-      // not used for absolute encoders - why?
-      angleEncoder.setReverseDirection(InvertRotation);
-      rotatorMotor.setInverted(InvertRotation);
-    }
+      System.out.printf("%s: setting inversion on controller\r\n", moduleID);
+      var config = new SparkMaxConfig();
+      if (angleEncoder.isAbsolute()) {
+        config.absoluteEncoder.inverted(invertRotationEncoder);
+      } else {
+        config.inverted(invertRotationEncoder);
+      }
 
+      ((SparkMax)rotatorMotor).configure(config, ResetMode.kNoResetSafeParameters, PersistMode.kNoPersistParameters);
+    } else {
+      // not used for absolute encoders - why?
+      angleEncoder.setReverseDirection(invertRotationEncoder);
+    }
+    rotatorMotor.setInverted(invertRotationMotor);
   }
 
   public SwervePosition GetSwervePosition() {
@@ -149,7 +174,7 @@ public class SwerveMotorModule {
     encoderOffsetEntry = myTable.getEntry("encoderOffset");
     floatToleranceEntry = myTable.getEntry("floatTolerance");
     invertDriveEntry = myTable.getEntry("invertDrive");
-    encoderMultiplierEntry = myTable.getEntry("encoderMultiplier");
+    steeringGearRatioEntry = myTable.getEntry("steeringGearRatio");
     invertRotationEntry = myTable.getEntry("invertRotation");
     enableDecelCompEntry = myTable.getEntry("enableDecelComp");
     enableGiveUpEntry = myTable.getEntry("enableGiveUp");
@@ -168,8 +193,8 @@ public class SwerveMotorModule {
     encoderOffsetEntry.setDouble(angleEncoder.getAngleOffsetRad());
     floatToleranceEntry.setDouble(floatTolerance);
     invertDriveEntry.setBoolean(invertDrive);
-    encoderMultiplierEntry.setDouble(encoderMultiplier);
-    invertRotationEntry.setBoolean(invertRotation);
+    steeringGearRatioEntry.setDouble(steeringGearRatio);
+    invertRotationEntry.setBoolean(invertRotationEncoder);
     enableDecelCompEntry.setBoolean(enableDecelComp);
     enableGiveUpEntry.setBoolean(enableGiveUp);
     pidSetpointsEntry.setString("kp: " + pidController.getP() + "; ki: " + pidController.getI() + "; kd: " + pidController.getD());
@@ -199,6 +224,7 @@ public class SwerveMotorModule {
     var kp = 0.333;
     var ki = 0; //kp * 0.1; // ki = 10% of kp
     var kd = 0; // ki * 3; // kd = 3 times ki
+
     pidController = new PIDController(kp, ki, kd);
     pidController.enableContinuousInput(-Math.PI, Math.PI);
     // pidController.setTolerance(floatTolerance);
@@ -219,23 +245,19 @@ public class SwerveMotorModule {
     // slow down if we aren't aiming the right direction yet
     moduleState.speedMetersPerSecond *= moduleState.angle.minus(currentAngle).getCos();
 
-    if (driveModule.controller.enableDriveTrain) {
-      now = System.currentTimeMillis();
+    now = System.currentTimeMillis();
 
-      if (previousTime == 0) {
-        elapsedTime = 0;
-      } else {
-        elapsedTime = now - previousTime;
-      }
-      previousTime = now;
-      
-      elapsedTimeEntry.setDouble(elapsedTime);
-
-      if (driveModule.controller.enableSteer)
-        setAngle(moduleState);
-      if (driveModule.controller.enableDrive)
-        setSpeed(moduleState);
+    if (previousTime == 0) {
+      elapsedTime = 0;
+    } else {
+      elapsedTime = now - previousTime;
     }
+    previousTime = now;
+    
+    elapsedTimeEntry.setDouble(elapsedTime);
+
+    setAngle(moduleState);
+    setSpeed(moduleState);
 
     return moduleState;
   }
@@ -257,7 +279,8 @@ public class SwerveMotorModule {
     pidOutputEntry.setDouble(motorSpeed);
 
     steerMotorSpeedEntry.setDouble(motorSpeed);
-    rotatorMotor.set(motorSpeed);
+    if (driveModule.controller.enableDriveTrain && driveModule.controller.enableSteer)
+      rotatorMotor.set(motorSpeed);
 
     previousRotationSpeed = motorSpeed;
     previousCurrentAngle = currentRad;
@@ -287,8 +310,10 @@ public class SwerveMotorModule {
 
     previousDriveSpeed = motorSpeed;
 
-    driveMotor.set(motorSpeed);
-    currentState.speedMetersPerSecond = motorSpeed * driveModule.driveSpeed;
+    if (driveModule.controller.enableDriveTrain && driveModule.controller.enableDrive)
+      driveMotor.set(motorSpeed);
+
+      currentState.speedMetersPerSecond = motorSpeed * driveModule.driveSpeed;
 
     if (useFakeEncoder && driveEncoder != null) {
       // fake adjust current distance to simulate encoder input

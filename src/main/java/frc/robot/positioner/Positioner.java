@@ -14,5 +14,5 @@ public interface Positioner {
     public String GetHealthReason();
     public Pose3d GetReferenceInFieldCoords();
     public Pose3d GetReferenceInRobotCoords();
-    public PoseEstimate GetPoseEstimate();
+    public Pose3d GetPoseEstimate();
 }

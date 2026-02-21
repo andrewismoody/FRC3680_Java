@@ -87,7 +87,7 @@ public class Robot extends TimedRobot {
   SingleMotorModule feed = new SingleMotorModule("feed", can_feed, Constants.feedSpeed, false, null, null, null, 1.0, 1.0, Constants.feedDistancePerRotation, 0.0, true);
   SingleMotorModule pickup = new SingleMotorModule("pickup", can_pickup, Constants.pickupSpeed, false, null, null, null, 1.0, 1.0, Constants.pickupDistancePerRotation, 0.0, true);
 
-  DifferentialDriveModule diffDrive = new DifferentialDriveModule("diffDrive", m_gyro, m_positioner, Constants.driveSpeed, can_drive_left, enc_drive_left, can_drive_right, enc_drive_right, Constants.driveRatio, Constants.floatTolerance, Constants.frameSize.getNorm());
+  DifferentialDriveModule diffDrive = new DifferentialDriveModule("diffDrive", m_gyro, m_positioner, Constants.driveSpeed, can_drive_left, enc_drive_left, can_drive_right, enc_drive_right, Constants.driveRatio, Constants.floatTolerance, Constants.frameSize.getNorm(), Constants.robotSize.getY());
 
   ModuleController modules;
 

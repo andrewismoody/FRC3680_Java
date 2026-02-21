@@ -27,7 +27,6 @@ import edu.wpi.first.wpilibj.smartdashboard.Field2d;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 
 import frc.robot.positioner.Positioner;
-import frc.robot.positioner.LimelightHelpers.PoseEstimate;
 import frc.robot.action.Group;
 import frc.robot.action.Action;
 import frc.robot.action.ActionPose;
@@ -46,7 +45,7 @@ public class SwerveDriveModule implements DriveModule {
     SwerveDriveKinematics kinematics;
     boolean isFieldOriented = false;
     Gyro gyro;
-    Positioner positioner;
+    ArrayList<Positioner> positioners;
     SwerveDriveOdometry odometry;
 
     Translation3d currentPosition = Translation3d.kZero;
@@ -128,7 +127,7 @@ public class SwerveDriveModule implements DriveModule {
     StructArrayPublisher<SwerveModuleState> swerveModuleCommandedPublisher;
     StructPublisher<ChassisSpeeds> chassisSpeedsPublisher;
 
-    public SwerveDriveModule(String ModuleID, Gyro Gyro, Positioner Positioner, double DriveSpeed, double DriveRatio, double RotationSpeed,
+    public SwerveDriveModule(String ModuleID, Gyro Gyro, ArrayList<Positioner> Positioners, double DriveSpeed, double DriveRatio, double RotationSpeed,
             double FloatTolerance, SwerveMotorModule ... modules) {
         moduleID = ModuleID;
 
@@ -141,7 +140,7 @@ public class SwerveDriveModule implements DriveModule {
         driveRatio = DriveRatio;
         rotationSpeed = RotationSpeed;
         gyro = Gyro;
-        positioner = Positioner;
+        positioners = Positioners;
         floatTolerance = FloatTolerance;
 
         // initialize modules after setting values, as modules lookup values from controller
@@ -211,7 +210,9 @@ public class SwerveDriveModule implements DriveModule {
 
         for (SwerveMotorModule module : driveModules) {
             var i = module.GetSwervePosition().getValue();
-            returnStates[i] = new SwerveModuleState();
+            var state = new SwerveModuleState();
+            state.angle = new Rotation2d(-module.rotationOffset);
+            returnStates[i] = state;
         }
         
         return returnStates;
@@ -285,7 +286,9 @@ public class SwerveDriveModule implements DriveModule {
         swerveModuleCommandedPublisher = myTable.getStructArrayTopic("actualModuleStates", SwerveModuleState.struct).publish();
         chassisSpeedsPublisher = myTable.getStructTopic("chassisSpeeds", ChassisSpeeds.struct).publish();
 
-        positioner.Initialize();
+        for (var positioner : positioners) {
+            positioner.Initialize();
+        }
 
         for (SwerveMotorModule module : driveModules) {
             module.Initialize();
@@ -450,24 +453,28 @@ public class SwerveDriveModule implements DriveModule {
         }
     }
 
-    public boolean isPositionerHealthy() {
-        var healthy = true;
+    public boolean isAnyPositionerHealthy() {
+        var healthy = false;
 
-        if (RobotBase.isReal())
-            healthy = positioner.IsHealthy();
+        for (var positioner : positioners) {
+            if (RobotBase.isReal() && positioner.IsHealthy()) {
+                healthy = true;
 
-        if (debug) {
-            positionerHealthyEntry.setBoolean(healthy);
-            positionHealthReasonEntry.setString(positioner.GetHealthReason());
+                if (debug) {
+                    positionerHealthyEntry.setBoolean(healthy);
+                    positionHealthReasonEntry.setString(positioner.GetHealthReason());
+                }
+            }
         }
 
         return healthy;
     }
 
     public Pose3d GetPositionerOffset() {
-        var adjustedPos = RobotBase.isReal() ? positioner.GetReferenceInFieldCoords() : fakeCameraPose.transformBy(GetPosition().minus(fakeCameraPose));
-        var referenceAngle = RobotBase.isReal() ? positioner.GetReferenceInRobotCoords().getRotation().getZ() : fakeCameraPose.getRotation().getZ();
-        return new Pose3d(adjustedPos.getTranslation(), new Rotation3d(new Rotation2d(referenceAngle)));
+        // var adjustedPos = RobotBase.isReal() ? positioner.GetReferenceInFieldCoords() : fakeCameraPose.transformBy(GetPosition().minus(fakeCameraPose));
+        // var referenceAngle = RobotBase.isReal() ? positioner.GetReferenceInRobotCoords().getRotation().getZ() : fakeCameraPose.getRotation().getZ();
+        // return new Pose3d(adjustedPos.getTranslation(), new Rotation3d(new Rotation2d(referenceAngle)));
+        return new Pose3d();
     }
 
     public void EvaluateTargetPose(Pose3d currentPose, double newAngleRad) {
@@ -481,7 +488,7 @@ public class SwerveDriveModule implements DriveModule {
             var lateralReached = false;
             var forwardReached = false;
             var rotationReached = false;
-            var positionerHealthy = isPositionerHealthy();
+            var positionerHealthy = isAnyPositionerHealthy();
             var posNorm = currentPosition.getNorm();
 
             // TODO 1: re-evaluate if this is needed with estimator
@@ -713,12 +720,16 @@ public class SwerveDriveModule implements DriveModule {
         var limelightAngle = Utility.radiansToDegrees(currentGyroAngle);
         if (debug)
             myTable.getEntry("limelightAngleRaw").setDouble(limelightAngle);
-        positioner.SetRobotOrientation("", limelightAngle, 0,0,0,0,0);
+        for (var positioner : positioners) {
+            positioner.SetRobotOrientation("", limelightAngle, 0,0,0,0,0);
+        }
 
         if (RobotBase.isReal()) {
-            PoseEstimate visionEstimate = positioner.GetPoseEstimate();
-            if (visionEstimate != null)
-                poseEstimator.addVisionMeasurement(visionEstimate.pose, visionEstimate.latency);
+            for (var positioner : positioners) {
+                Pose3d visionEstimate = positioner.GetPoseEstimate();
+                if (visionEstimate != null)
+                    poseEstimator.addVisionMeasurement(visionEstimate.toPose2d(), 0);
+            }
         }
 
         currentPose = new Pose3d(poseEstimator.getEstimatedPosition());
@@ -739,7 +750,7 @@ public class SwerveDriveModule implements DriveModule {
             zeroDriveCommands();
 
         // prevents command bleedover from previous ticks
-        if (targetPose != null && !isPositionerHealthy()
+        if (targetPose != null && !isAnyPositionerHealthy()
             && !(wroteForwardThisTick || wroteLateralThisTick))
             // if our position is invalid, zero position outputs
             zeroPositionCommands();

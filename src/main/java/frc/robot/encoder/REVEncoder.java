@@ -1,5 +1,6 @@
 package frc.robot.encoder;
 
+import com.revrobotics.AbsoluteEncoder;
 import com.revrobotics.REVLibError;
 import com.revrobotics.RelativeEncoder;
 
@@ -7,7 +8,8 @@ import edu.wpi.first.wpilibj.RobotBase;
 
 public class REVEncoder implements Encoder {
     
-    RelativeEncoder internalEncoder;
+    RelativeEncoder internalRelativeEncoder;
+    AbsoluteEncoder internalAbsoluteEncoder;
     double angleOffsetRad = 0.0; // angle to subtract from actual angle to zero the encoder
     double multiplier = 1.0;
     long giveUpTime = 1000;
@@ -23,7 +25,7 @@ public class REVEncoder implements Encoder {
     }
 
     public REVEncoder(RelativeEncoder WrappedEncoder) {
-        internalEncoder = WrappedEncoder;
+        internalRelativeEncoder = WrappedEncoder;
     }
 
     public REVEncoder(RelativeEncoder WrappedEncoder, double DistancePerPulse) {
@@ -33,6 +35,22 @@ public class REVEncoder implements Encoder {
     }
 
     public REVEncoder(RelativeEncoder WrappedEncoder, double DistancePerPulse, boolean reverse) {
+        this(WrappedEncoder, DistancePerPulse);
+        
+        setReverseDirection(reverse);
+    }
+
+    public REVEncoder(AbsoluteEncoder WrappedEncoder) {
+        internalAbsoluteEncoder = WrappedEncoder;
+    }
+
+    public REVEncoder(AbsoluteEncoder WrappedEncoder, double DistancePerPulse) {
+        this(WrappedEncoder);
+
+        setDistancePerPulse(DistancePerPulse);
+    }
+
+    public REVEncoder(AbsoluteEncoder WrappedEncoder, double DistancePerPulse, boolean reverse) {
         this(WrappedEncoder, DistancePerPulse);
         
         setReverseDirection(reverse);
@@ -77,16 +95,24 @@ public class REVEncoder implements Encoder {
     }
 
     public double getVelocity() {
-        if (RobotBase.isReal())
-            velocity = internalEncoder.getVelocity();
+        if (RobotBase.isReal()) {
+            if (internalRelativeEncoder != null)
+                velocity = internalRelativeEncoder.getVelocity();
+            else if (internalAbsoluteEncoder != null)
+                velocity = internalAbsoluteEncoder.getVelocity();
+        }
 
         return velocity;
     }
 
     public double getRawValue() {
-        if (RobotBase.isReal())
+        if (RobotBase.isReal()) {
             // REV Encoder reports rotations, not radians or degrees
-            value = internalEncoder.getPosition() * multiplier + (angleOffsetRad / (Math.PI * 2));
+            if (internalRelativeEncoder != null)
+                value = internalRelativeEncoder.getPosition() * multiplier + (angleOffsetRad / (Math.PI * 2));
+            else if (internalAbsoluteEncoder != null)
+                value = internalAbsoluteEncoder.getPosition() * multiplier + (angleOffsetRad / (Math.PI * 2));
+        }
 
         return value;
     }
@@ -96,11 +122,14 @@ public class REVEncoder implements Encoder {
     }
 
     public void setZeroPosition() {
+        if (internalRelativeEncoder == null)
+            return;
+
         value = angleOffsetRad;
-        var result = internalEncoder.setPosition(angleOffsetRad);
+        var result = internalRelativeEncoder.setPosition(angleOffsetRad);
         var sleepTime = 10L;
         var elapsedTime = 0L;
-        while (elapsedTime < giveUpTime && internalEncoder.getPosition() != angleOffsetRad) {
+        while (elapsedTime < giveUpTime && internalRelativeEncoder.getPosition() != angleOffsetRad) {
             try {
                 Thread.sleep(sleepTime);
                 elapsedTime += sleepTime;
@@ -121,6 +150,9 @@ public class REVEncoder implements Encoder {
     }
 
     public boolean isAbsolute() {
+        if (internalAbsoluteEncoder != null)
+            return true;
+
         return false;
     }
 }

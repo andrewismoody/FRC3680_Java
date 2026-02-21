@@ -2,7 +2,7 @@
 // Open Source Software; you can modify and/or share it under the terms of
 // the WPILib BSD license file in the root directory of this project.
 
-package frc.robot.z2025;
+package frc.robot.z2026;
 
 import java.util.ArrayList;
 import java.util.Hashtable;
@@ -23,6 +23,7 @@ import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 
 import com.revrobotics.spark.SparkLowLevel.MotorType;
+import com.revrobotics.spark.SparkFlex;
 import com.revrobotics.spark.SparkMax;
 
 import frc.robot.auto.AutoController;
@@ -56,29 +57,34 @@ public class Robot extends TimedRobot {
 
   double elapsedTime;
 
-  final String codeBuildVersion = "2025.10.18-THOR";
+  final String codeBuildVersion = "2026.01.22";
   boolean initialized = false;
 
-  final SparkMax can_drive_lf = new SparkMax(4, MotorType.kBrushless);
-  final SparkMax can_steer_lf = new SparkMax(5,MotorType.kBrushless);
+  final SparkFlex can_drive_lf = new SparkFlex(6, MotorType.kBrushless);
+  final SparkMax can_steer_lf = new SparkMax(2,MotorType.kBrushless);
 
-  final SparkMax can_drive_rf = new SparkMax(6, MotorType.kBrushless);
-  final SparkMax can_steer_rf = new SparkMax(7, MotorType.kBrushless);
+  final SparkFlex can_drive_rf = new SparkFlex(7, MotorType.kBrushless);
+  final SparkMax can_steer_rf = new SparkMax(3, MotorType.kBrushless);
 
-  final SparkMax can_drive_lr = new SparkMax(8, MotorType.kBrushless);
-  final SparkMax can_steer_lr = new SparkMax(9, MotorType.kBrushless);
+  final SparkFlex can_drive_lr = new SparkFlex(8, MotorType.kBrushless);
+  final SparkMax can_steer_lr = new SparkMax(4, MotorType.kBrushless);
 
-  final SparkMax can_drive_rr = new SparkMax(10, MotorType.kBrushless);
-  final SparkMax can_steer_rr = new SparkMax(3, MotorType.kBrushless);
+  final SparkFlex can_drive_rr = new SparkFlex(9, MotorType.kBrushless);
+  final SparkMax can_steer_rr = new SparkMax(5, MotorType.kBrushless);
 
-  final SparkMax can_elev = new SparkMax(2, MotorType.kBrushless);
+  final SparkMax can_intake = new SparkMax(10, MotorType.kBrushless);
+  final SparkMax can_Shooter1 = new SparkMax(11, MotorType.kBrushless);
+ // final SparkMax can_Shooter2 = new SparkMax(12, MotorType.kBrushless);
+
+  // final SparkMax can_elev = new SparkMax(2, MotorType.kBrushless);
 
   final Relay pwm_slide = new Relay(0);
 
-  final Encoder enc_steer_lf = new REVEncoder(can_steer_lf.getEncoder());
-  final Encoder enc_steer_rf = new REVEncoder(can_steer_rf.getEncoder());
-  final Encoder enc_steer_lr = new REVEncoder(can_steer_lr.getEncoder());
-  final Encoder enc_steer_rr = new REVEncoder(can_steer_rr.getEncoder());
+  // need to change to absolute encoder for steering
+  final Encoder enc_steer_lf = new REVEncoder(can_steer_lf.getAbsoluteEncoder());
+  final Encoder enc_steer_rf = new REVEncoder(can_steer_rf.getAbsoluteEncoder());
+  final Encoder enc_steer_lr = new REVEncoder(can_steer_lr.getAbsoluteEncoder());
+  final Encoder enc_steer_rr = new REVEncoder(can_steer_rr.getAbsoluteEncoder());
 
   final Encoder enc_drive_lf = new REVEncoder(can_drive_lf.getEncoder());
   final Encoder enc_drive_rf = new REVEncoder(can_drive_rf.getEncoder());
@@ -86,7 +92,7 @@ public class Robot extends TimedRobot {
   final Encoder enc_drive_rr = new REVEncoder(can_drive_rr.getEncoder());
 
   final Gyro m_gyro = new AHRSGyro();
-  final Encoder enc_elev = new REVEncoder(can_elev.getEncoder());
+  // final Encoder enc_elev = new REVEncoder(can_elev.getEncoder());
   final Positioner m_positioner = new LimeLightPositioner(true);
 
   GameController m_controller = null;
@@ -95,7 +101,10 @@ public class Robot extends TimedRobot {
   final Timer gc_timer = new Timer();
 
   final boolean isFieldOriented = true;
-  SingleMotorModule elevator = new SingleMotorModule("elevator", can_elev, Constants.elevatorSpeed, false, null, null, enc_elev, Constants.elevatorEncoderMultiplier, 0.5, Constants.elevatorDistancePerRotation, Constants.elevatorMaxDistance, false);
+  SingleMotorModule neoShooter = new SingleMotorModule("shooter", can_Shooter1, 5000, false, null, null, null, 1, 0.5, 0, 0, false);
+  SingleMotorModule redlineShooter = new SingleMotorModule("intake", can_intake, 12000, false, null, null, null, 1, 0.5, 0, 0, false);
+  
+  // SingleMotorModule elevator = new SingleMotorModule("elevator", can_elev, Constants.elevatorSpeed, false, null, null, enc_elev, Constants.elevatorEncoderMultiplier, 0.5, Constants.elevatorDistancePerRotation, Constants.elevatorMaxDistance, false);
   SingleActuatorModule slide = new SingleActuatorModule("slide", pwm_slide, false);
 
   // leftFront  software position // potentially should be leftrear   hardware position
@@ -108,11 +117,20 @@ public class Robot extends TimedRobot {
   SwerveMotorDefinition rightRearDef = new SwerveMotorDefinition(can_drive_rr, enc_drive_rr, can_steer_rr, enc_steer_rr);
   // total length of robot is 32.375", width is 27.5", centerline is 16.1875" from edge.  Drive axle center is 4" from edge - 12.1875" from center which is 309.56mm or 0.30956 meters
   // motor positions are rotated to make the limelight 'forward', this is just labeling.
+  // if motors point inward during rotation, this means the rotation is inverted
+  // 1 - make sure corners are labeled and assigned corectly - if it's wrong, the wheels will turn in opposite direcitons from each other
+  // 2 - make sure rotation is correct (inverted or not)
+  //    - if it's turning the wrong way this will cause inward pointing wheels during rotation and right/left inversion
+  //    - if the encoder and the motor don't agree on direction, this will cause oscillation without ever finding the angle or constant rotation
+  //    - any sporadic behavior likely means the encoder and the motor are not in agreement on direction
+  // 3 - make sure coordinate system is correct (x forward, y left)
+  // 4 - make sure rotationoffset is correct for each corner and specified in radians - if this is wrong, the wheels won't point in the right direction in any situation
+  // for rev, right-front should be 0, everything else rotates from that, no inversion on rotation.
   SwerveDriveModule swerveDriveModule = new SwerveDriveModule("swerveDrive", m_gyro, new ArrayList<Positioner>(List.of(m_positioner)), Constants.driveSpeed, Constants.driveRatio, Constants.steerMotorSpeed, Constants.floatTolerance
-    , new SwerveMotorModule(SwervePosition.LeftFront, new Translation2d(Constants.motorPosition.getX(), Constants.motorPosition.getY()), rightFrontDef, Constants.steerGearRatio, EncoderMountLocation.BeforeGearbox, Constants.floatTolerance, true, false, false, 0.0)
-    , new SwerveMotorModule(SwervePosition.RightFront, new Translation2d(Constants.motorPosition.getX(), -Constants.motorPosition.getY()), rightRearDef, Constants.steerGearRatio, EncoderMountLocation.BeforeGearbox, Constants.floatTolerance, true, false, false, 0.0)
-    , new SwerveMotorModule(SwervePosition.LeftRear, new Translation2d(-Constants.motorPosition.getX(), Constants.motorPosition.getY()), leftFrontDef, Constants.steerGearRatio, EncoderMountLocation.BeforeGearbox, Constants.floatTolerance, true, false, false, 0.0)
-    , new SwerveMotorModule(SwervePosition.RightRear, new Translation2d(-Constants.motorPosition.getX(), -Constants.motorPosition.getY()), leftRearDef, Constants.steerGearRatio, EncoderMountLocation.BeforeGearbox, Constants.floatTolerance, true, false, false, 0.0)
+    , new SwerveMotorModule(SwervePosition.LeftFront, new Translation2d(Constants.motorPosition.getX(), Constants.motorPosition.getY()),leftFrontDef, Constants.steerGearRatio, EncoderMountLocation.AfterGearbox, Constants.floatTolerance, true, false, false, 4.71)
+    , new SwerveMotorModule(SwervePosition.RightFront, new Translation2d(Constants.motorPosition.getX(), -Constants.motorPosition.getY()), rightFrontDef, Constants.steerGearRatio, EncoderMountLocation.AfterGearbox, Constants.floatTolerance, true, false, false, 0)
+    , new SwerveMotorModule(SwervePosition.LeftRear, new Translation2d(-Constants.motorPosition.getX(), Constants.motorPosition.getY()), leftRearDef, Constants.steerGearRatio, EncoderMountLocation.AfterGearbox, Constants.floatTolerance, true, false, false, 3.14)
+    , new SwerveMotorModule(SwervePosition.RightRear, new Translation2d(-Constants.motorPosition.getX(), -Constants.motorPosition.getY()), rightRearDef, Constants.steerGearRatio, EncoderMountLocation.AfterGearbox, Constants.floatTolerance, true, false, false, 1.57)
   );
 
   ModuleController modules;
@@ -151,14 +169,14 @@ public class Robot extends TimedRobot {
 
     modules = new ModuleController(swerveDriveModule, Constants.divider);
 
-    modules.AddModule(elevator);
+    // modules.AddModule(elevator);
     modules.AddModule(slide);
     
     // initialize modules
     modules.Initialize();
 
     // modules.SetEnableDrive(true);
-    // modules.SetEnableSteer(true);
+    // modules.SetEnableSteer(false);
     // modules.SetEnableDriveTrain(false);
 
     Dashboard.InitializeChoosers();
@@ -171,9 +189,9 @@ public class Robot extends TimedRobot {
     // This needs to be here in mode init because we may not have a driver station connection during robotinit.
     m_controller = GameController.Initialize();
     // Add action poses before button mappings so buttons can drive action poses
-    ActionPoses.Initialize(swerveDriveModule, elevator, slide);
+    ActionPoses.Initialize(swerveDriveModule, slide); // elevator, slide);
     // even tho this runs on every init, we clear it out before every run so we don't mess up
-    Joystick.InitializeButtonMappings(m_controller, modules, swerveDriveModule, slide, elevator);
+    Joystick.InitializeButtonMappings(m_controller, modules, swerveDriveModule, neoShooter, redlineShooter); // , elevator);
 
     // only set start position once per match
     if (!initialized) { 
