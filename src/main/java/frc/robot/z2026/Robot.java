@@ -73,8 +73,8 @@ public class Robot extends TimedRobot {
   final SparkMax can_steer_rr = new SparkMax(5, MotorType.kBrushless);
 
   final SparkMax can_intake = new SparkMax(10, MotorType.kBrushless);
-  final SparkMax can_Shooter1 = new SparkMax(11, MotorType.kBrushless);
- // final SparkMax can_Shooter2 = new SparkMax(12, MotorType.kBrushless);
+  final SparkMax can_Shooter_Neo = new SparkMax(11, MotorType.kBrushless);
+  final SparkMax can_Feeder_Redline = new SparkMax(12, MotorType.kBrushed);
 
   // final SparkMax can_elev = new SparkMax(2, MotorType.kBrushless);
 
@@ -101,9 +101,9 @@ public class Robot extends TimedRobot {
   final Timer gc_timer = new Timer();
 
   final boolean isFieldOriented = true;
-  SingleMotorModule neoShooter = new SingleMotorModule("shooter", can_Shooter1, 5000, false, null, null, null, 1, 0.5, 0, 0, false);
-  SingleMotorModule redlineShooter = new SingleMotorModule("intake", can_intake, 12000, false, null, null, null, 1, 0.5, 0, 0, false);
-  
+  SingleMotorModule neoShooter = new SingleMotorModule("shooter", can_Shooter_Neo, Constants.neoShooterSpeed, false, null, null, null, 1, 0.5, 0, 0, false);
+  SingleMotorModule redlineFeeder = new SingleMotorModule("feeder", can_Feeder_Redline, Constants.redlineFeederSpeed, false, null, null, null, 1, 0.5, 0, 0, false);
+  SingleMotorModule intake = new SingleMotorModule("intake", can_intake, Constants.intakeSpeed, false, null, null, null, 1, 0.5, 0, 0, false);
   // SingleMotorModule elevator = new SingleMotorModule("elevator", can_elev, Constants.elevatorSpeed, false, null, null, enc_elev, Constants.elevatorEncoderMultiplier, 0.5, Constants.elevatorDistancePerRotation, Constants.elevatorMaxDistance, false);
   SingleActuatorModule slide = new SingleActuatorModule("slide", pwm_slide, false);
 
@@ -191,7 +191,7 @@ public class Robot extends TimedRobot {
     // Add action poses before button mappings so buttons can drive action poses
     ActionPoses.Initialize(swerveDriveModule, slide); // elevator, slide);
     // even tho this runs on every init, we clear it out before every run so we don't mess up
-    Joystick.InitializeButtonMappings(m_controller, modules, swerveDriveModule, neoShooter, redlineShooter); // , elevator);
+    Joystick.InitializeButtonMappings(m_controller, modules, swerveDriveModule, neoShooter, redlineFeeder, intake); // , elevator);
 
     // only set start position once per match
     if (!initialized) { 
