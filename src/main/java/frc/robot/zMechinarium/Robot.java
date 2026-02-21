@@ -4,7 +4,9 @@
 
 package frc.robot.zMechinarium;
 
+import java.util.ArrayList;
 import java.util.Hashtable;
+import java.util.List;
 
 import edu.wpi.first.math.geometry.Pose3d;
 import edu.wpi.first.math.geometry.Rotation2d;
@@ -106,7 +108,7 @@ public class Robot extends TimedRobot {
   SwerveMotorDefinition rightRearDef = new SwerveMotorDefinition(can_drive_rr, enc_drive_rr, can_steer_rr, enc_steer_rr);
   // total length of robot is 32.375", width is 27.5", centerline is 16.1875" from edge.  Drive axle center is 4" from edge - 12.1875" from center which is 309.56mm or 0.30956 meters
   // motor positions are rotated to make the limelight 'forward', this is just labeling.
-  SwerveDriveModule swerveDriveModule = new SwerveDriveModule("swerveDrive", m_gyro, m_positioner, Constants.driveSpeed, Constants.driveRatio, Constants.steerMotorSpeed, Constants.floatTolerance
+  SwerveDriveModule swerveDriveModule = new SwerveDriveModule("swerveDrive", m_gyro, new ArrayList<Positioner>(List.of(m_positioner)), Constants.driveSpeed, Constants.driveRatio, Constants.steerMotorSpeed, Constants.floatTolerance
     , new SwerveMotorModule(SwervePosition.LeftFront, new Translation2d(Constants.motorPosition.getX(), Constants.motorPosition.getY()), rightFrontDef, Constants.steerGearRatio, EncoderMountLocation.BeforeGearbox, Constants.floatTolerance, true, false, false, 0.0)
     , new SwerveMotorModule(SwervePosition.RightFront, new Translation2d(Constants.motorPosition.getX(), -Constants.motorPosition.getY()), rightRearDef, Constants.steerGearRatio, EncoderMountLocation.BeforeGearbox, Constants.floatTolerance, true, false, false, 0.0)
     , new SwerveMotorModule(SwervePosition.LeftRear, new Translation2d(-Constants.motorPosition.getX(), Constants.motorPosition.getY()), leftFrontDef, Constants.steerGearRatio, EncoderMountLocation.BeforeGearbox, Constants.floatTolerance, true, false, false, 0.0)

@@ -45,10 +45,10 @@ public class LimeLightPositioner implements Positioner {
 
     public Pose3d GetPose() {
         var poseEstimate = GetPoseEstimate();
-        return new Pose3d(poseEstimate != null ? poseEstimate.pose : new Pose2d());
+        return poseEstimate != null ? poseEstimate : new Pose3d();
     }
 
-    public PoseEstimate GetPoseEstimate() {
+    public Pose3d GetPoseEstimate() {
         PoseEstimate poseEstimate = null;
         if (useMegatagTwo) {
             // always get blue alliance position, as field is oriented to blue origin from 2023 onwards
@@ -58,7 +58,7 @@ public class LimeLightPositioner implements Positioner {
             poseEstimate = LimelightHelpers.getBotPoseEstimate_wpiBlue("");
         }
 
-        return poseEstimate;
+        return EstimatedPose.fromPoseEstimate(poseEstimate);
     }
 
     public Pose3d GetReferenceInFieldCoords() {

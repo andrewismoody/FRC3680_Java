@@ -4,7 +4,9 @@
 
 package frc.robot.z2026;
 
+import java.util.ArrayList;
 import java.util.Hashtable;
+import java.util.List;
 
 import edu.wpi.first.math.geometry.Pose3d;
 import edu.wpi.first.math.geometry.Rotation2d;
@@ -70,8 +72,8 @@ public class Robot extends TimedRobot {
   final SparkFlex can_drive_rr = new SparkFlex(9, MotorType.kBrushless);
   final SparkMax can_steer_rr = new SparkMax(5, MotorType.kBrushless);
 
-  //final SparkMax can_intake = new SparkMax(10, MotorType.kBrushless);
-  //final SparkMax can_Shooter1 = new SparkMax(11, MotorType.kBrushless);
+  final SparkMax can_intake = new SparkMax(10, MotorType.kBrushless);
+  final SparkMax can_Shooter1 = new SparkMax(11, MotorType.kBrushless);
  // final SparkMax can_Shooter2 = new SparkMax(12, MotorType.kBrushless);
 
   // final SparkMax can_elev = new SparkMax(2, MotorType.kBrushless);
@@ -99,6 +101,9 @@ public class Robot extends TimedRobot {
   final Timer gc_timer = new Timer();
 
   final boolean isFieldOriented = true;
+  SingleMotorModule neoShooter = new SingleMotorModule("shooter", can_Shooter1, 5000, false, null, null, null, 1, 0.5, 0, 0, false);
+  SingleMotorModule redlineShooter = new SingleMotorModule("intake", can_intake, 12000, false, null, null, null, 1, 0.5, 0, 0, false);
+  
   // SingleMotorModule elevator = new SingleMotorModule("elevator", can_elev, Constants.elevatorSpeed, false, null, null, enc_elev, Constants.elevatorEncoderMultiplier, 0.5, Constants.elevatorDistancePerRotation, Constants.elevatorMaxDistance, false);
   SingleActuatorModule slide = new SingleActuatorModule("slide", pwm_slide, false);
 
@@ -121,7 +126,7 @@ public class Robot extends TimedRobot {
   // 3 - make sure coordinate system is correct (x forward, y left)
   // 4 - make sure rotationoffset is correct for each corner and specified in radians - if this is wrong, the wheels won't point in the right direction in any situation
   // for rev, right-front should be 0, everything else rotates from that, no inversion on rotation.
-  SwerveDriveModule swerveDriveModule = new SwerveDriveModule("swerveDrive", m_gyro, m_positioner, Constants.driveSpeed, Constants.driveRatio, Constants.steerMotorSpeed, Constants.floatTolerance
+  SwerveDriveModule swerveDriveModule = new SwerveDriveModule("swerveDrive", m_gyro, new ArrayList<Positioner>(List.of(m_positioner)), Constants.driveSpeed, Constants.driveRatio, Constants.steerMotorSpeed, Constants.floatTolerance
     , new SwerveMotorModule(SwervePosition.LeftFront, new Translation2d(Constants.motorPosition.getX(), Constants.motorPosition.getY()),leftFrontDef, Constants.steerGearRatio, EncoderMountLocation.AfterGearbox, Constants.floatTolerance, true, false, false, 4.71)
     , new SwerveMotorModule(SwervePosition.RightFront, new Translation2d(Constants.motorPosition.getX(), -Constants.motorPosition.getY()), rightFrontDef, Constants.steerGearRatio, EncoderMountLocation.AfterGearbox, Constants.floatTolerance, true, false, false, 0)
     , new SwerveMotorModule(SwervePosition.LeftRear, new Translation2d(-Constants.motorPosition.getX(), Constants.motorPosition.getY()), leftRearDef, Constants.steerGearRatio, EncoderMountLocation.AfterGearbox, Constants.floatTolerance, true, false, false, 3.14)
@@ -186,7 +191,7 @@ public class Robot extends TimedRobot {
     // Add action poses before button mappings so buttons can drive action poses
     ActionPoses.Initialize(swerveDriveModule, slide); // elevator, slide);
     // even tho this runs on every init, we clear it out before every run so we don't mess up
-    Joystick.InitializeButtonMappings(m_controller, modules, swerveDriveModule, slide); // , elevator);
+    Joystick.InitializeButtonMappings(m_controller, modules, swerveDriveModule, neoShooter, redlineShooter); // , elevator);
 
     // only set start position once per match
     if (!initialized) { 

@@ -698,9 +698,9 @@ public class MecanumDriveModule implements DriveModule {
         positioner.SetRobotOrientation("", limelightAngle, 0,0,0,0,0);
 
         if (RobotBase.isReal()) {
-            PoseEstimate visionEstimate = positioner.GetPoseEstimate();
+            Pose3d visionEstimate = positioner.GetPoseEstimate();
             if (visionEstimate != null)
-                poseEstimator.addVisionMeasurement(visionEstimate.pose, visionEstimate.latency);
+                poseEstimator.addVisionMeasurement(visionEstimate.toPose2d(), 0);
         }
 
         currentPose = new Pose3d(poseEstimator.getEstimatedPosition());

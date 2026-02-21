@@ -14,7 +14,7 @@ import frc.robot.z2026.action.Position;
 
 public class Joystick {
   public static void InitializeButtonMappings(GameController m_controller,
-    ModuleController modules, SwerveDriveModule swerveDriveModule, SingleActuatorModule slide
+    ModuleController modules, SwerveDriveModule swerveDriveModule //, SingleActuatorModule slide
     // , SingleMotorModule elevator
     // , DualMotorModule grabber
      , SingleMotorModule neoShooter
@@ -27,9 +27,8 @@ public class Joystick {
     m_controller.RegisterBinaryButtonConsumer(ButtonName.TopButton, neoShooter::ApplyValue);
     m_controller.RegisterBinaryButtonConsumer(ButtonName.LeftButton, redlineShooter::ApplyValue);
     
-    
-    m_controller.RegisterBinaryButtonConsumer(ButtonName.LeftShoulderButton, slide::ApplyValue);
-    m_controller.RegisterBinaryButtonConsumer(ButtonName.RightShoulderButton, slide::ApplyInverse);
+    // m_controller.RegisterBinaryButtonConsumer(ButtonName.LeftShoulderButton, slide::ApplyValue);
+    // m_controller.RegisterBinaryButtonConsumer(ButtonName.RightShoulderButton, slide::ApplyInverse);
 
     // m_controller.RegisterBinaryButtonConsumer(ButtonName.BottomButton, elevator::SetNoPose);
     // m_controller.RegisterBinaryButtonConsumer(ButtonName.RightButton, elevator.AddButtonMappedPose(new ActionPose(Group.Any, Location.Any.getValue(), -1, Position.Trough.getValue(), Action.Any, null)));
