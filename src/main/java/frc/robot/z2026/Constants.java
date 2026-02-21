@@ -18,6 +18,17 @@ public class Constants {
     // 100:1 gearbox on 94.6 rps = 0.946 rps shaft output
     public static final double elevatorSpeed = (5676.0 / 60.0) / 100.0;
     public static final double elevatorEncoderMultiplier = 1.0 / 100.0;
+
+    // Rev NEO empirical motor speed = 5676 rotations per minute; 5676 / 60 = 94.6 rotations per second
+    public static final double neoShooterSpeed = 5676.0 / 60.0;
+    public static final double neoShooterEncoderMultiplier = 1.0;
+
+    public static final double intakeSpeed = (5676.0 / 60.0) / 1.7; // 1.7:1 gearbox
+    public static final double intakeEncoderMultiplier = 1.0 / 1.7;
+
+    // 775 Redline motor speed = 5250 rotations per minute; 5250 / 60 = 87.5 rotations per second
+    public static final double redlineFeederSpeed = 5250.0 / 60.0; // 4:1 gearbox
+    public static final double redlineFeederEncoderMultiplier = 1.0 / 4.0;
   
     public static final double liftSpeed = 0.6;
     public static final double grabSpeed = 0.6;
