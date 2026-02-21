@@ -25,7 +25,8 @@ public class Joystick {
     m_controller.ClearAllRegistrations();
 
     m_controller.RegisterBinaryButtonConsumer(ButtonName.TopButton, neoShooter::ApplyValue);
-    m_controller.RegisterBinaryButtonConsumer(ButtonName.BottomButton, redlineShooter::ApplyValue);
+    m_controller.RegisterBinaryButtonConsumer(ButtonName.LeftButton, redlineShooter::ApplyValue);
+    
     
     m_controller.RegisterBinaryButtonConsumer(ButtonName.LeftShoulderButton, slide::ApplyValue);
     m_controller.RegisterBinaryButtonConsumer(ButtonName.RightShoulderButton, slide::ApplyInverse);
