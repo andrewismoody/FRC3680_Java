@@ -24,21 +24,24 @@
       "/SmartDashboard/SendableChooser[4]": "String Chooser",
       "/SmartDashboard/elevator mech": "Mechanism2d",
       "/SmartDashboard/feed mech": "Mechanism2d",
+      "/SmartDashboard/feeder mech": "Mechanism2d",
+      "/SmartDashboard/intake mech": "Mechanism2d",
       "/SmartDashboard/lift_left mech": "Mechanism2d",
       "/SmartDashboard/lift_right mech": "Mechanism2d",
       "/SmartDashboard/pickup mech": "Mechanism2d",
       "/SmartDashboard/shoot mech": "Mechanism2d",
       "/SmartDashboard/shoot_left mech": "Mechanism2d",
-      "/SmartDashboard/shoot_right mech": "Mechanism2d"
+      "/SmartDashboard/shoot_right mech": "Mechanism2d",
+      "/SmartDashboard/shooter mech": "Mechanism2d"
     },
     "windows": {
       "/SmartDashboard/Field": {
-        "bottom": 1476,
-        "height": 8.210550308227539,
-        "left": 150,
-        "right": 2961,
-        "top": 79,
-        "width": 16.541748046875,
+        "bottom": 1914,
+        "height": 8.069275856018066,
+        "left": 245,
+        "right": 3942,
+        "top": 118,
+        "width": 16.54119300842285,
         "window": {
           "visible": true
         }

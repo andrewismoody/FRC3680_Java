@@ -26,7 +26,8 @@ public class Joystick {
 
     m_controller.RegisterBinaryButtonConsumer(ButtonName.TopButton, shooter::ApplyValue);
     m_controller.RegisterBinaryButtonConsumer(ButtonName.LeftButton, feeder::ApplyValue);
-    m_controller.RegisterBinaryButtonConsumer(ButtonName.RightButton, shootSequence::InitializeViaButton);
+    if (shootSequence != null) // will be null in Autonomous Mode
+      m_controller.RegisterBinaryButtonConsumer(ButtonName.RightButton, shootSequence::InitializeViaButton);
     
     // m_controller.RegisterBinaryButtonConsumer(ButtonName.LeftShoulderButton, slide::ApplyValue);
     // m_controller.RegisterBinaryButtonConsumer(ButtonName.RightShoulderButton, slide::ApplyInverse);

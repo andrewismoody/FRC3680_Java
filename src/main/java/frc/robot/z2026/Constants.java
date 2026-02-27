@@ -83,7 +83,7 @@ public class Constants {
     public static final double startPadding = (Constants.startArea.getX() / 2 - Constants.robotCenter.getX());
     public static final Translation2d robotOffset = robotCenter.plus(new Translation2d(startPadding, startPadding * 2));
 
-    public static final Translation2d blueStartPosition = new Translation2d(Constants.fieldCenter.getX() - Constants.startArea.getX() + robotOffset.getX(), Constants.fieldCenter.getY());
+    public static final Translation2d blueStartPosition = new Translation2d(startArea.getX() - frameSize.getX(), fieldCenter.getY());
     // 3 ft. 5½ in., 7 ft. ⅜ in., 10 ft. 7⅜ in. (~105 cm, ~214 cm, ~324 cm) from mid field to the center 
     public static final double[] blueStartY = new double[] {
         Utility.inchesToMeters(127.38),
@@ -93,10 +93,10 @@ public class Constants {
 
     public static final double waypointOffset = robotSize.getNorm() * 1.25;
     public static final double shootingDistance = Utility.inchesToMeters(24);
-    public static final double approachOffset = (robotSize.getY() * 0.5) + shootingDistance;
+    public static final double approachOffset = (robotSize.getX() * 0.5) + shootingDistance;
     public static final double towerDistance = Utility.inchesToMeters(49.32);
     public static final double towerApproachOffset = (robotSize.getNorm()) + towerDistance;
-    public static final double towerAlignOffset = (robotSize.getY() * 0.5) + towerDistance;
+    public static final double towerAlignOffset = (robotSize.getX() * 0.5) + towerDistance;
     public static final double scoreOffset = Utility.inchesToMeters(-3);
 
     public static Pose3d getMyStartPose() {
@@ -258,7 +258,7 @@ public class Constants {
             case Interest:
                 switch (index) {
                     case 1:
-                        selectedLocation = new Translation3d(Utility.inchesToMeters(176.75), Utility.inchesToMeters(158.5), 0);
+                        selectedLocation = new Translation3d(Utility.inchesToMeters(182.1), fieldCenter.getY(), 0);
                         break;
                 }
                 break;

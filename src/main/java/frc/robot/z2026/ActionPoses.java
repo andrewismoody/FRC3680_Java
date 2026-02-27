@@ -28,7 +28,7 @@ public class ActionPoses {
 
         // this spits out coordinates in format for python plotting
         var outputFormatter = "(\"%s %d %d %d %s\", %f, %f),\n";
-        for (int i = 1; i <= 12; i++) {
+        for (int i = 1; i <= 10; i++) {
             // waypoint i, Lookat Hub
             var pose = new ActionPose(Group.Travel, Location.Waypoint.getValue(), i, Position.Any.getValue(), Action.Any,
             new AutoTarget(Constants.getFieldPosition(Group.Any, Location.Waypoint, i), Constants.getFieldPosition(Group.Any, Location.Interest, 1)));
@@ -36,30 +36,20 @@ public class ActionPoses {
             System.out.printf(outputFormatter, pose.group, pose.location, pose.locationIndex, pose.position, pose.action, Utility.metersToInches(pose.target.Position.getX()), Utility.metersToInches(pose.target.Position.getY()));
         }
 
-        for (int i = 1; i <= 12; i++) {
+        for (int i = 1; i <= Constants.HubIndexToTag.size(); i++) {
             var HubTag = Constants.HubIndexToTag.get(i);
             // get perpendicular direction facing toward
             var rotation = swerveDriveModule.GetPositionerOffset().getRotation().toRotation2d();
             rotation = Rotation2d.kCW_90deg.minus(rotation);
 
-            // align left scoring i, match HubTag rotation
-            var pose = new ActionPose(Group.AlignLeft, Location.Hub.getValue(), i, Position.Any.getValue(), Action.Any,
-                new AutoTarget(Constants.getFieldPosition(Group.AlignLeft, Location.Hub, i), Constants.getKnownRotation(Group.Any, Location.Tag, HubTag).plus(rotation)));
+            // align scoring i, match HubTag rotation
+            var pose = new ActionPose(Group.Align, Location.Hub.getValue(), i, Position.Any.getValue(), Action.Any,
+                new AutoTarget(Constants.getFieldPosition(Group.Align, Location.Hub, i), Constants.getKnownRotation(Group.Any, Location.Tag, HubTag).plus(rotation)));
             swerveDriveModule.AddActionPose(pose);
             System.out.printf(outputFormatter, pose.group, pose.location, pose.locationIndex, pose.position, pose.action, Utility.metersToInches(pose.target.Position.getX()), Utility.metersToInches(pose.target.Position.getY()));
-                // approach left scoring i, match HubTag rotation
-            pose = new ActionPose(Group.ApproachLeft, Location.Hub.getValue(), i, Position.Any.getValue(), Action.Any,
-                new AutoTarget(Constants.getFieldPosition(Group.ApproachLeft, Location.Hub, i), Constants.getKnownRotation(Group.Any, Location.Tag, HubTag).plus(rotation)));
-            swerveDriveModule.AddActionPose(pose);
-            System.out.printf(outputFormatter, pose.group, pose.location, pose.locationIndex, pose.position, pose.action, Utility.metersToInches(pose.target.Position.getX()), Utility.metersToInches(pose.target.Position.getY()));
-            // align right scoring i, match HubTag rotation
-            pose = new ActionPose(Group.AlignRight, Location.Hub.getValue(), i, Position.Any.getValue(), Action.Any,
-                new AutoTarget(Constants.getFieldPosition(Group.AlignRight, Location.Hub, i), Constants.getKnownRotation(Group.Any, Location.Tag, HubTag).plus(rotation)));
-            swerveDriveModule.AddActionPose(pose);
-            System.out.printf(outputFormatter, pose.group, pose.location, pose.locationIndex, pose.position, pose.action, Utility.metersToInches(pose.target.Position.getX()), Utility.metersToInches(pose.target.Position.getY()));
-            // approach right scoring i, match HubTag rotation
-            pose = new ActionPose(Group.ApproachRight, Location.Hub.getValue(), i, Position.Any.getValue(), Action.Any,
-                new AutoTarget(Constants.getFieldPosition(Group.ApproachRight, Location.Hub, i), Constants.getKnownRotation(Group.Any, Location.Tag, HubTag).plus(rotation)));
+                // approach scoring i, match HubTag rotation
+            pose = new ActionPose(Group.Approach, Location.Hub.getValue(), i, Position.Any.getValue(), Action.Any,
+                new AutoTarget(Constants.getFieldPosition(Group.Approach, Location.Hub, i), Constants.getKnownRotation(Group.Any, Location.Tag, HubTag).plus(rotation)));
             swerveDriveModule.AddActionPose(pose);
             System.out.printf(outputFormatter, pose.group, pose.location, pose.locationIndex, pose.position, pose.action, Utility.metersToInches(pose.target.Position.getX()), Utility.metersToInches(pose.target.Position.getY()));
                 // scoring i, match HubTag rotation
@@ -69,7 +59,7 @@ public class ActionPoses {
             System.out.printf(outputFormatter, pose.group, pose.location, pose.locationIndex, pose.position, pose.action, Utility.metersToInches(pose.target.Position.getX()), Utility.metersToInches(pose.target.Position.getY()));
         }
 
-        for (int i = 1; i <= 2; i++) {
+        for (int i = 1; i <= Constants.OutpostIndexToTag.size(); i++) {
             var OutpostTag = Constants.OutpostIndexToTag.get(i);
             // get perpendicular direction facing away
             var rotation = swerveDriveModule.GetPositionerOffset().getRotation().toRotation2d();
