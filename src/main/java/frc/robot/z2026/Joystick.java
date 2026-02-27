@@ -1,31 +1,32 @@
 package frc.robot.z2026;
 
-import frc.robot.action.Action;
-import frc.robot.action.ActionPose;
-import frc.robot.action.Group;
+import java.util.Hashtable;
+
 import frc.robot.misc.GameController;
 import frc.robot.misc.GameController.ButtonName;
 import frc.robot.modules.ModuleController;
-import frc.robot.modules.SingleActuatorModule;
 import frc.robot.modules.SingleMotorModule;
 import frc.robot.modules.SwerveDriveModule;
-import frc.robot.z2026.action.Location;
-import frc.robot.z2026.action.Position;
+import frc.robot.auto.AutoSequence;
 
 public class Joystick {
-  public static void InitializeButtonMappings(GameController m_controller,
-    ModuleController modules, SwerveDriveModule swerveDriveModule //, SingleActuatorModule slide
-    // , SingleMotorModule elevator
-    // , DualMotorModule grabber
-     , SingleMotorModule neoShooter
-     , SingleMotorModule redlineShooter
+  public static void InitializeButtonMappings(
+      GameController m_controller,
+      ModuleController modules,
+      Hashtable<String, AutoSequence> buttonMappedAutos
     ) {
     // TODO: need to move button mappings to preferences and initialize in game controller class
     
     m_controller.ClearAllRegistrations();
 
-    m_controller.RegisterBinaryButtonConsumer(ButtonName.TopButton, neoShooter::ApplyValue);
-    m_controller.RegisterBinaryButtonConsumer(ButtonName.LeftButton, redlineShooter::ApplyValue);
+    var driveModule = (SwerveDriveModule) modules.GetDriveModule();
+    var shooter = (SingleMotorModule) modules.GetModule("shooter");
+    var feeder = (SingleMotorModule) modules.GetModule("feeder");
+    var shootSequence = buttonMappedAutos.get("spinupAndShoot");
+
+    m_controller.RegisterBinaryButtonConsumer(ButtonName.TopButton, shooter::ApplyValue);
+    m_controller.RegisterBinaryButtonConsumer(ButtonName.LeftButton, feeder::ApplyValue);
+    m_controller.RegisterBinaryButtonConsumer(ButtonName.RightButton, shootSequence::InitializeViaButton);
     
     // m_controller.RegisterBinaryButtonConsumer(ButtonName.LeftShoulderButton, slide::ApplyValue);
     // m_controller.RegisterBinaryButtonConsumer(ButtonName.RightShoulderButton, slide::ApplyInverse);
@@ -42,9 +43,9 @@ public class Joystick {
     //m_controller.RegisterBinaryButtonConsumer(ButtonName.POVRight, grabber::ApplyValue);
 
     // m_controller.RegisterBinaryButtonConsumer(ButtonName.LeftButton, swerveDriveModule::LockPosition);
-    m_controller.RegisterBinaryButtonConsumer(ButtonName.Select, swerveDriveModule::ReturnToZero);
+    m_controller.RegisterBinaryButtonConsumer(ButtonName.Select, driveModule::ReturnToZero);
     // m_controller.RegisterBinaryButtonConsumer(ButtonName.Select, elevator.AddButtonMappedPose(new ActionPose(Group.Any, Location.Any.getValue(), -1, Position.Trough.getValue(), Action.Any, null)));
-    m_controller.RegisterBinaryButtonConsumer(ButtonName.Start, modules.GetDriveModule()::ToggleFieldOriented);
+    m_controller.RegisterBinaryButtonConsumer(ButtonName.Start, driveModule::ToggleFieldOriented);
 
     // m_controller.RegisterBinaryButtonConsumer(ButtonName.RightShoulderButton, modules::ProcessInverse);
 
@@ -54,13 +55,13 @@ public class Joystick {
     m_controller.RegisterValueButtonConsumer(ButtonName.RightTrigger, modules::ProcessSpeedDilation);
 
     m_controller.SetValueButtonInversion(ButtonName.LeftThumbstickY, true);
-    m_controller.RegisterValueButtonConsumer(ButtonName.LeftThumbstickY, swerveDriveModule::ProcessForwardSpeed);
+    m_controller.RegisterValueButtonConsumer(ButtonName.LeftThumbstickY, driveModule::ProcessForwardSpeed);
 
     m_controller.SetValueButtonInversion(ButtonName.LeftThumbstickX, true);
-    m_controller.RegisterValueButtonConsumer(ButtonName.LeftThumbstickX, swerveDriveModule::ProcessLateralSpeed);
+    m_controller.RegisterValueButtonConsumer(ButtonName.LeftThumbstickX, driveModule::ProcessLateralSpeed);
 
     m_controller.SetValueButtonInversion(ButtonName.RightThumbstickX, true);
-    m_controller.RegisterValueButtonConsumer(ButtonName.RightThumbstickX, swerveDriveModule::ProcessRotationAngle);
+    m_controller.RegisterValueButtonConsumer(ButtonName.RightThumbstickX, driveModule::ProcessRotationAngle);
 
     // m_controller.SetValueButtonInversion(ButtonName.Chat, null);
     // m_controller.RegisterValueButtonConsumer(ButtonName.Chat, modules::ProcessChat);

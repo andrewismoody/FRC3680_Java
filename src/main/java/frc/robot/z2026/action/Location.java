@@ -4,14 +4,17 @@ package frc.robot.z2026.action;
 public enum Location {
     // Any should always be -1, which is the 'wildcard' value and matches any Location
     Any(-1),
-    Reef(0),
-    Processor(1),
-    Coral(2),
-    Barge(3),
-    AdHoc(4),
-    Waypoint(5),
-    Tag(6),
-    Interest(7),
+    Start(0),
+    Hub(1),
+    Depot(2),
+    Outpost(3),
+    Tower(4),
+    Trench(5),
+    Bump(6),
+    AdHoc(7),
+    Waypoint(8),
+    Tag(9),
+    Interest(10),
     None(11),
     ;
 

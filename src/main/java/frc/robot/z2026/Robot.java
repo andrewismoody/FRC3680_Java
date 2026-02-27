@@ -16,7 +16,6 @@ import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.geometry.Translation3d;
 import edu.wpi.first.networktables.DoubleSubscriber;
 import edu.wpi.first.networktables.NetworkTableInstance;
-import edu.wpi.first.wpilibj.Relay;
 import edu.wpi.first.wpilibj.RobotBase;
 import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj.Timer;
@@ -27,13 +26,13 @@ import com.revrobotics.spark.SparkFlex;
 import com.revrobotics.spark.SparkMax;
 
 import frc.robot.auto.AutoController;
+import frc.robot.auto.AutoSequence;
 import frc.robot.gyro.AHRSGyro;
 import frc.robot.gyro.Gyro;
 import frc.robot.misc.GameController;
 import frc.robot.misc.Utility;
 import frc.robot.misc.Utility.SwervePosition;
 import frc.robot.modules.ModuleController;
-import frc.robot.modules.SingleActuatorModule;
 import frc.robot.modules.SingleMotorModule;
 import frc.robot.modules.SwerveDriveModule;
 import frc.robot.modules.SwerveMotorDefinition;
@@ -41,6 +40,7 @@ import frc.robot.modules.SwerveMotorModule;
 import frc.robot.modules.SwerveMotorModule.EncoderMountLocation;
 import frc.robot.positioner.LimeLightPositioner;
 import frc.robot.positioner.Positioner;
+import frc.robot.z2026.Sequences.SpinupAndShoot;
 import frc.robot.encoder.Encoder;
 import frc.robot.encoder.REVEncoder;
 
@@ -72,13 +72,9 @@ public class Robot extends TimedRobot {
   final SparkFlex can_drive_rr = new SparkFlex(9, MotorType.kBrushless);
   final SparkMax can_steer_rr = new SparkMax(5, MotorType.kBrushless);
 
-  final SparkMax can_intake = new SparkMax(10, MotorType.kBrushless);
-  final SparkMax can_Shooter1 = new SparkMax(11, MotorType.kBrushless);
- // final SparkMax can_Shooter2 = new SparkMax(12, MotorType.kBrushless);
-
-  // final SparkMax can_elev = new SparkMax(2, MotorType.kBrushless);
-
-  final Relay pwm_slide = new Relay(0);
+  final SparkMax can_feeder = new SparkMax(10, MotorType.kBrushless);
+  final SparkMax can_shooter = new SparkMax(11, MotorType.kBrushless);
+  final SparkMax can_intake = new SparkMax(12, MotorType.kBrushless);
 
   // need to change to absolute encoder for steering
   final Encoder enc_steer_lf = new REVEncoder(can_steer_lf.getAbsoluteEncoder());
@@ -92,7 +88,6 @@ public class Robot extends TimedRobot {
   final Encoder enc_drive_rr = new REVEncoder(can_drive_rr.getEncoder());
 
   final Gyro m_gyro = new AHRSGyro();
-  // final Encoder enc_elev = new REVEncoder(can_elev.getEncoder());
   final Positioner m_positioner = new LimeLightPositioner(true);
 
   GameController m_controller = null;
@@ -101,12 +96,10 @@ public class Robot extends TimedRobot {
   final Timer gc_timer = new Timer();
 
   final boolean isFieldOriented = true;
-  SingleMotorModule neoShooter = new SingleMotorModule("shooter", can_Shooter1, 5000, false, null, null, null, 1, 0.5, 0, 0, false);
-  SingleMotorModule redlineShooter = new SingleMotorModule("intake", can_intake, 12000, false, null, null, null, 1, 0.5, 0, 0, false);
+  SingleMotorModule shooter_module = new SingleMotorModule("shooter", can_shooter, 5000, false, null, null, null, 1, 0.5, 0, 0, true);
+  SingleMotorModule intake_module = new SingleMotorModule("intake", can_intake, 12000, false, null, null, null, 1, 0.5, 0, 0, false);
+  SingleMotorModule feeder_module = new SingleMotorModule("feeder", can_feeder, 12000, false, null, null, null, 1, 0.5, 0, 0, false);
   
-  // SingleMotorModule elevator = new SingleMotorModule("elevator", can_elev, Constants.elevatorSpeed, false, null, null, enc_elev, Constants.elevatorEncoderMultiplier, 0.5, Constants.elevatorDistancePerRotation, Constants.elevatorMaxDistance, false);
-  SingleActuatorModule slide = new SingleActuatorModule("slide", pwm_slide, false);
-
   // leftFront  software position // potentially should be leftrear   hardware position
   SwerveMotorDefinition leftFrontDef = new SwerveMotorDefinition(can_drive_lf, enc_drive_lf, can_steer_lf, enc_steer_lf);
   // rightFront software position // potentially should be leftFront  hardware position
@@ -134,8 +127,9 @@ public class Robot extends TimedRobot {
   );
 
   ModuleController modules;
+  Hashtable<String, AutoSequence> buttonMappedAutos = new Hashtable<>();
 
-  Hashtable<String, AutoController> autoModes = new Hashtable<String, AutoController>();
+  Hashtable<String, AutoController> autoModes = new Hashtable<>();
   AutoController currentAutoMode;
 
   private DoubleSubscriber slider0Sub;
@@ -169,8 +163,9 @@ public class Robot extends TimedRobot {
 
     modules = new ModuleController(swerveDriveModule, Constants.divider);
 
-    // modules.AddModule(elevator);
-    modules.AddModule(slide);
+    modules.AddModule(shooter_module);
+    modules.AddModule(intake_module);
+    modules.AddModule(feeder_module);
     
     // initialize modules
     modules.Initialize();
@@ -189,9 +184,9 @@ public class Robot extends TimedRobot {
     // This needs to be here in mode init because we may not have a driver station connection during robotinit.
     m_controller = GameController.Initialize();
     // Add action poses before button mappings so buttons can drive action poses
-    ActionPoses.Initialize(swerveDriveModule, slide); // elevator, slide);
+    ActionPoses.Initialize(modules);
     // even tho this runs on every init, we clear it out before every run so we don't mess up
-    Joystick.InitializeButtonMappings(m_controller, modules, swerveDriveModule, neoShooter, redlineShooter); // , elevator);
+    Joystick.InitializeButtonMappings(m_controller, modules, buttonMappedAutos);
 
     // only set start position once per match
     if (!initialized) { 
@@ -255,6 +250,8 @@ public class Robot extends TimedRobot {
 
     // switch back to defined field oriented mode when we start up tele-op; prevents bleedover from auto
     modules.GetDriveModule().SetFieldOriented(isFieldOriented);
+    var teleopAutoController = new AutoController("Teleop AutoController", modules);
+    buttonMappedAutos.put("spinupAndShoot", new SpinupAndShoot("Spinup and Shoot", teleopAutoController));
   }
 
   /** This function is called periodically during teleoperated mode. */
@@ -267,6 +264,9 @@ public class Robot extends TimedRobot {
     modules.setSpeedMod(slider0Sub.get());
 
     m_controller.ProcessButtons();
+    for (var auto : buttonMappedAutos.values()) {
+      auto.Update();
+    }
     modules.ProcessState(false);
   }
 

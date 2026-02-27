@@ -61,11 +61,11 @@ public class Constants {
     public static final double elevatorMaxDistance = 0.5;
     public static final double elevatorDistancePerRotation = 0.3;
   
-    // Field Dimensions Y (width) = 8.05, X (length) = 17.55; 
-    public static final Translation2d fieldSize = new Translation2d(17.55, 8.05);
+    // Field Dimensions Y (width) = 8.07, X (length) = 16.54; 
+    public static final Translation2d fieldSize = new Translation2d(16.54, 8.07);
     public static final Translation2d fieldCenter = new Translation2d(fieldSize.getX() / 2.0, fieldSize.getY() / 2.0);
-    // starting line is at X = 7.56m; barge is 3.72m wide
-    public static final Translation2d startArea = new Translation2d(fieldSize.getX() / 2 - 7.56, 3.72);
+    // starting line is at X = 4.03; Start is 8.07m wide (width of field)
+    public static final Translation2d startArea = new Translation2d(4.03, 8.07);
 
     // 'wide' edge is front
     // width and length of robot frame (excluding bumpers)
@@ -108,37 +108,49 @@ public class Constants {
         return new Pose3d(transformedPosition, Rotation3d.kZero);
     }
 
-    public static final HashMap<Integer, Integer> reefIndexToTag = new HashMap<Integer, Integer>() {
+    public static final HashMap<Integer, Integer> HubIndexToTag = new HashMap<Integer, Integer>() {
         {
-            put(1, 19);
+            put(1, 18);
             put(2, 19);
-            put(3, 18);
-            put(4, 18);
-            put(5, 17);
-            put(6, 17);
-            put(7, 22);
-            put(8, 22);
-            put(9, 21);
-            put(10, 21);
-            put(11, 20);
-            put(12, 20);
+            put(3, 20);
+            put(4, 21);
+            put(5, 24);
+            put(6, 25);
+            put(7, 26);
+            put(8, 27);
         }
     };
 
-    public static final HashMap<Integer, Integer> coralIndexToTag = new HashMap<Integer, Integer>() {
+    public static final HashMap<Integer, Integer> OutpostIndexToTag = new HashMap<Integer, Integer>() {
         {
-            put(1, 13);
-            put(2, 12);
+            put(1, 29);
+            put(2, 30);
+        }
+    };
+
+    public static final HashMap<Integer, Integer> TowerIndexToTag = new HashMap<Integer, Integer>() {
+        {
+            put(1, 31);
+            put(2, 32);
+        }
+    };
+
+    public static final HashMap<Integer, Integer> TrenchIndexToTag = new HashMap<Integer, Integer>() {
+        {
+            put(1, 17);
+            put(2, 22);
+            put(3, 23);
+            put(4, 28);
         }
     };
 
     public static Translation3d getBlueStartFieldPosition(Group group, Location location, int index) {
         Translation3d selectedLocation = Translation3d.kZero;
-        var reefTag = reefIndexToTag.get(index);
-        var coralTag = coralIndexToTag.get(index);
+        var HubTag = HubIndexToTag.get(index);
+        var OutpostTag = OutpostIndexToTag.get(index);
 
         switch (location) {
-            case Barge:
+            case Start:
                 selectedLocation = getStartPose(index).getTranslation();
             case Waypoint:
                 switch (index) {
@@ -194,63 +206,87 @@ public class Constants {
                         break;
                 }
                 break;
-            case Reef:
+            case Hub:
                 switch (group) {
                     case ApproachLeft:
-                        selectedLocation = Utility.projectPerpendicular(getBlueStartFieldPosition(Group.Any, Location.Tag, reefTag), getBlueStartKnownRotation(Group.Any, Location.Tag, reefTag), robotCenter.getY());
-                        selectedLocation = Utility.projectParallel(selectedLocation, getBlueStartKnownRotation(Group.Any, Location.Tag, reefTag), alignOffset);
+                        selectedLocation = Utility.projectPerpendicular(getBlueStartFieldPosition(Group.Any, Location.Tag, HubTag), getBlueStartKnownRotation(Group.Any, Location.Tag, HubTag), robotCenter.getY());
+                        selectedLocation = Utility.projectParallel(selectedLocation, getBlueStartKnownRotation(Group.Any, Location.Tag, HubTag), alignOffset);
                         break;
                     case AlignLeft:
-                        selectedLocation = Utility.projectPerpendicular(getBlueStartFieldPosition(Group.ApproachLeft, Location.Reef, index), getBlueStartKnownRotation(Group.Any, Location.Tag, reefTag), robotCenter.getNorm());
+                        selectedLocation = Utility.projectPerpendicular(getBlueStartFieldPosition(Group.ApproachLeft, Location.Hub, index), getBlueStartKnownRotation(Group.Any, Location.Tag, HubTag), robotCenter.getNorm());
                         break;
                     case ApproachRight:
-                        selectedLocation = Utility.projectPerpendicular(getBlueStartFieldPosition(Group.Any, Location.Tag, reefTag), getBlueStartKnownRotation(Group.Any, Location.Tag, reefTag), robotCenter.getY());
-                        selectedLocation = Utility.projectParallel(selectedLocation, getBlueStartKnownRotation(Group.Any, Location.Tag, reefTag), -alignOffset);
+                        selectedLocation = Utility.projectPerpendicular(getBlueStartFieldPosition(Group.Any, Location.Tag, HubTag), getBlueStartKnownRotation(Group.Any, Location.Tag, HubTag), robotCenter.getY());
+                        selectedLocation = Utility.projectParallel(selectedLocation, getBlueStartKnownRotation(Group.Any, Location.Tag, HubTag), -alignOffset);
                         break;
                     case AlignRight:
-                        selectedLocation = Utility.projectPerpendicular(getBlueStartFieldPosition(Group.ApproachRight, Location.Reef, index), getBlueStartKnownRotation(Group.Any, Location.Tag, reefTag), robotCenter.getNorm());
+                        selectedLocation = Utility.projectPerpendicular(getBlueStartFieldPosition(Group.ApproachRight, Location.Hub, index), getBlueStartKnownRotation(Group.Any, Location.Tag, HubTag), robotCenter.getNorm());
                         break;
                     default:
-                        selectedLocation = Utility.projectPerpendicular(getBlueStartFieldPosition(Group.Any, Location.Tag, reefTag), getBlueStartKnownRotation(Group.Any, Location.Tag, reefTag), robotCenter.getY());
-                        selectedLocation = Utility.projectParallel(selectedLocation, getBlueStartKnownRotation(Group.Any, Location.Tag, reefTag), index % 2 == 0 ? -scoreOffset : scoreOffset);
+                        selectedLocation = Utility.projectPerpendicular(getBlueStartFieldPosition(Group.Any, Location.Tag, HubTag), getBlueStartKnownRotation(Group.Any, Location.Tag, HubTag), robotCenter.getY());
+                        selectedLocation = Utility.projectParallel(selectedLocation, getBlueStartKnownRotation(Group.Any, Location.Tag, HubTag), index % 2 == 0 ? -scoreOffset : scoreOffset);
                         break;
                 }
                 break;
-            case Coral:
+            case Outpost:
                 switch (group) {
                     case Align:
-                        selectedLocation = Utility.projectPerpendicular(getBlueStartFieldPosition(Group.Any, Location.Coral, index), getBlueStartKnownRotation(Group.Any, Location.Tag, coralTag), alignOffset);
+                        selectedLocation = Utility.projectPerpendicular(getBlueStartFieldPosition(Group.Any, Location.Outpost, index), getBlueStartKnownRotation(Group.Any, Location.Tag, OutpostTag), alignOffset);
                         break;
                     default:
-                        selectedLocation =  Utility.projectPerpendicular(getBlueStartFieldPosition(Group.Any, Location.Tag, coralTag), getBlueStartKnownRotation(Group.Any, Location.Tag, coralTag), robotCenter.getY());
+                        selectedLocation =  Utility.projectPerpendicular(getBlueStartFieldPosition(Group.Any, Location.Tag, OutpostTag), getBlueStartKnownRotation(Group.Any, Location.Tag, OutpostTag), robotCenter.getY());
                         break;
                 }
                 break;
             case Tag:
                 switch (index) {
-                    case 12:
-                        selectedLocation = new Translation3d(Utility.inchesToMeters(33.51),  Utility.inchesToMeters(25.80), 0);
-                        break;
-                    case 13:
-                        selectedLocation = new Translation3d(Utility.inchesToMeters(33.51),  Utility.inchesToMeters(291.20), 0);
-                        break;
                     case 17:
-                        selectedLocation = new Translation3d(Utility.inchesToMeters(160.39), Utility.inchesToMeters(130.17), 0);
+                        selectedLocation = new Translation3d(Utility.inchesToMeters(183.03), Utility.inchesToMeters(24.85), 0);
                         break;
                     case 18:
-                        selectedLocation = new Translation3d(Utility.inchesToMeters(144), Utility.inchesToMeters(158.50), 0);
+                        selectedLocation = new Translation3d(Utility.inchesToMeters(181.56), Utility.inchesToMeters(134.56), 0);
                         break;
                     case 19:
-                        selectedLocation = new Translation3d(Utility.inchesToMeters(160.39), Utility.inchesToMeters(186.83), 0);
+                        selectedLocation = new Translation3d(Utility.inchesToMeters(205.32), Utility.inchesToMeters(144.32), 0);
                         break;
                     case 20:
-                        selectedLocation = new Translation3d(Utility.inchesToMeters(193.10), Utility.inchesToMeters(186.83), 0);
+                        selectedLocation = new Translation3d(Utility.inchesToMeters(205.32), Utility.inchesToMeters(158.32), 0);
                         break;
                     case 21:
-                        selectedLocation = new Translation3d(Utility.inchesToMeters( 209.49), Utility.inchesToMeters(158.50), 0);
+                        selectedLocation = new Translation3d(Utility.inchesToMeters(181.56), Utility.inchesToMeters(182.08), 0);
                         break;
                     case 22:
-                        selectedLocation = new Translation3d(Utility.inchesToMeters( 193.10), Utility.inchesToMeters(130.17), 0);
+                        selectedLocation = new Translation3d(Utility.inchesToMeters(183.03), Utility.inchesToMeters(291.79), 0);
+                        break;
+                    case 23:
+                        selectedLocation = new Translation3d(Utility.inchesToMeters(180.08), Utility.inchesToMeters(291.79), 0);
+                        break;
+                    case 24:
+                        selectedLocation = new Translation3d(Utility.inchesToMeters(167.56), Utility.inchesToMeters(182.08), 0);
+                        break;
+                    case 25:
+                        selectedLocation = new Translation3d(Utility.inchesToMeters(157.79), Utility.inchesToMeters(172.32), 0);
+                        break;
+                    case 26:
+                        selectedLocation = new Translation3d(Utility.inchesToMeters(157.79), Utility.inchesToMeters(158.32), 0);
+                        break;
+                    case 27:
+                        selectedLocation = new Translation3d(Utility.inchesToMeters(167.56), Utility.inchesToMeters(134.56), 0);
+                        break;
+                    case 28:
+                        selectedLocation = new Translation3d(Utility.inchesToMeters(180.08), Utility.inchesToMeters(24.85), 0);
+                        break;
+                    case 29:
+                        selectedLocation = new Translation3d(Utility.inchesToMeters(0.54), Utility.inchesToMeters(25.62), 0);
+                        break;
+                    case 30:
+                        selectedLocation = new Translation3d(Utility.inchesToMeters(0.54), Utility.inchesToMeters(42.62), 0);
+                        break;
+                    case 31:
+                        selectedLocation = new Translation3d(Utility.inchesToMeters(0.55), Utility.inchesToMeters(146.86), 0);
+                        break;
+                    case 32:
+                        selectedLocation = new Translation3d(Utility.inchesToMeters(0.55), Utility.inchesToMeters(163.86), 0);
                         break;
                 }
                 break;
@@ -263,8 +299,12 @@ public class Constants {
                 break;
             case Any:
             case None:
-            case Processor:
+            case Depot:
             case AdHoc:
+            case Bump:
+            case Tower:
+            case Trench:
+            default:
                 break;
         }
 
@@ -302,28 +342,52 @@ public class Constants {
         switch (location) {
             case Tag:
                 switch (index) {
-                    case 12:
-                        selectedRotation = new Rotation2d(Utility.degreesToRadians(54)).minus(alignmentRotation);
-                        break;
-                    case 13:
-                        selectedRotation = new Rotation2d(Utility.degreesToRadians(306)).minus(alignmentRotation);
-                        break;
                     case 17:
-                        selectedRotation = new Rotation2d(Utility.degreesToRadians(240)).minus(alignmentRotation);
-                        break;
-                    case 19:
-                        selectedRotation = new Rotation2d(Utility.degreesToRadians(120)).minus(alignmentRotation);
-                        break;
-                    case 20:
-                        selectedRotation = new Rotation2d(Utility.degreesToRadians(60)).minus(alignmentRotation);
-                        break;
-                    case 22:
-                        selectedRotation = new Rotation2d(Utility.degreesToRadians(300)).minus(alignmentRotation);
+                        selectedRotation = new Rotation2d().minus(alignmentRotation);
                         break;
                     case 18:
-                        selectedRotation = new Rotation2d(Utility.degreesToRadians(180)).minus(alignmentRotation);
+                        selectedRotation = new Rotation2d(Utility.degreesToRadians(270)).minus(alignmentRotation);
+                        break;
+                    case 19:
+                        selectedRotation = new Rotation2d().minus(alignmentRotation);
+                        break;
+                    case 20:
+                        selectedRotation = new Rotation2d().minus(alignmentRotation);
                         break;
                     case 21:
+                        selectedRotation = new Rotation2d(Utility.degreesToRadians(90)).minus(alignmentRotation);
+                        break;
+                    case 22:
+                        selectedRotation = new Rotation2d().minus(alignmentRotation);
+                        break;
+                    case 23:
+                        selectedRotation = new Rotation2d(Utility.degreesToRadians(180)).minus(alignmentRotation);
+                        break;
+                    case 24:
+                        selectedRotation = new Rotation2d(Utility.degreesToRadians(90)).minus(alignmentRotation);
+                        break;
+                    case 25:
+                        selectedRotation = new Rotation2d(Utility.degreesToRadians(180)).minus(alignmentRotation);
+                        break;
+                    case 26:
+                        selectedRotation = new Rotation2d(Utility.degreesToRadians(180)).minus(alignmentRotation);
+                        break;
+                    case 27:
+                        selectedRotation = new Rotation2d(Utility.degreesToRadians(270)).minus(alignmentRotation);
+                        break;
+                    case 28:
+                        selectedRotation = new Rotation2d(Utility.degreesToRadians(180)).minus(alignmentRotation);
+                        break;
+                    case 29:
+                        selectedRotation = new Rotation2d().minus(alignmentRotation);
+                        break;
+                    case 30:
+                        selectedRotation = new Rotation2d().minus(alignmentRotation);
+                        break;
+                    case 31:
+                        selectedRotation = new Rotation2d().minus(alignmentRotation);
+                        break;
+                    case 32:
                         selectedRotation = new Rotation2d().minus(alignmentRotation);
                         break;
                 }
@@ -335,14 +399,19 @@ public class Constants {
                     break;
                 }
                 break;
-            case Barge:
+            case Start:
             case Waypoint:
-            case Reef:
-            case Processor:
-            case Coral:
+            case Hub:
+            case Depot:
+            case Outpost:
             case AdHoc:
             case Any:
             case None:
+            case Bump:
+            case Tower:
+            case Trench:
+            default:
+                break;
         }
 
         return selectedRotation;

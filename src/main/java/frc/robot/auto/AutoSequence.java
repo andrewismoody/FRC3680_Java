@@ -10,6 +10,7 @@ public class AutoSequence {
     long elapsedTime = 0;
     String label = "unset";
     boolean finished = false;
+    boolean initialized = false;
 
     ModuleController controller;
     AutoController autoController;
@@ -125,6 +126,11 @@ public class AutoSequence {
         return this;
     }
 
+    public void InitializeViaButton(Boolean value) {
+        if (value && !initialized)
+            Initialize();
+    }
+
     public void Initialize() {
         System.out.printf("AutoSequence %s initializing\n", label);
 
@@ -135,10 +141,11 @@ public class AutoSequence {
 
         interrupt = false;
         finished = false;
+        initialized = true;
     }
 
     public void Update() {
-        if (interrupt)
+        if (interrupt || !initialized)
             return;
 
         elapsedTime = System.currentTimeMillis() - startTime;
@@ -217,14 +224,17 @@ public class AutoSequence {
             }
         }
 
-        if (!notFinished)
+        if (!notFinished) {
             System.out.printf("AutoSequence %s all events complete\n", label);
+            initialized = false;
+        }
 
         finished = !notFinished;
     }
 
     public void Shutdown() {
         interrupt = true;
+        initialized = false;
 
         // stop evaluating and mark complete
         finished = true;

@@ -5,5 +5,8 @@ public enum Action {
     Pop,
     Pickup,
     Raise,
+    Feed,
+    Release,
+    None,
     Any,
 }
