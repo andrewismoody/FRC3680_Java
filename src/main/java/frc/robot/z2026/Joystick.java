@@ -7,6 +7,11 @@ import frc.robot.misc.GameController.ButtonName;
 import frc.robot.modules.ModuleController;
 import frc.robot.modules.SingleMotorModule;
 import frc.robot.modules.SwerveDriveModule;
+import frc.robot.z2026.action.Location;
+import frc.robot.z2026.action.Position;
+import frc.robot.action.Action;
+import frc.robot.action.ActionPose;
+import frc.robot.action.Group;
 import frc.robot.auto.AutoSequence;
 
 public class Joystick {
@@ -22,13 +27,17 @@ public class Joystick {
     var driveModule = (SwerveDriveModule) modules.GetDriveModule();
     var shooter = (SingleMotorModule) modules.GetModule("shooter");
     var feeder = (SingleMotorModule) modules.GetModule("feeder");
-    var shootSequence = buttonMappedAutos.get("spinupAndShoot");
+    var intake = (SingleMotorModule) modules.GetModule("intake");
+    // var shootSequence = buttonMappedAutos.get("spinupAndShoot");
 
-    m_controller.RegisterBinaryButtonConsumer(ButtonName.TopButton, shooter::ApplyValue);
+    // m_controller.RegisterBinaryButtonConsumer(ButtonName.TopButton, shooter::ApplyValue);
+    m_controller.RegisterBinaryButtonConsumer(ButtonName.TopButton, shooter.AddButtonMappedPose(new ActionPose(Group.Any, Location.Any.getValue(), -1, Position.Any.getValue(), Action.Feed, null)));
+    m_controller.RegisterBinaryButtonConsumer(ButtonName.BottomButton, shooter::SetNoPose);
     m_controller.RegisterBinaryButtonConsumer(ButtonName.LeftButton, feeder::ApplyValue);
-    System.out.printf("Joystick: shootSequence %s found for button mapping\n", shootSequence != null ? shootSequence.GetLabel() : "not");
-    if (shootSequence != null) // will be null in Autonomous Mode
-      m_controller.RegisterBinaryButtonConsumer(ButtonName.RightButton, shootSequence::InitializeViaButton);
+    m_controller.RegisterBinaryButtonConsumer(ButtonName.RightButton, intake::ApplyValue);
+    // System.out.printf("Joystick: shootSequence %s found for button mapping\n", shootSequence != null ? shootSequence.GetLabel() : "not");
+    // if (shootSequence != null) // will be null in Autonomous Mode
+    //   m_controller.RegisterBinaryButtonConsumer(ButtonName.RightButton, shootSequence::InitializeViaButton);
     
     // m_controller.RegisterBinaryButtonConsumer(ButtonName.LeftShoulderButton, slide::ApplyValue);
     // m_controller.RegisterBinaryButtonConsumer(ButtonName.RightShoulderButton, slide::ApplyInverse);
