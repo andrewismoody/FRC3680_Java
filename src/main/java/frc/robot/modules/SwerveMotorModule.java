@@ -53,7 +53,8 @@ public class SwerveMotorModule {
   double angleEncSimRate = 3.0;
   double angleEncSimFactor = 0.03;
   double driveEncSimRate = 3.0;
-  double driveEncSimFactor = 9.0;
+  // TODO: make this properly dynamic so it doesn't need to be adjusted for different drive ratios
+  double driveEncSimFactor = 0.111; //9.0;
   double steeringGearRatio = 1.0;
   EncoderMountLocation encoderLocation;
 
@@ -146,6 +147,8 @@ public class SwerveMotorModule {
       var config = new SparkMaxConfig();
       if (angleEncoder.isAbsolute()) {
         config.absoluteEncoder.inverted(invertRotationEncoder);
+        // TODO: test if this works before uncommenting permanently - this should reverse the motor and encoder together, which is independent of the absolute encoder
+        // config.inverted(invertRotationMotor);
       } else {
         config.inverted(invertRotationEncoder);
       }
@@ -154,8 +157,8 @@ public class SwerveMotorModule {
     } else {
       // not used for absolute encoders - why?
       angleEncoder.setReverseDirection(invertRotationEncoder);
+      rotatorMotor.setInverted(invertRotationMotor);
     }
-    rotatorMotor.setInverted(invertRotationMotor);
   }
 
   public SwervePosition GetSwervePosition() {
