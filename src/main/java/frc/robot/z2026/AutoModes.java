@@ -5,8 +5,7 @@ import java.util.Hashtable;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import frc.robot.auto.AutoController;
 import frc.robot.modules.ModuleController;
-import frc.robot.z2026.Sequences.Score3and4;
-import frc.robot.z2026.Sequences.Score8and4;
+import frc.robot.z2026.Sequences.Score4andReload;
 
 public class AutoModes {
     public static Hashtable<String, AutoController> Initialize(Hashtable<String, AutoController> AutoModes, ModuleController modules) {
@@ -15,12 +14,8 @@ public class AutoModes {
         AutoModes.clear();
 
         AutoController score3and4 = new AutoController("Score3and4",modules);
-        score3and4.AddSequence(new Score3and4(score3and4.GetLabel(), score3and4));
+        score3and4.AddSequence(new Score4andReload(score3and4.GetLabel(), score3and4));
         AutoModes.put(score3and4.GetLabel(), score3and4);
-
-        AutoController score8and4 = new AutoController("Score8and4", modules);
-        score8and4.AddSequence(new Score8and4(score8and4.GetLabel(), score8and4));
-        AutoModes.put(score8and4.GetLabel(), score8and4);
 
         SmartDashboard.putStringArray("Auto List", new String[] {});
         SmartDashboard.putStringArray("Auto List", AutoModes.keySet().toArray(new String[] {}));

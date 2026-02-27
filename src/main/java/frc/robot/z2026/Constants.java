@@ -92,7 +92,11 @@ public class Constants {
     };
 
     public static final double waypointOffset = robotSize.getNorm() * 1.25;
-    public static final double alignOffset = robotSize.getNorm() * 0.75;
+    public static final double shootingDistance = Utility.inchesToMeters(24);
+    public static final double approachOffset = (robotSize.getY() * 0.5) + shootingDistance;
+    public static final double towerDistance = Utility.inchesToMeters(49.32);
+    public static final double towerApproachOffset = (robotSize.getNorm()) + towerDistance;
+    public static final double towerAlignOffset = (robotSize.getY() * 0.5) + towerDistance;
     public static final double scoreOffset = Utility.inchesToMeters(-3);
 
     public static Pose3d getMyStartPose() {
@@ -111,27 +115,21 @@ public class Constants {
     public static final HashMap<Integer, Integer> HubIndexToTag = new HashMap<Integer, Integer>() {
         {
             put(1, 18);
-            put(2, 19);
-            put(3, 20);
-            put(4, 21);
-            put(5, 24);
-            put(6, 25);
-            put(7, 26);
-            put(8, 27);
+            put(2, 20);
+            put(3, 21);
+            put(4, 26);
         }
     };
 
     public static final HashMap<Integer, Integer> OutpostIndexToTag = new HashMap<Integer, Integer>() {
         {
             put(1, 29);
-            put(2, 30);
         }
     };
 
     public static final HashMap<Integer, Integer> TowerIndexToTag = new HashMap<Integer, Integer>() {
         {
             put(1, 31);
-            put(2, 32);
         }
     };
 
@@ -149,6 +147,7 @@ public class Constants {
         Translation3d selectedLocation = Translation3d.kZero;
         var HubTag = HubIndexToTag.get(index);
         var OutpostTag = OutpostIndexToTag.get(index);
+        var TowerTag = TowerIndexToTag.get(index);
 
         switch (location) {
             case Start:
@@ -190,34 +189,17 @@ public class Constants {
                 }
                 break;
             case Hub:
-                switch (group) {
-                    case ApproachLeft:
-                        selectedLocation = Utility.projectPerpendicular(getBlueStartFieldPosition(Group.Any, Location.Tag, HubTag), getBlueStartKnownRotation(Group.Any, Location.Tag, HubTag), robotCenter.getY());
-                        selectedLocation = Utility.projectParallel(selectedLocation, getBlueStartKnownRotation(Group.Any, Location.Tag, HubTag), alignOffset);
-                        break;
-                    case AlignLeft:
-                        selectedLocation = Utility.projectPerpendicular(getBlueStartFieldPosition(Group.ApproachLeft, Location.Hub, index), getBlueStartKnownRotation(Group.Any, Location.Tag, HubTag), robotCenter.getNorm());
-                        break;
-                    case ApproachRight:
-                        selectedLocation = Utility.projectPerpendicular(getBlueStartFieldPosition(Group.Any, Location.Tag, HubTag), getBlueStartKnownRotation(Group.Any, Location.Tag, HubTag), robotCenter.getY());
-                        selectedLocation = Utility.projectParallel(selectedLocation, getBlueStartKnownRotation(Group.Any, Location.Tag, HubTag), -alignOffset);
-                        break;
-                    case AlignRight:
-                        selectedLocation = Utility.projectPerpendicular(getBlueStartFieldPosition(Group.ApproachRight, Location.Hub, index), getBlueStartKnownRotation(Group.Any, Location.Tag, HubTag), robotCenter.getNorm());
-                        break;
-                    default:
-                        selectedLocation = Utility.projectPerpendicular(getBlueStartFieldPosition(Group.Any, Location.Tag, HubTag), getBlueStartKnownRotation(Group.Any, Location.Tag, HubTag), robotCenter.getY());
-                        selectedLocation = Utility.projectParallel(selectedLocation, getBlueStartKnownRotation(Group.Any, Location.Tag, HubTag), index % 2 == 0 ? -scoreOffset : scoreOffset);
-                        break;
-                }
+                selectedLocation = Utility.projectPerpendicular(getBlueStartFieldPosition(Group.Any, Location.Tag, HubTag), getBlueStartKnownRotation(Group.Any, Location.Tag, HubTag), approachOffset);
                 break;
             case Outpost:
-                switch (group) {
+                switch(group) {
                     case Align:
-                        selectedLocation = Utility.projectPerpendicular(getBlueStartFieldPosition(Group.Any, Location.Outpost, index), getBlueStartKnownRotation(Group.Any, Location.Tag, OutpostTag), alignOffset);
+                        selectedLocation = Utility.projectPerpendicular(getBlueStartFieldPosition(Group.Any, Location.Tag, OutpostTag), getBlueStartKnownRotation(Group.Any, Location.Tag, OutpostTag), robotSize.getY());
+                        break;
+                    case Approach:
+                        selectedLocation = Utility.projectPerpendicular(getBlueStartFieldPosition(Group.Any, Location.Tag, OutpostTag), getBlueStartKnownRotation(Group.Any, Location.Tag, OutpostTag), approachOffset);
                         break;
                     default:
-                        selectedLocation =  Utility.projectPerpendicular(getBlueStartFieldPosition(Group.Any, Location.Tag, OutpostTag), getBlueStartKnownRotation(Group.Any, Location.Tag, OutpostTag), robotCenter.getY());
                         break;
                 }
                 break;
@@ -280,12 +262,24 @@ public class Constants {
                         break;
                 }
                 break;
+            case Tower:
+                switch(group) {
+                    case Align:
+                        selectedLocation = Utility.projectPerpendicular(getBlueStartFieldPosition(Group.Any, Location.Tag, TowerTag), getBlueStartKnownRotation(Group.Any, Location.Tag, TowerTag), towerAlignOffset);
+                        break;
+                    case Approach:
+                        selectedLocation = Utility.projectPerpendicular(getBlueStartFieldPosition(Group.Any, Location.Tag, TowerTag), getBlueStartKnownRotation(Group.Any, Location.Tag, TowerTag), towerApproachOffset);
+                        break;
+                    default:
+                        selectedLocation = Utility.projectPerpendicular(getBlueStartFieldPosition(Group.Any, Location.Tag, TowerTag), getBlueStartKnownRotation(Group.Any, Location.Tag, TowerTag), towerApproachOffset);
+                        break;
+                }
+                break;
             case Any:
             case None:
             case Depot:
             case AdHoc:
             case Bump:
-            case Tower:
             case Trench:
             default:
                 break;
