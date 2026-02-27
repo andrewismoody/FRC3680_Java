@@ -98,7 +98,7 @@ public class Robot extends TimedRobot {
   final boolean isFieldOriented = true;
   SingleMotorModule shooter_module = new SingleMotorModule("shooter", can_shooter, 5000, false, null, null, null, 1, 0.5, 0, 0, true);
   SingleMotorModule intake_module = new SingleMotorModule("intake", can_intake, 12000, false, null, null, null, 1, 0.5, 0, 0, false);
-  SingleMotorModule feeder_module = new SingleMotorModule("feeder", can_feeder, 12000, false, null, null, null, 1, 0.5, 0, 0, false);
+  SingleMotorModule feeder_module = new SingleMotorModule("feeder", can_feeder, 12000, false, null, null, null, 1, 0.5, 0, 0, true);
   
   // leftFront  software position // potentially should be leftrear   hardware position
   SwerveMotorDefinition leftFrontDef = new SwerveMotorDefinition(can_drive_lf, enc_drive_lf, can_steer_lf, enc_steer_lf);
@@ -180,6 +180,10 @@ public class Robot extends TimedRobot {
   }
 
   void commonInit() {
+    // initialize button mapped autos before Joystick so it can map to it
+    var teleopAutoController = new AutoController("Teleop AutoController", modules);
+    buttonMappedAutos.put("spinupAndShoot", new SpinupAndShoot("Spinup and Shoot", teleopAutoController));
+
     // initialize game controller first because other classes need it.
     // This needs to be here in mode init because we may not have a driver station connection during robotinit.
     m_controller = GameController.Initialize();
@@ -250,8 +254,6 @@ public class Robot extends TimedRobot {
 
     // switch back to defined field oriented mode when we start up tele-op; prevents bleedover from auto
     modules.GetDriveModule().SetFieldOriented(isFieldOriented);
-    var teleopAutoController = new AutoController("Teleop AutoController", modules);
-    buttonMappedAutos.put("spinupAndShoot", new SpinupAndShoot("Spinup and Shoot", teleopAutoController));
   }
 
   /** This function is called periodically during teleoperated mode. */

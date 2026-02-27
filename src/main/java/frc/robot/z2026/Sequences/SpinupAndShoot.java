@@ -8,6 +8,7 @@ import frc.robot.z2026.action.Position;
 import frc.robot.auto.AutoController;
 import frc.robot.auto.AutoEvent;
 import frc.robot.auto.AutoEventTarget;
+import frc.robot.auto.AutoEventTime;
 import frc.robot.auto.AutoSequence;
 
 public class SpinupAndShoot extends AutoSequence {
@@ -37,10 +38,12 @@ public class SpinupAndShoot extends AutoSequence {
 
     var event_spinup = CreateSyncAwaitEvent("Await Pose Shooter Spinup", pose_spinup);
     var event_shoot = CreateSyncAwaitEvent("Await Pose Feeder Shoot", pose_shoot);
+    var event_waitForRelease = new AutoEventTime("Wait For Release", false, 2000, AutoEvent.EventType.None, autoController);
     var event_stop = CreateSyncAwaitEvent("Await Pose Shooter/Feeder Stop", pose_stop);
 
     BeginWith(event_spinup)
       .Then(event_shoot)
+      .Then(event_waitForRelease)
       .Then(event_stop)
     ;
   }
