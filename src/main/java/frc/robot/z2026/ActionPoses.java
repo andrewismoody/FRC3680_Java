@@ -82,7 +82,7 @@ public class ActionPoses {
         // elevator.AddActionPose(new ActionPose(Group.Score, Location.Any.getValue(), -1, Position.Lower.getValue(), Action.Any, new AutoTarget(0.55)));
         // elevator.AddActionPose(new ActionPose(Group.Any, Location.Any.getValue(), -1, Position.Trough.getValue(), Action.Any, new AutoTarget(0.0)));
 
-        var shooterRpm = 3000; // TODO: tune this
+        var shooterRpm = -3000; // TODO: tune this
         shooter.AddActionPose(new ActionPose(Group.Any, Location.Any.getValue(), -1, Position.Any.getValue(), Action.Feed, new AutoTarget(shooterRpm)));
         shooter.AddActionPose(new ActionPose(Group.Any, Location.Any.getValue(), -1, Position.Any.getValue(), Action.None, new AutoTarget(0.0)));
         

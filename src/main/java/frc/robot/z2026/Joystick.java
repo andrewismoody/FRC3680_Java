@@ -31,8 +31,10 @@ public class Joystick {
     // var shootSequence = buttonMappedAutos.get("spinupAndShoot");
 
     // m_controller.RegisterBinaryButtonConsumer(ButtonName.TopButton, shooter::ApplyValue);
-    m_controller.RegisterBinaryButtonConsumer(ButtonName.TopButton, shooter.AddButtonMappedPose(new ActionPose(Group.Any, Location.Any.getValue(), -1, Position.Any.getValue(), Action.Feed, null)));
-    m_controller.RegisterBinaryButtonConsumer(ButtonName.BottomButton, shooter::SetNoPose);
+    // m_controller.RegisterBinaryButtonConsumer(ButtonName.TopButton, shooter.AddButtonMappedPose(new ActionPose(Group.Any, Location.Any.getValue(), -1, Position.Any.getValue(), Action.Feed, null)));
+    // m_controller.RegisterBinaryButtonConsumer(ButtonName.BottomButton, shooter::SetNoPose);
+
+    m_controller.RegisterBinaryButtonConsumer(ButtonName.TopButton, shooter::ApplyInverse);
     m_controller.RegisterBinaryButtonConsumer(ButtonName.LeftButton, feeder::ApplyValue);
     m_controller.RegisterBinaryButtonConsumer(ButtonName.RightButton, intake::ApplyValue);
     // System.out.printf("Joystick: shootSequence %s found for button mapping\n", shootSequence != null ? shootSequence.GetLabel() : "not");

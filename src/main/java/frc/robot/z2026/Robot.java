@@ -72,9 +72,9 @@ public class Robot extends TimedRobot {
   final SparkFlex can_drive_rr = new SparkFlex(9, MotorType.kBrushless);
   final SparkMax can_steer_rr = new SparkMax(5, MotorType.kBrushless);
 
-  final SparkMax can_feeder = new SparkMax(10, MotorType.kBrushless);
+  final SparkMax can_feeder = new SparkMax(12, MotorType.kBrushed);
   final SparkMax can_shooter = new SparkMax(11, MotorType.kBrushless);
-  final SparkMax can_intake = new SparkMax(12, MotorType.kBrushless);
+  final SparkMax can_intake = new SparkMax(10, MotorType.kBrushless);
 
   // need to change to absolute encoder for steering
   final Encoder enc_steer_lf = new REVEncoder(can_steer_lf.getAbsoluteEncoder());
@@ -87,6 +87,8 @@ public class Robot extends TimedRobot {
   final Encoder enc_drive_lr = new REVEncoder(can_drive_lr.getEncoder());
   final Encoder enc_drive_rr = new REVEncoder(can_drive_rr.getEncoder());
 
+  final Encoder enc_shooter = new REVEncoder(can_shooter.getEncoder());
+
   final Gyro m_gyro = new AHRSGyro();
   final Positioner m_positioner = new LimeLightPositioner(true);
 
@@ -96,9 +98,9 @@ public class Robot extends TimedRobot {
   final Timer gc_timer = new Timer();
 
   final boolean isFieldOriented = true;
-  SingleMotorModule shooter_module = new SingleMotorModule("shooter", can_shooter, 5000, false, null, null, null, 1, 0.5, 0, 0, true);
+  SingleMotorModule shooter_module = new SingleMotorModule("shooter", can_shooter, 5000, false, null, null, enc_shooter, 1, 0.5, 0, 0, true);
   SingleMotorModule intake_module = new SingleMotorModule("intake", can_intake, 12000, false, null, null, null, 1, 0.5, 0, 0, false);
-  SingleMotorModule feeder_module = new SingleMotorModule("feeder", can_feeder, 12000, false, null, null, null, 1, 0.5, 0, 0, true);
+  SingleMotorModule feeder_module = new SingleMotorModule("feeder", can_feeder, 12000, false, null, null, null, 1, 0.5, 0, 0, false);
   
   // leftFront  software position // potentially should be leftrear   hardware position
   SwerveMotorDefinition leftFrontDef = new SwerveMotorDefinition(can_drive_lf, enc_drive_lf, can_steer_lf, enc_steer_lf);
