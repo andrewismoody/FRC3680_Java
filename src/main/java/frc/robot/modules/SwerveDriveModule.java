@@ -456,15 +456,19 @@ public class SwerveDriveModule implements DriveModule {
     public boolean isAnyPositionerHealthy() {
         var healthy = false;
 
-        for (var positioner : positioners) {
-            if (RobotBase.isReal() && positioner.IsHealthy()) {
-                healthy = true;
+        if (RobotBase.isReal()) {
+            for (var positioner : positioners) {
+                if (positioner.IsHealthy()) {
+                    healthy = true;
 
-                if (debug) {
-                    positionerHealthyEntry.setBoolean(healthy);
-                    positionHealthReasonEntry.setString(positioner.GetHealthReason());
+                    if (debug) {
+                        positionerHealthyEntry.setBoolean(healthy);
+                        positionHealthReasonEntry.setString(positioner.GetHealthReason());
+                    }
                 }
             }
+        } else {
+            healthy = true;
         }
 
         return healthy;
