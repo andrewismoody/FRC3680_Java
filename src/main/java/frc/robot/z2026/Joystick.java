@@ -37,6 +37,7 @@ public class Joystick {
     m_controller.RegisterBinaryButtonConsumer(ButtonName.TopButton, shooter::ApplyInverse);
     m_controller.RegisterBinaryButtonConsumer(ButtonName.LeftButton, feeder::ApplyValue);
     m_controller.RegisterBinaryButtonConsumer(ButtonName.RightButton, intake::ApplyValue);
+    m_controller.RegisterBinaryButtonConsumer(ButtonName.BottomButton, feeder::ApplyInverse);
     // System.out.printf("Joystick: shootSequence %s found for button mapping\n", shootSequence != null ? shootSequence.GetLabel() : "not");
     // if (shootSequence != null) // will be null in Autonomous Mode
     //   m_controller.RegisterBinaryButtonConsumer(ButtonName.RightButton, shootSequence::InitializeViaButton);
