@@ -11,7 +11,7 @@ public class ModuleController {
   Hashtable<String, RobotModule> modules = new Hashtable<String, RobotModule>();
   DriveModule driveModule;
 
-  double divider = 0.5;
+  double divider = 0.05;
   double speedMod = 1.0;
 
   private double inverseValue = 1.0;
