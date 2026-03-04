@@ -99,9 +99,9 @@ public class Robot extends TimedRobot {
 
   final boolean isFieldOriented = true;
 
-  SingleMotorModule shooter_module = new SingleMotorModule("shooter", can_shooter, 1.60, false, null, null, enc_shooter, 1, 0.5, 0, 0, true);
-  SingleMotorModule intake_module = new SingleMotorModule("intake", can_intake, 0.5, false, null, null, null, 1, 0.5, 0, 0, false);
-  SingleMotorModule feeder_module = new SingleMotorModule("feeder", can_feeder, 1.60, false, null, null, null, 1, 0.5, 0, 0, false);
+  SingleMotorModule shooter_module = new SingleMotorModule("shooter", can_shooter, 0.8, false, null, null, enc_shooter, 1, 1, 0, 0, true);
+  SingleMotorModule intake_module = new SingleMotorModule("intake", can_intake, 0.5, false, null, null, null, 1, 1, 0, 0, false);
+  SingleMotorModule feeder_module = new SingleMotorModule("feeder", can_feeder, 0.8, false, null, null, null, 1, 1, 0, 0, false);
   
   // leftFront  software position // potentially should be leftrear   hardware position
   SwerveMotorDefinition leftFrontDef = new SwerveMotorDefinition(can_drive_lf, enc_drive_lf, can_steer_lf, enc_steer_lf);
